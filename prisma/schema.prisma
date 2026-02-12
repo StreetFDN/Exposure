@@ -1,0 +1,754 @@
+// =============================================================================
+// Exposure — Crypto Capital Raising Platform
+// Prisma Schema (PostgreSQL)
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  INVESTOR
+  PROJECT_ADMIN
+  PLATFORM_ADMIN
+  SUPER_ADMIN
+  COMPLIANCE_OFFICER
+  SUPPORT_AGENT
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum KycTier {
+  BASIC
+  STANDARD
+  ACCREDITED
+}
+
+enum DealStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  REGISTRATION_OPEN
+  GUARANTEED_ALLOCATION
+  FCFS
+  SETTLEMENT
+  DISTRIBUTING
+  COMPLETED
+  CANCELLED
+}
+
+enum DealCategory {
+  DEFI
+  GAMING
+  AI
+  INFRASTRUCTURE
+  NFT
+  SOCIAL
+  OTHER
+}
+
+enum ContributionStatus {
+  PENDING
+  CONFIRMED
+  REFUNDED
+  FAILED
+}
+
+enum AllocationMethod {
+  GUARANTEED
+  PRO_RATA
+  LOTTERY
+  FCFS
+  HYBRID
+}
+
+enum VestingType {
+  LINEAR
+  MONTHLY_CLIFF
+  CUSTOM
+  TGE_PLUS_LINEAR
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  DUE_DILIGENCE
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum NotificationType {
+  DEAL_ALERT
+  VESTING
+  ACCOUNT
+  COMPLIANCE
+  MARKETING
+}
+
+enum Chain {
+  ETHEREUM
+  BASE
+  ARBITRUM
+}
+
+enum TransactionType {
+  CONTRIBUTION
+  REFUND
+  CLAIM
+  STAKE
+  UNSTAKE
+}
+
+enum StakingLockPeriod {
+  NONE
+  THIRTY_DAYS
+  NINETY_DAYS
+  ONE_EIGHTY_DAYS
+  THREE_SIXTY_FIVE_DAYS
+}
+
+enum TierLevel {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum FlagReason {
+  LARGE_CONTRIBUTION
+  CUMULATIVE_THRESHOLD
+  NEW_WALLET
+  RAPID_ACTIVITY
+  MIXER_EXPOSURE
+  SANCTIONS_MATCH
+}
+
+enum GroupStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum GroupMemberRole {
+  LEAD
+  CO_LEAD
+  MEMBER
+}
+
+enum GroupMemberStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  LEFT
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+/// Platform user — identified primarily by wallet address.
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  walletAddress   String    @unique
+  email           String?   @unique
+  displayName     String?
+  avatarUrl       String?
+  role            UserRole  @default(INVESTOR)
+  kycStatus       KycStatus @default(NONE)
+  kycTier         KycTier?
+  kycProvider     String?
+  kycExternalId   String?
+  kycApprovedAt   DateTime?
+  kycExpiresAt    DateTime?
+  tierLevel       TierLevel @default(BRONZE)
+  totalPoints     Int       @default(0)
+  totalContributed Decimal  @default(0) @db.Decimal(36, 18)
+  referralCode    String    @unique @default(uuid())
+  referredById    String?   @db.Uuid
+  country         String?
+  ipAddress       String?
+  isBanned        Boolean   @default(false)
+  banReason       String?
+  lastLoginAt     DateTime?
+  investorClassification String?  // "experienced", "sophisticated", "retail", "accredited"
+  isAccreditedUS         Boolean  @default(false)
+  accreditationMethod    String?  // "income", "net_worth", "professional", "qualified_purchaser"
+  attestationHash        String?  // on-chain eID attestation hash
+  attestationExpiresAt   DateTime?
+  twoFactorEnabled       Boolean  @default(false)
+  twoFactorSecret        String?  // encrypted TOTP secret
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Self-relation: referral tree
+  referredBy      User?     @relation("Referrals", fields: [referredById], references: [id])
+  referrals       User[]    @relation("Referrals")
+
+  // Relations
+  wallets            LinkedWallet[]
+  contributions      Contribution[]
+  allocations        Allocation[]
+  stakingPositions   StakingPosition[]
+  stakingRewards     StakingReward[]
+  notifications      Notification[]
+  vestingSchedules   VestingSchedule[]
+  claimRecords       ClaimRecord[]
+  auditLogs          AuditLog[]
+  complianceFlags    ComplianceFlag[]
+  transactions       Transaction[]
+  createdDeals       Deal[]            @relation("DealCreator")
+  referralRewardsGiven    ReferralReward[] @relation("Referrer")
+  referralRewardsReceived ReferralReward[] @relation("Referee")
+  ledGroups          InvestmentGroup[]  @relation("GroupLead")
+  groupMemberships   GroupMembership[]
+
+  @@index([walletAddress])
+  @@index([role])
+  @@index([kycStatus])
+  @@index([tierLevel])
+  @@index([referralCode])
+  @@index([referredById])
+  @@index([createdAt])
+}
+
+/// Additional wallets linked to a user account (multi-chain support).
+model LinkedWallet {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  address   String   @unique
+  chain     Chain
+  isPrimary Boolean  @default(false)
+  linkedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([address])
+  @@index([chain])
+}
+
+/// A fundraising deal / launchpad round.
+model Deal {
+  id                     String           @id @default(uuid()) @db.Uuid
+  title                  String
+  slug                   String           @unique
+  description            String           @db.Text
+  shortDescription       String?
+  projectName            String
+  projectWebsite         String?
+  projectTwitter         String?
+  projectDiscord         String?
+  projectTelegram        String?
+  projectGithub          String?
+  category               DealCategory
+  status                 DealStatus       @default(DRAFT)
+  chain                  Chain
+  raiseTokenAddress      String?
+  raiseTokenSymbol       String?
+  distributionTokenAddress String?
+  distributionTokenSymbol  String?
+  tokenPrice             Decimal          @db.Decimal(36, 18)
+  totalRaise             Decimal          @db.Decimal(36, 18)
+  softCap                Decimal?         @db.Decimal(36, 18)
+  hardCap                Decimal          @db.Decimal(36, 18)
+  minContribution        Decimal          @db.Decimal(36, 18)
+  maxContribution        Decimal          @db.Decimal(36, 18)
+  totalRaised            Decimal          @default(0) @db.Decimal(36, 18)
+  contributorCount       Int              @default(0)
+  allocationMethod       AllocationMethod
+  vestingType            VestingType
+  tgeUnlockPercent       Decimal          @default(0) @db.Decimal(5, 2)
+  vestingCliffDays       Int              @default(0)
+  vestingDurationDays    Int              @default(0)
+  fdv                    Decimal?         @db.Decimal(36, 18)
+  registrationOpenAt     DateTime?
+  registrationCloseAt    DateTime?
+  contributionOpenAt     DateTime?
+  contributionCloseAt    DateTime?
+  distributionAt         DateTime?
+  vestingStartAt         DateTime?
+  minTierRequired        TierLevel?
+  requiresKyc            Boolean          @default(true)
+  requiresAccreditation  Boolean          @default(false)
+  isWhitelistOnly        Boolean          @default(false)
+  allowedCountries       String[]
+  blockedCountries       String[]
+  whitelistMerkleRoot    String?
+  projectWalletAddress   String?
+  escrowContractAddress  String?
+  vestingContractAddress String?
+  pitchDeckUrl           String?
+  whitepaperUrl          String?
+  auditReportUrl         String?
+  tokenomicsImageUrl     String?
+  teamMembers            Json?
+  featuredImageUrl       String?
+  bannerImageUrl         String?
+  isFeatured             Boolean          @default(false)
+  spvName                String?   // e.g. "Exposure SPV XXIV LLC"
+  spvJurisdiction        String?   // e.g. "Cayman Islands"
+  spvEntityId            String?   // Legal entity registration number
+  platformFeePercent     Decimal   @default(5) @db.Decimal(5, 2)
+  feeType                String    @default("success") // "success" = only on profit, "flat" = always
+  leadCarryPercent       Decimal   @default(20) @db.Decimal(5, 2) // lead's carry on follower profits
+  createdById            String           @db.Uuid
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  // Relations
+  createdBy        User               @relation("DealCreator", fields: [createdById], references: [id])
+  contributions    Contribution[]
+  allocations      Allocation[]
+  dealPhases       DealPhase[]
+  vestingSchedules VestingSchedule[]
+  claimRecords     ClaimRecord[]
+  complianceFlags  ComplianceFlag[]
+  referralRewards  ReferralReward[]
+  applications     ProjectApplication[] @relation("ConvertedDeal")
+  groupDeals       GroupDeal[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([category])
+  @@index([chain])
+  @@index([isFeatured])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([status, category])
+  @@index([status, chain])
+  @@index([contributionOpenAt])
+  @@index([registrationOpenAt])
+}
+
+/// Named phases within a deal timeline (e.g. "Registration", "Guaranteed", "FCFS").
+model DealPhase {
+  id         String   @id @default(uuid()) @db.Uuid
+  dealId     String   @db.Uuid
+  phaseName  String
+  phaseOrder Int
+  startsAt   DateTime
+  endsAt     DateTime
+  isActive   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@index([dealId, phaseOrder])
+  @@index([isActive])
+}
+
+/// An on-chain contribution from a user to a deal.
+model Contribution {
+  id           String             @id @default(uuid()) @db.Uuid
+  userId       String             @db.Uuid
+  dealId       String             @db.Uuid
+  amount       Decimal            @db.Decimal(36, 18)
+  currency     String
+  amountUsd    Decimal            @db.Decimal(36, 18)
+  txHash       String?            @unique
+  chain        Chain
+  status       ContributionStatus @default(PENDING)
+  refundAmount Decimal?           @db.Decimal(36, 18)
+  refundTxHash String?
+  refundedAt   DateTime?
+  confirmedAt  DateTime?
+  blockNumber  Int?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id])
+  deal            Deal             @relation(fields: [dealId], references: [id])
+  complianceFlags ComplianceFlag[]
+
+  @@index([userId])
+  @@index([dealId])
+  @@index([status])
+  @@index([txHash])
+  @@index([chain])
+  @@index([userId, dealId])
+  @@index([dealId, status])
+  @@index([createdAt])
+}
+
+/// Allocation record — how much a user is allocated in a deal round.
+model Allocation {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @db.Uuid
+  dealId           String           @db.Uuid
+  guaranteedAmount Decimal          @default(0) @db.Decimal(36, 18)
+  requestedAmount  Decimal          @default(0) @db.Decimal(36, 18)
+  finalAmount      Decimal          @default(0) @db.Decimal(36, 18)
+  allocationMethod AllocationMethod
+  lotteryTickets   Int              @default(0)
+  lotteryWon       Boolean?
+  merkleProof      String?
+  isFinalized      Boolean          @default(false)
+  finalizedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  deal Deal @relation(fields: [dealId], references: [id])
+
+  @@unique([userId, dealId])
+  @@index([userId])
+  @@index([dealId])
+  @@index([isFinalized])
+  @@index([userId, dealId])
+}
+
+/// Token vesting schedule for a user on a specific deal.
+model VestingSchedule {
+  id            String    @id @default(uuid()) @db.Uuid
+  dealId        String    @db.Uuid
+  userId        String    @db.Uuid
+  totalAmount   Decimal   @db.Decimal(36, 18)
+  claimedAmount Decimal   @default(0) @db.Decimal(36, 18)
+  tgeAmount     Decimal   @default(0) @db.Decimal(36, 18)
+  vestingStart  DateTime
+  cliffEnd      DateTime?
+  vestingEnd    DateTime
+  lastClaimAt   DateTime?
+  nextUnlockAt  DateTime?
+  createdAt     DateTime  @default(now())
+
+  user         User          @relation(fields: [userId], references: [id])
+  deal         Deal          @relation(fields: [dealId], references: [id])
+  claimRecords ClaimRecord[]
+
+  @@unique([userId, dealId])
+  @@index([userId])
+  @@index([dealId])
+  @@index([nextUnlockAt])
+}
+
+/// Individual token claim event against a vesting schedule.
+model ClaimRecord {
+  id                 String   @id @default(uuid()) @db.Uuid
+  vestingScheduleId  String   @db.Uuid
+  userId             String   @db.Uuid
+  dealId             String   @db.Uuid
+  amount             Decimal  @db.Decimal(36, 18)
+  txHash             String
+  chain              Chain
+  claimedAt          DateTime
+
+  vestingSchedule VestingSchedule @relation(fields: [vestingScheduleId], references: [id])
+  user            User            @relation(fields: [userId], references: [id])
+  deal            Deal            @relation(fields: [dealId], references: [id])
+
+  @@index([vestingScheduleId])
+  @@index([userId])
+  @@index([dealId])
+  @@index([claimedAt])
+}
+
+/// Active staking position for tier eligibility.
+model StakingPosition {
+  id                  String            @id @default(uuid()) @db.Uuid
+  userId              String            @db.Uuid
+  amount              Decimal           @db.Decimal(36, 18)
+  lockPeriod          StakingLockPeriod
+  lockStartAt         DateTime
+  lockEndAt           DateTime?
+  cooldownStartAt     DateTime?
+  cooldownEndAt       DateTime?
+  isActive            Boolean           @default(true)
+  unstakeRequestedAt  DateTime?
+  txHash              String?
+  chain               Chain
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  user    User            @relation(fields: [userId], references: [id])
+  rewards StakingReward[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([userId, isActive])
+  @@index([lockEndAt])
+}
+
+/// Rewards earned from staking.
+model StakingReward {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  stakingPositionId String    @db.Uuid
+  amount            Decimal   @db.Decimal(36, 18)
+  rewardType        String
+  txHash            String?
+  claimedAt         DateTime?
+  createdAt         DateTime  @default(now())
+
+  user            User            @relation(fields: [userId], references: [id])
+  stakingPosition StakingPosition @relation(fields: [stakingPositionId], references: [id])
+
+  @@index([userId])
+  @@index([stakingPositionId])
+  @@index([createdAt])
+}
+
+/// External project application for listing on the platform.
+model ProjectApplication {
+  id                String            @id @default(uuid()) @db.Uuid
+  projectName       String
+  projectWebsite    String
+  contactEmail      String
+  contactTelegram   String?
+  applicantWallet   String
+  status            ApplicationStatus @default(SUBMITTED)
+  category          DealCategory
+  description       String            @db.Text
+  targetRaise       Decimal           @db.Decimal(36, 18)
+  valuation         Decimal?          @db.Decimal(36, 18)
+  tokenName         String
+  tokenTicker       String
+  tokenSupply       Decimal           @db.Decimal(36, 18)
+  chain             Chain
+  teamInfo          Json
+  tokenomics        Json
+  pitchDeckUrl      String?
+  whitepaperUrl     String?
+  auditReportUrl    String?
+  internalScore     Decimal?          @db.Decimal(5, 2)
+  internalNotes     String?           @db.Text
+  reviewedById      String?           @db.Uuid
+  reviewedAt        DateTime?
+  rejectionReason   String?
+  convertedToDealId String?           @db.Uuid
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  convertedToDeal Deal? @relation("ConvertedDeal", fields: [convertedToDealId], references: [id])
+
+  @@index([status])
+  @@index([category])
+  @@index([applicantWallet])
+  @@index([createdAt])
+  @@index([convertedToDealId])
+}
+
+/// User notifications (in-app, push, email triggers).
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+/// Referral rewards tracked between referrer and referee.
+model ReferralReward {
+  id         String   @id @default(uuid()) @db.Uuid
+  referrerId String   @db.Uuid
+  refereeId  String   @db.Uuid
+  dealId     String?  @db.Uuid
+  rewardType String
+  amount     Decimal  @db.Decimal(36, 18)
+  currency   String
+  status     String
+  txHash     String?
+  createdAt  DateTime @default(now())
+
+  referrer User  @relation("Referrer", fields: [referrerId], references: [id])
+  referee  User  @relation("Referee", fields: [refereeId], references: [id])
+  deal     Deal? @relation(fields: [dealId], references: [id])
+
+  @@index([referrerId])
+  @@index([refereeId])
+  @@index([dealId])
+  @@index([createdAt])
+}
+
+/// Immutable audit trail for compliance and debugging.
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @db.Uuid
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}
+
+/// Compliance flags raised by automated rules or manual review.
+model ComplianceFlag {
+  id              String     @id @default(uuid()) @db.Uuid
+  userId          String     @db.Uuid
+  dealId          String?    @db.Uuid
+  contributionId  String?    @db.Uuid
+  reason          FlagReason
+  severity        String
+  description     String?    @db.Text
+  isResolved      Boolean    @default(false)
+  resolvedById    String?    @db.Uuid
+  resolvedAt      DateTime?
+  resolution      String?
+  createdAt       DateTime   @default(now())
+
+  user         User          @relation(fields: [userId], references: [id])
+  deal         Deal?         @relation(fields: [dealId], references: [id])
+  contribution Contribution? @relation(fields: [contributionId], references: [id])
+
+  @@index([userId])
+  @@index([dealId])
+  @@index([contributionId])
+  @@index([reason])
+  @@index([isResolved])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+/// Key-value configuration store for platform-wide settings.
+model PlatformConfig {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       String
+  description String?
+  updatedBy   String?  @db.Uuid
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}
+
+/// Canonical record of every on-chain transaction the platform tracks.
+model Transaction {
+  id          String          @id @default(uuid()) @db.Uuid
+  userId      String          @db.Uuid
+  type        TransactionType
+  txHash      String          @unique
+  chain       Chain
+  fromAddress String
+  toAddress   String
+  amount      Decimal         @db.Decimal(36, 18)
+  currency    String
+  amountUsd   Decimal?        @db.Decimal(36, 18)
+  blockNumber Int?
+  status      String
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([txHash])
+  @@index([type])
+  @@index([chain])
+  @@index([status])
+  @@index([userId, type])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// INVESTMENT GROUP MODELS
+// =============================================================================
+
+/// Investment group led by a verified lead investor (VC/syndicate)
+model InvestmentGroup {
+  id              String      @id @default(uuid()) @db.Uuid
+  name            String
+  slug            String      @unique
+  description     String      @db.Text
+  leadId          String      @db.Uuid
+  avatarUrl       String?
+  bannerUrl       String?
+  isPublic        Boolean     @default(true)
+  status          GroupStatus @default(PENDING_APPROVAL)
+  maxMembers      Int         @default(100)
+  minTierRequired TierLevel?
+  requiresApplication Boolean @default(true)
+  carryPercent    Decimal     @default(20) @db.Decimal(5, 2)  // lead's % of follower profits
+  totalRaised     Decimal     @default(0) @db.Decimal(36, 18)
+  dealCount       Int         @default(0)
+  memberCount     Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  lead            User              @relation("GroupLead", fields: [leadId], references: [id])
+  members         GroupMembership[]
+  dealAllocations GroupDeal[]
+
+  @@index([slug])
+  @@index([leadId])
+  @@index([status])
+  @@index([isPublic, status])
+}
+
+/// Membership in an investment group
+model GroupMembership {
+  id        String            @id @default(uuid()) @db.Uuid
+  groupId   String            @db.Uuid
+  userId    String            @db.Uuid
+  role      GroupMemberRole   @default(MEMBER)
+  status    GroupMemberStatus @default(PENDING)
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  group InvestmentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User            @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@index([status])
+}
+
+/// A deal allocated to a group (group lead presents deals to their followers)
+model GroupDeal {
+  id             String   @id @default(uuid()) @db.Uuid
+  groupId        String   @db.Uuid
+  dealId         String   @db.Uuid
+  allocatedAmount Decimal @db.Decimal(36, 18)
+  filledAmount   Decimal  @default(0) @db.Decimal(36, 18)
+  isActive       Boolean  @default(true)
+  presentedAt    DateTime @default(now())
+
+  group InvestmentGroup @relation(fields: [groupId], references: [id])
+  deal  Deal            @relation(fields: [dealId], references: [id])
+
+  @@unique([groupId, dealId])
+  @@index([groupId])
+  @@index([dealId])
+}
