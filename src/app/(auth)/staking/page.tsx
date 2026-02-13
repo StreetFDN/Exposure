@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Coins,
   Lock,
@@ -8,6 +8,7 @@ import {
   Ticket,
   ExternalLink,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import {
   Card,
@@ -17,12 +18,12 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Countdown } from "@/components/ui/countdown";
+import { Alert } from "@/components/ui/alert";
 import {
   Table,
   TableHeader,
@@ -32,19 +33,55 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
-import { formatToken, formatDate } from "@/lib/utils/format";
+import { formatToken, formatDate, formatAddress } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data
+// Types
 // ---------------------------------------------------------------------------
 
-const CURRENT_POSITION = {
-  stakedAmount: 10000,
-  currentTier: "Gold" as const,
-  lockExpiry: new Date(Date.now() + 47 * 24 * 60 * 60 * 1000), // 47 days from now
-  accumulatedRewards: 342.5,
-  walletBalance: 5420,
-};
+interface StakingPosition {
+  id: string;
+  amount: string;
+  lockPeriod: string;
+  apy: string;
+  stakedAt: string;
+  unlockAt: string | null;
+  isActive: boolean;
+  txHash: string | null;
+  chain: string;
+  rewards: {
+    id: string;
+    amount: string;
+    claimedAt: string | null;
+    txHash: string | null;
+  }[];
+  createdAt: string;
+}
+
+interface StakingData {
+  currentTier: string;
+  totalStaked: string;
+  totalRewardsEarned: string;
+  pendingRewards: string;
+  nextTierRequirement: {
+    tier: string;
+    amountRequired: string;
+    amountNeeded: string;
+  } | null;
+  positions: StakingPosition[];
+}
+
+interface TierData {
+  tierLevel: string;
+  displayName: string;
+  stakedAmount: string;
+  lockPeriod: string | null;
+  allocationMultiplier: number;
+  lotteryWeight: number;
+  color: string;
+  benefits: string[];
+  memberCount: number;
+}
 
 interface TierInfo {
   name: string;
@@ -58,140 +95,224 @@ interface TierInfo {
   iconColor: string;
 }
 
-const TIERS: TierInfo[] = [
-  {
-    name: "Bronze",
-    requiredStake: 1000,
-    lockPeriod: "None",
-    multiplier: "1x",
-    lotteryTickets: 1,
-    color: "text-orange-400",
-    bgColor: "bg-orange-500/10",
-    borderColor: "border-orange-500/30",
-    iconColor: "text-orange-400",
-  },
-  {
-    name: "Silver",
-    requiredStake: 5000,
-    lockPeriod: "30 days",
-    multiplier: "1.5x",
-    lotteryTickets: 3,
-    color: "text-zinc-300",
-    bgColor: "bg-zinc-400/10",
-    borderColor: "border-zinc-400/30",
-    iconColor: "text-zinc-300",
-  },
-  {
-    name: "Gold",
-    requiredStake: 10000,
-    lockPeriod: "90 days",
-    multiplier: "2x",
-    lotteryTickets: 5,
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/10",
-    borderColor: "border-amber-500/30",
-    iconColor: "text-amber-400",
-  },
-  {
-    name: "Platinum",
-    requiredStake: 25000,
-    lockPeriod: "180 days",
-    multiplier: "4x",
-    lotteryTickets: 15,
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/10",
-    borderColor: "border-cyan-500/30",
-    iconColor: "text-cyan-400",
-  },
-  {
-    name: "Diamond",
-    requiredStake: 50000,
-    lockPeriod: "365 days",
-    multiplier: "8x",
-    lotteryTickets: 50,
-    color: "text-violet-400",
-    bgColor: "bg-violet-500/10",
-    borderColor: "border-violet-500/30",
-    iconColor: "text-violet-400",
-  },
-];
+// ---------------------------------------------------------------------------
+// Lock options (static config)
+// ---------------------------------------------------------------------------
 
 const LOCK_OPTIONS = [
-  { label: "None", days: 0, multiplier: "1.0x", bonus: "No bonus" },
-  { label: "30 days", days: 30, multiplier: "1.2x", bonus: "+20% bonus" },
-  { label: "90 days", days: 90, multiplier: "1.5x", bonus: "+50% bonus" },
-  { label: "180 days", days: 180, multiplier: "2.0x", bonus: "+100% bonus" },
-  { label: "365 days", days: 365, multiplier: "3.0x", bonus: "+200% bonus" },
+  { label: "None", value: "NONE", days: 0, multiplier: "1.0x", bonus: "No bonus" },
+  { label: "30 days", value: "THIRTY_DAYS", days: 30, multiplier: "1.2x", bonus: "+20% bonus" },
+  { label: "90 days", value: "NINETY_DAYS", days: 90, multiplier: "1.5x", bonus: "+50% bonus" },
+  { label: "180 days", value: "ONE_EIGHTY_DAYS", days: 180, multiplier: "2.0x", bonus: "+100% bonus" },
+  { label: "365 days", value: "THREE_SIXTY_FIVE_DAYS", days: 365, multiplier: "3.0x", bonus: "+200% bonus" },
 ];
 
-const STAKING_HISTORY = [
-  {
-    id: "1",
-    date: "2025-12-15",
-    action: "Stake",
-    amount: 10000,
-    lockPeriod: "90 days",
-    txHash: "0xa1b2c3d4e5f6...7890",
-    status: "Confirmed",
-  },
-  {
-    id: "2",
-    date: "2025-11-01",
-    action: "Unstake",
-    amount: 5000,
-    lockPeriod: "30 days",
-    txHash: "0xb2c3d4e5f6a1...8901",
-    status: "Confirmed",
-  },
-  {
-    id: "3",
-    date: "2025-10-10",
-    action: "Stake",
-    amount: 5000,
-    lockPeriod: "30 days",
-    txHash: "0xc3d4e5f6a1b2...9012",
-    status: "Confirmed",
-  },
-  {
-    id: "4",
-    date: "2025-09-05",
-    action: "Stake",
-    amount: 8000,
-    lockPeriod: "90 days",
-    txHash: "0xd4e5f6a1b2c3...0123",
-    status: "Confirmed",
-  },
-  {
-    id: "5",
-    date: "2025-08-20",
-    action: "Unstake",
-    amount: 8000,
-    lockPeriod: "None",
-    txHash: "0xe5f6a1b2c3d4...1234",
-    status: "Confirmed",
-  },
-];
+const TIER_DISPLAY: Record<string, { color: string; bgColor: string; borderColor: string; iconColor: string }> = {
+  BRONZE: { color: "text-orange-400", bgColor: "bg-orange-500/10", borderColor: "border-orange-500/30", iconColor: "text-orange-400" },
+  SILVER: { color: "text-zinc-300", bgColor: "bg-zinc-400/10", borderColor: "border-zinc-400/30", iconColor: "text-zinc-300" },
+  GOLD: { color: "text-amber-400", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/30", iconColor: "text-amber-400" },
+  PLATINUM: { color: "text-cyan-400", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/30", iconColor: "text-cyan-400" },
+  DIAMOND: { color: "text-violet-400", bgColor: "bg-violet-500/10", borderColor: "border-violet-500/30", iconColor: "text-violet-400" },
+};
 
-const CURRENT_TIER_INDEX = 2; // Gold
+const LOCK_PERIOD_LABELS: Record<string, string> = {
+  NONE: "None",
+  THIRTY_DAYS: "30 days",
+  NINETY_DAYS: "90 days",
+  ONE_EIGHTY_DAYS: "180 days",
+  THREE_SIXTY_FIVE_DAYS: "365 days",
+};
+
+function tierDisplayName(tier: string): string {
+  return tier.charAt(0) + tier.slice(1).toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
+function StakingSkeleton() {
+  return (
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      <div>
+        <div className="h-7 w-24 animate-pulse rounded bg-zinc-800" />
+        <div className="mt-2 h-4 w-80 animate-pulse rounded bg-zinc-800" />
+      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-20 animate-pulse rounded bg-zinc-800" />
+                <div className="h-8 w-24 animate-pulse rounded bg-zinc-800" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="h-10 w-10 animate-pulse rounded-full bg-zinc-800" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-24 animate-pulse rounded bg-zinc-800" />
+                      <div className="h-3 w-40 animate-pulse rounded bg-zinc-800" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="lg:col-span-3">
+          <Card>
+            <CardContent className="p-6">
+              <div className="h-64 w-full animate-pulse rounded bg-zinc-800" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function StakingPage() {
+  const [stakingData, setStakingData] = useState<StakingData | null>(null);
+  const [tiers, setTiers] = useState<TierData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [stakeAmount, setStakeAmount] = useState("");
   const [selectedLock, setSelectedLock] = useState(2); // 90 days default
+  const [staking, setStaking] = useState(false);
+  const [stakeError, setStakeError] = useState<string | null>(null);
+  const [stakeSuccess, setStakeSuccess] = useState<string | null>(null);
 
-  const lockExpired = CURRENT_POSITION.lockExpiry <= new Date();
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const [stakingRes, tiersRes] = await Promise.all([
+          fetch("/api/staking"),
+          fetch("/api/staking/tiers"),
+        ]);
+        const [stakingJson, tiersJson] = await Promise.all([
+          stakingRes.json(),
+          tiersRes.json(),
+        ]);
 
-  // Calculate estimated tier after staking
+        if (!stakingJson.success) {
+          throw new Error(stakingJson.error?.message || "Failed to load staking data");
+        }
+
+        setStakingData(stakingJson.data.staking);
+        setTiers(tiersJson.success ? tiersJson.data.tiers.filter((t: TierData) => t.tierLevel !== "NONE") : []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load staking data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  if (loading) return <StakingSkeleton />;
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Alert variant="error" title="Error loading staking">
+          {error}
+        </Alert>
+      </div>
+    );
+  }
+
+  const totalStaked = parseFloat(stakingData?.totalStaked || "0");
+  const currentTier = stakingData?.currentTier || "BRONZE";
+  const pendingRewards = parseFloat(stakingData?.pendingRewards || "0");
+  const totalRewardsEarned = parseFloat(stakingData?.totalRewardsEarned || "0");
+  const positions = stakingData?.positions || [];
+
+  // Find the first position with a lock end that hasn't expired (for lock display)
+  const activeLockedPosition = positions.find(
+    (p) => p.unlockAt && new Date(p.unlockAt) > new Date()
+  );
+  const lockExpiry = activeLockedPosition ? new Date(activeLockedPosition.unlockAt!) : null;
+  const lockExpired = !lockExpiry || lockExpiry <= new Date();
+
+  // Find current tier index in the tiers array
+  const tierOrder = tiers.map((t) => t.tierLevel);
+  const currentTierIndex = tierOrder.indexOf(currentTier);
+
+  // Build tier display info
+  const displayTiers: TierInfo[] = tiers.map((t) => ({
+    name: t.displayName,
+    requiredStake: parseFloat(t.stakedAmount),
+    lockPeriod: t.lockPeriod || "None",
+    multiplier: `${t.allocationMultiplier}x`,
+    lotteryTickets: t.lotteryWeight,
+    ...(TIER_DISPLAY[t.tierLevel] || TIER_DISPLAY.BRONZE),
+  }));
+
+  // Estimated tier after staking
   function getEstimatedTier() {
-    const amount =
-      CURRENT_POSITION.stakedAmount + (parseFloat(stakeAmount) || 0);
-    for (let i = TIERS.length - 1; i >= 0; i--) {
-      if (amount >= TIERS[i].requiredStake) return TIERS[i].name;
+    const amount = totalStaked + (parseFloat(stakeAmount) || 0);
+    for (let i = displayTiers.length - 1; i >= 0; i--) {
+      if (amount >= displayTiers[i].requiredStake) return displayTiers[i].name;
     }
     return "None";
+  }
+
+  // Handle stake submit
+  async function handleStake() {
+    const amount = parseFloat(stakeAmount);
+    if (!amount || amount <= 0) return;
+
+    setStaking(true);
+    setStakeError(null);
+    setStakeSuccess(null);
+
+    try {
+      // In a real implementation, the txHash would come from a wallet transaction
+      // For now, show an informational message
+      const res = await fetch("/api/staking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          lockPeriod: LOCK_OPTIONS[selectedLock].value,
+          txHash: "0x" + "0".repeat(64), // Placeholder
+          chain: "ETHEREUM",
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error?.message || "Staking failed");
+      }
+      setStakeSuccess("Staking position created successfully!");
+      setStakeAmount("");
+
+      // Refresh staking data
+      const refreshRes = await fetch("/api/staking");
+      const refreshJson = await refreshRes.json();
+      if (refreshJson.success) {
+        setStakingData(refreshJson.data.staking);
+      }
+    } catch (err) {
+      setStakeError(err instanceof Error ? err.message : "Staking failed");
+    } finally {
+      setStaking(false);
+    }
   }
 
   return (
@@ -218,7 +339,7 @@ export default function StakingPage() {
                 Staked Amount
               </span>
               <span className="text-3xl font-bold tabular-nums text-zinc-50">
-                {CURRENT_POSITION.stakedAmount.toLocaleString()}
+                {totalStaked.toLocaleString()}
               </span>
               <span className="text-sm text-zinc-400">EXPO</span>
             </div>
@@ -228,9 +349,17 @@ export default function StakingPage() {
                 Current Tier
               </span>
               <div className="flex items-center gap-2">
-                <Crown className="h-6 w-6 text-amber-400" />
-                <Badge variant="warning" size="md">
-                  Gold
+                <Crown className={cn("h-6 w-6", TIER_DISPLAY[currentTier]?.iconColor || "text-zinc-400")} />
+                <Badge
+                  variant={
+                    currentTier === "GOLD" ? "warning" :
+                    currentTier === "PLATINUM" ? "info" :
+                    currentTier === "DIAMOND" ? "default" :
+                    "outline"
+                  }
+                  size="md"
+                >
+                  {tierDisplayName(currentTier)}
                 </Badge>
               </div>
             </div>
@@ -244,7 +373,7 @@ export default function StakingPage() {
                   Unlocked
                 </span>
               ) : (
-                <Countdown targetDate={CURRENT_POSITION.lockExpiry} />
+                <Countdown targetDate={lockExpiry!} />
               )}
             </div>
             {/* Rewards */}
@@ -253,7 +382,7 @@ export default function StakingPage() {
                 Accumulated Rewards
               </span>
               <span className="text-2xl font-bold tabular-nums text-zinc-50">
-                {CURRENT_POSITION.accumulatedRewards.toLocaleString()}
+                {totalRewardsEarned.toLocaleString()}
               </span>
               <span className="text-sm text-zinc-400">EXPO</span>
             </div>
@@ -261,7 +390,7 @@ export default function StakingPage() {
             <div className="flex items-end">
               <Button
                 variant={lockExpired ? "default" : "secondary"}
-                disabled={!lockExpired}
+                disabled={!lockExpired || totalStaked <= 0}
                 className="w-full"
               >
                 <Lock className="h-4 w-4" />
@@ -273,7 +402,7 @@ export default function StakingPage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Tier Ladder — 2/5 */}
+        {/* Tier Ladder */}
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardHeader>
@@ -284,15 +413,14 @@ export default function StakingPage() {
             </CardHeader>
             <CardContent>
               <div className="relative space-y-0">
-                {[...TIERS].reverse().map((tier, idx) => {
-                  const tierIdx = TIERS.length - 1 - idx;
-                  const isCurrent = tierIdx === CURRENT_TIER_INDEX;
-                  const isBelow = tierIdx < CURRENT_TIER_INDEX;
-                  const isAbove = tierIdx > CURRENT_TIER_INDEX;
+                {[...displayTiers].reverse().map((tier, idx) => {
+                  const tierIdx = displayTiers.length - 1 - idx;
+                  const isCurrent = tierIdx === currentTierIndex;
+                  const isBelow = tierIdx < currentTierIndex;
+                  const isAbove = tierIdx > currentTierIndex;
 
                   return (
                     <div key={tier.name} className="flex gap-4 pb-1 last:pb-0">
-                      {/* Vertical line + node */}
                       <div className="relative flex flex-col items-center">
                         <div
                           className={cn(
@@ -315,7 +443,7 @@ export default function StakingPage() {
                             )}
                           />
                         </div>
-                        {idx < TIERS.length - 1 && (
+                        {idx < displayTiers.length - 1 && (
                           <div
                             className={cn(
                               "h-full w-0.5",
@@ -327,7 +455,6 @@ export default function StakingPage() {
                           />
                         )}
                       </div>
-                      {/* Content */}
                       <div
                         className={cn(
                           "flex flex-1 flex-col gap-1 rounded-lg border p-3 transition-all",
@@ -365,11 +492,11 @@ export default function StakingPage() {
                             {tier.lotteryTickets}
                           </span>
                         </div>
-                        {isAbove && tierIdx === CURRENT_TIER_INDEX + 1 && (
+                        {isAbove && tierIdx === currentTierIndex + 1 && (
                           <p className="mt-1 text-xs text-violet-400">
                             Stake{" "}
                             {formatToken(
-                              tier.requiredStake - CURRENT_POSITION.stakedAmount,
+                              Math.max(0, tier.requiredStake - totalStaked),
                               0,
                               "EXPO"
                             )}{" "}
@@ -385,7 +512,7 @@ export default function StakingPage() {
           </Card>
         </div>
 
-        {/* Stake Form — 3/5 */}
+        {/* Stake Form */}
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
@@ -395,6 +522,13 @@ export default function StakingPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {stakeError && (
+                <Alert variant="error">{stakeError}</Alert>
+              )}
+              {stakeSuccess && (
+                <Alert variant="success">{stakeSuccess}</Alert>
+              )}
+
               {/* Amount Input */}
               <div>
                 <Input
@@ -406,21 +540,8 @@ export default function StakingPage() {
                   rightAddon={
                     <div className="flex items-center gap-2">
                       <span className="text-zinc-300">EXPO</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs text-violet-400"
-                        onClick={() =>
-                          setStakeAmount(
-                            String(CURRENT_POSITION.walletBalance)
-                          )
-                        }
-                      >
-                        Max
-                      </Button>
                     </div>
                   }
-                  helperText={`Wallet balance: ${formatToken(CURRENT_POSITION.walletBalance, 0, "EXPO")}`}
                 />
               </div>
 
@@ -483,8 +604,7 @@ export default function StakingPage() {
                     </span>
                     <Badge variant="default" size="sm">
                       {formatToken(
-                        CURRENT_POSITION.stakedAmount +
-                          parseFloat(stakeAmount),
+                        totalStaked + parseFloat(stakeAmount),
                         0,
                         "EXPO"
                       )}{" "}
@@ -498,10 +618,20 @@ export default function StakingPage() {
               <Button
                 className="w-full"
                 size="lg"
-                disabled={!stakeAmount || parseFloat(stakeAmount) <= 0}
+                disabled={!stakeAmount || parseFloat(stakeAmount) <= 0 || staking}
+                onClick={handleStake}
               >
-                <Coins className="h-5 w-5" />
-                Stake EXPO
+                {staking ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Staking...
+                  </>
+                ) : (
+                  <>
+                    <Coins className="h-5 w-5" />
+                    Stake EXPO
+                  </>
+                )}
               </Button>
             </CardFooter>
           </Card>
@@ -514,56 +644,60 @@ export default function StakingPage() {
           <CardTitle>Staking History</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Lock Period</TableHead>
-                <TableHead>Tx Hash</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {STAKING_HISTORY.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{formatDate(row.date)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        row.action === "Stake" ? "success" : "warning"
-                      }
-                      size="sm"
-                    >
-                      {row.action}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">
-                    {row.action === "Unstake" ? "-" : "+"}
-                    {formatToken(row.amount, 0, "EXPO")}
-                  </TableCell>
-                  <TableCell className="text-zinc-400">
-                    {row.lockPeriod}
-                  </TableCell>
-                  <TableCell>
-                    <a
-                      href="#"
-                      className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-violet-400"
-                    >
-                      {row.txHash}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="success" size="sm">
-                      {row.status}
-                    </Badge>
-                  </TableCell>
+          {positions.length === 0 ? (
+            <p className="py-8 text-center text-sm text-zinc-500">
+              No staking positions yet. Stake EXPO to get started.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Lock Period</TableHead>
+                  <TableHead>Tx Hash</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {positions.map((pos) => (
+                  <TableRow key={pos.id}>
+                    <TableCell>{formatDate(pos.createdAt)}</TableCell>
+                    <TableCell>
+                      <Badge variant="success" size="sm">
+                        Stake
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">
+                      +{formatToken(parseFloat(pos.amount), 0, "EXPO")}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {LOCK_PERIOD_LABELS[pos.lockPeriod] || pos.lockPeriod}
+                    </TableCell>
+                    <TableCell>
+                      {pos.txHash ? (
+                        <a
+                          href="#"
+                          className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-violet-400"
+                        >
+                          {formatAddress(pos.txHash, 8, 6)}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span className="text-zinc-600">--</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={pos.isActive ? "success" : "outline"} size="sm">
+                        {pos.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

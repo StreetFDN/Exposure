@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Menu } from "lucide-react";
 import { Sidebar } from "./sidebar";
+import { ToastContainer } from "@/components/ui/toast";
 
 // ---------------------------------------------------------------------------
 // Breadcrumb helpers
@@ -91,6 +92,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {/* Page content */}
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+      <ToastContainer />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -17,6 +17,9 @@ import {
   DollarSign,
   Clock,
   Zap,
+  AlertTriangle,
+  Loader2,
+  SkipForward,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
@@ -32,7 +35,6 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { DataTable } from "@/components/ui/data-table";
 import { Progress } from "@/components/ui/progress";
 import {
   Dropdown,
@@ -44,277 +46,275 @@ import {
 import { formatCurrency, formatDate, formatLargeNumber } from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
-/*  Types                                                                     */
+/*  Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-interface Deal {
+interface ApiDeal {
+  id: string;
+  title: string;
+  slug: string;
+  shortDescription: string | null;
+  projectName: string;
+  category: string;
+  status: string;
+  chain: string;
+  tokenPrice: string;
+  totalRaise: string;
+  totalRaised: string;
+  hardCap: string;
+  softCap: string | null;
+  contributorCount: number;
+  allocationMethod: string;
+  minTierRequired: string | null;
+  registrationOpenAt: string | null;
+  contributionOpenAt: string | null;
+  contributionCloseAt: string | null;
+  featuredImageUrl: string | null;
+  bannerImageUrl: string | null;
+  isFeatured: boolean;
+  requiresKyc: boolean;
+  requiresAccreditation: boolean;
+  distributionTokenSymbol: string | null;
+  raiseTokenSymbol: string | null;
+  description: string;
+  projectWebsite: string | null;
+  projectTwitter: string | null;
+  projectDiscord: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface DealPhase {
   id: string;
   name: string;
-  slug: string;
-  status: "Draft" | "Registration" | "Live" | "Completed" | "Paused" | "Cancelled";
-  category: string;
-  chain: string;
-  raised: number;
-  target: number;
-  contributors: number;
-  created: string;
-  phases: { name: string; status: "completed" | "active" | "upcoming" }[];
-  recentContributions: { wallet: string; amount: number; date: string }[];
+  order: number;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Placeholder data                                                          */
+/*  Variant maps                                                               */
 /* -------------------------------------------------------------------------- */
 
-const deals: Deal[] = [
-  {
-    id: "1",
-    name: "Nexus Protocol",
-    slug: "nexus-protocol",
-    status: "Live",
-    category: "DeFi",
-    chain: "Ethereum",
-    raised: 2_450_000,
-    target: 3_000_000,
-    contributors: 1_284,
-    created: "2026-01-15",
-    phases: [
-      { name: "Registration", status: "completed" },
-      { name: "Contribution", status: "active" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [
-      { wallet: "0x3a8d...f2e1", amount: 25_000, date: "2026-02-12T10:30:00Z" },
-      { wallet: "0x7b2c...a9d4", amount: 10_000, date: "2026-02-12T09:15:00Z" },
-      { wallet: "0xf1e8...3c7b", amount: 50_000, date: "2026-02-11T22:45:00Z" },
-    ],
-  },
-  {
-    id: "2",
-    name: "AetherFi",
-    slug: "aetherfi",
-    status: "Registration",
-    category: "Infrastructure",
-    chain: "Arbitrum",
-    raised: 0,
-    target: 5_000_000,
-    contributors: 0,
-    created: "2026-02-01",
-    phases: [
-      { name: "Registration", status: "active" },
-      { name: "Contribution", status: "upcoming" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [],
-  },
-  {
-    id: "3",
-    name: "Onchain Labs",
-    slug: "onchain-labs",
-    status: "Completed",
-    category: "Gaming",
-    chain: "Base",
-    raised: 1_800_000,
-    target: 1_800_000,
-    contributors: 943,
-    created: "2025-12-20",
-    phases: [
-      { name: "Registration", status: "completed" },
-      { name: "Contribution", status: "completed" },
-      { name: "Distribution", status: "completed" },
-      { name: "Vesting", status: "active" },
-    ],
-    recentContributions: [
-      { wallet: "0xa4d2...e8f1", amount: 5_000, date: "2026-01-28T14:20:00Z" },
-    ],
-  },
-  {
-    id: "4",
-    name: "ZeroLayer",
-    slug: "zerolayer",
-    status: "Live",
-    category: "Infrastructure",
-    chain: "Ethereum",
-    raised: 890_000,
-    target: 2_000_000,
-    contributors: 512,
-    created: "2026-01-25",
-    phases: [
-      { name: "Registration", status: "completed" },
-      { name: "Contribution", status: "active" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [
-      { wallet: "0xd9c3...b7a2", amount: 15_000, date: "2026-02-12T08:00:00Z" },
-      { wallet: "0x2e5f...c1d8", amount: 7_500, date: "2026-02-11T19:30:00Z" },
-    ],
-  },
-  {
-    id: "5",
-    name: "MetaVault",
-    slug: "metavault",
-    status: "Paused",
-    category: "DeFi",
-    chain: "Polygon",
-    raised: 340_000,
-    target: 1_500_000,
-    contributors: 187,
-    created: "2026-01-10",
-    phases: [
-      { name: "Registration", status: "completed" },
-      { name: "Contribution", status: "active" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [],
-  },
-  {
-    id: "6",
-    name: "SynapseAI",
-    slug: "synapse-ai",
-    status: "Draft",
-    category: "AI",
-    chain: "Arbitrum",
-    raised: 0,
-    target: 8_000_000,
-    contributors: 0,
-    created: "2026-02-08",
-    phases: [
-      { name: "Registration", status: "upcoming" },
-      { name: "Contribution", status: "upcoming" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [],
-  },
-  {
-    id: "7",
-    name: "Prism Finance",
-    slug: "prism-finance",
-    status: "Live",
-    category: "DeFi",
-    chain: "Base",
-    raised: 3_200_000,
-    target: 4_000_000,
-    contributors: 2_156,
-    created: "2026-01-05",
-    phases: [
-      { name: "Registration", status: "completed" },
-      { name: "Contribution", status: "active" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [
-      { wallet: "0x8f4a...d2c9", amount: 100_000, date: "2026-02-12T11:00:00Z" },
-    ],
-  },
-  {
-    id: "8",
-    name: "Quantum Bridge",
-    slug: "quantum-bridge",
-    status: "Completed",
-    category: "Infrastructure",
-    chain: "Ethereum",
-    raised: 6_000_000,
-    target: 6_000_000,
-    contributors: 4_821,
-    created: "2025-11-15",
-    phases: [
-      { name: "Registration", status: "completed" },
-      { name: "Contribution", status: "completed" },
-      { name: "Distribution", status: "completed" },
-      { name: "Vesting", status: "completed" },
-    ],
-    recentContributions: [],
-  },
-  {
-    id: "9",
-    name: "Helix Network",
-    slug: "helix-network",
-    status: "Registration",
-    category: "RWA",
-    chain: "Polygon",
-    raised: 0,
-    target: 3_500_000,
-    contributors: 0,
-    created: "2026-02-05",
-    phases: [
-      { name: "Registration", status: "active" },
-      { name: "Contribution", status: "upcoming" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [],
-  },
-  {
-    id: "10",
-    name: "Solace Protocol",
-    slug: "solace-protocol",
-    status: "Cancelled",
-    category: "Insurance",
-    chain: "Arbitrum",
-    raised: 120_000,
-    target: 2_000_000,
-    contributors: 89,
-    created: "2025-12-01",
-    phases: [
-      { name: "Registration", status: "completed" },
-      { name: "Contribution", status: "completed" },
-      { name: "Distribution", status: "upcoming" },
-      { name: "Vesting", status: "upcoming" },
-    ],
-    recentContributions: [],
-  },
-];
-
 const statusVariantMap: Record<string, "success" | "info" | "warning" | "error" | "default" | "outline"> = {
-  Draft: "outline",
-  Registration: "info",
-  Live: "success",
-  Completed: "default",
-  Paused: "warning",
-  Cancelled: "error",
+  DRAFT: "outline",
+  UNDER_REVIEW: "outline",
+  APPROVED: "info",
+  REGISTRATION_OPEN: "info",
+  GUARANTEED_ALLOCATION: "success",
+  FCFS: "success",
+  SETTLEMENT: "warning",
+  DISTRIBUTING: "warning",
+  COMPLETED: "default",
+  CANCELLED: "error",
+};
+
+const statusLabelMap: Record<string, string> = {
+  DRAFT: "Draft",
+  UNDER_REVIEW: "Under Review",
+  APPROVED: "Approved",
+  REGISTRATION_OPEN: "Registration",
+  GUARANTEED_ALLOCATION: "Guaranteed",
+  FCFS: "FCFS",
+  SETTLEMENT: "Settlement",
+  DISTRIBUTING: "Distributing",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 const categoryVariantMap: Record<string, "default" | "success" | "info" | "warning" | "outline"> = {
-  DeFi: "default",
-  Infrastructure: "info",
-  Gaming: "success",
+  DEFI: "default",
+  INFRASTRUCTURE: "info",
+  GAMING: "success",
   AI: "warning",
-  RWA: "outline",
-  Insurance: "outline",
+  NFT: "outline",
+  SOCIAL: "outline",
+  OTHER: "outline",
 };
 
 const chainVariantMap: Record<string, "default" | "info" | "success" | "warning"> = {
-  Ethereum: "default",
-  Arbitrum: "info",
-  Base: "success",
-  Polygon: "warning",
+  ETHEREUM: "default",
+  ARBITRUM: "info",
+  BASE: "success",
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Page                                                                      */
+/*  Skeleton                                                                   */
+/* -------------------------------------------------------------------------- */
+
+function DealsSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="h-8 w-48 rounded bg-zinc-800" />
+          <div className="mt-2 h-4 w-64 rounded bg-zinc-800" />
+        </div>
+        <div className="h-10 w-32 rounded bg-zinc-800" />
+      </div>
+      <div className="flex gap-4">
+        <div className="h-10 w-48 rounded bg-zinc-800" />
+        <div className="h-10 w-48 rounded bg-zinc-800" />
+        <div className="h-10 w-64 rounded bg-zinc-800" />
+      </div>
+      <div className="overflow-hidden rounded-xl border border-zinc-800">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-14 border-b border-zinc-800 bg-zinc-900/30" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Page                                                                       */
 /* -------------------------------------------------------------------------- */
 
 export default function DealsManagementPage() {
+  const [deals, setDeals] = useState<ApiDeal[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedDealId, setExpandedDealId] = useState<string | null>(null);
+  const [dealPhases, setDealPhases] = useState<Record<string, DealPhase[]>>({});
 
-  const filteredDeals = deals.filter((deal) => {
-    if (statusFilter && deal.status !== statusFilter) return false;
-    if (categoryFilter && deal.category !== categoryFilter) return false;
-    if (
-      searchQuery &&
-      !deal.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-      return false;
-    return true;
-  });
+  // Fetch deals
+  const fetchDeals = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      params.set("limit", "50");
+      if (statusFilter) params.set("status", statusFilter);
+      if (categoryFilter) params.set("category", categoryFilter);
+      if (searchQuery) params.set("search", searchQuery);
+
+      const res = await fetch(`/api/deals?${params.toString()}`);
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to load deals");
+      }
+
+      setDeals(json.data.deals);
+      setTotal(json.data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, categoryFilter, searchQuery]);
+
+  useEffect(() => {
+    fetchDeals();
+  }, [fetchDeals]);
+
+  // Fetch phases when a deal is expanded
+  const fetchPhases = useCallback(async (dealId: string) => {
+    if (dealPhases[dealId]) return; // already fetched
+    try {
+      const res = await fetch(`/api/deals/${dealId}/phase`);
+      const json = await res.json();
+      if (res.ok && json.success && json.data.phases) {
+        setDealPhases((prev) => ({ ...prev, [dealId]: json.data.phases }));
+      }
+    } catch {
+      // Phases fetch failure is non-critical
+    }
+  }, [dealPhases]);
+
+  // Toggle expand
+  const toggleExpand = useCallback((dealId: string) => {
+    setExpandedDealId((prev) => {
+      const next = prev === dealId ? null : dealId;
+      if (next) fetchPhases(dealId);
+      return next;
+    });
+  }, [fetchPhases]);
+
+  // Action: Cancel deal
+  const handleCancel = useCallback(async (dealId: string) => {
+    if (!confirm("Are you sure you want to cancel this deal?")) return;
+    try {
+      setActionLoading(dealId);
+      const res = await fetch(`/api/deals/${dealId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to cancel deal");
+      }
+      await fetchDeals();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to cancel deal");
+    } finally {
+      setActionLoading(null);
+    }
+  }, [fetchDeals]);
+
+  // Action: Phase transition
+  const handlePhaseTransition = useCallback(async (dealId: string, action: string) => {
+    try {
+      setActionLoading(dealId);
+      const res = await fetch(`/api/deals/${dealId}/phase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || json.data?.message || "Phase transition failed");
+      }
+      // Clear cached phases so they refetch
+      setDealPhases((prev) => {
+        const copy = { ...prev };
+        delete copy[dealId];
+        return copy;
+      });
+      await fetchDeals();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Phase transition failed");
+    } finally {
+      setActionLoading(null);
+    }
+  }, [fetchDeals]);
+
+  // Determine next phase action based on current deal status
+  function getNextPhaseAction(status: string): { label: string; action: string } | null {
+    const map: Record<string, { label: string; action: string }> = {
+      DRAFT: { label: "Open Registration", action: "open_registration" },
+      APPROVED: { label: "Open Registration", action: "open_registration" },
+      REGISTRATION_OPEN: { label: "Close Registration", action: "close_registration" },
+      GUARANTEED_ALLOCATION: { label: "Open Contributions", action: "open_contributions" },
+      FCFS: { label: "Close Contributions", action: "close_contributions" },
+      SETTLEMENT: { label: "Start Distribution", action: "start_distribution" },
+      DISTRIBUTING: { label: "Complete Deal", action: "complete" },
+    };
+    return map[status] ?? null;
+  }
+
+  if (loading) return <DealsSkeleton />;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
+        <AlertTriangle className="h-10 w-10 text-rose-400" />
+        <h2 className="text-lg font-semibold text-zinc-200">Failed to load deals</h2>
+        <p className="text-sm text-zinc-500">{error}</p>
+        <button
+          onClick={fetchDeals}
+          className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -323,7 +323,7 @@ export default function DealsManagementPage() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-50">Manage Deals</h1>
           <p className="mt-1 text-sm text-zinc-400">
-            {deals.length} total deals across all statuses
+            {total} total deals across all statuses
           </p>
         </div>
         <Link href="/admin/deals/create">
@@ -341,12 +341,16 @@ export default function DealsManagementPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             options={[
               { value: "", label: "All Statuses" },
-              { value: "Draft", label: "Draft" },
-              { value: "Registration", label: "Registration" },
-              { value: "Live", label: "Live" },
-              { value: "Completed", label: "Completed" },
-              { value: "Paused", label: "Paused" },
-              { value: "Cancelled", label: "Cancelled" },
+              { value: "DRAFT", label: "Draft" },
+              { value: "UNDER_REVIEW", label: "Under Review" },
+              { value: "APPROVED", label: "Approved" },
+              { value: "REGISTRATION_OPEN", label: "Registration" },
+              { value: "GUARANTEED_ALLOCATION", label: "Guaranteed" },
+              { value: "FCFS", label: "FCFS" },
+              { value: "SETTLEMENT", label: "Settlement" },
+              { value: "DISTRIBUTING", label: "Distributing" },
+              { value: "COMPLETED", label: "Completed" },
+              { value: "CANCELLED", label: "Cancelled" },
             ]}
           />
         </div>
@@ -358,12 +362,13 @@ export default function DealsManagementPage() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             options={[
               { value: "", label: "All Categories" },
-              { value: "DeFi", label: "DeFi" },
-              { value: "Infrastructure", label: "Infrastructure" },
-              { value: "Gaming", label: "Gaming" },
+              { value: "DEFI", label: "DeFi" },
+              { value: "INFRASTRUCTURE", label: "Infrastructure" },
+              { value: "GAMING", label: "Gaming" },
               { value: "AI", label: "AI" },
-              { value: "RWA", label: "RWA" },
-              { value: "Insurance", label: "Insurance" },
+              { value: "NFT", label: "NFT" },
+              { value: "SOCIAL", label: "Social" },
+              { value: "OTHER", label: "Other" },
             ]}
           />
         </div>
@@ -375,9 +380,6 @@ export default function DealsManagementPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             leftAddon={<Search className="h-4 w-4" />}
           />
-        </div>
-        <div className="w-48">
-          <Input label="Date Range" type="date" placeholder="From date" />
         </div>
       </div>
 
@@ -398,21 +400,27 @@ export default function DealsManagementPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredDeals.map((deal) => {
+            {deals.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={9} className="py-12 text-center text-sm text-zinc-500">
+                  No deals found
+                </TableCell>
+              </TableRow>
+            )}
+            {deals.map((deal) => {
               const isExpanded = expandedDealId === deal.id;
-              const pct =
-                deal.target > 0
-                  ? Math.round((deal.raised / deal.target) * 100)
-                  : 0;
+              const raised = parseFloat(deal.totalRaised);
+              const cap = parseFloat(deal.hardCap);
+              const pct = cap > 0 ? Math.round((raised / cap) * 100) : 0;
+              const phases = dealPhases[deal.id] || [];
+              const isLoading = actionLoading === deal.id;
+              const nextAction = getNextPhaseAction(deal.status);
 
               return (
-                <>
+                <Fragment key={deal.id}>
                   <TableRow
-                    key={deal.id}
                     className="cursor-pointer"
-                    onClick={() =>
-                      setExpandedDealId(isExpanded ? null : deal.id)
-                    }
+                    onClick={() => toggleExpand(deal.id)}
                   >
                     <TableCell>
                       <ChevronRight
@@ -423,11 +431,11 @@ export default function DealsManagementPage() {
                       />
                     </TableCell>
                     <TableCell className="font-medium text-zinc-50">
-                      {deal.name}
+                      {deal.title}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusVariantMap[deal.status]}>
-                        {deal.status}
+                      <Badge variant={statusVariantMap[deal.status] ?? "outline"}>
+                        {statusLabelMap[deal.status] ?? deal.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -443,41 +451,63 @@ export default function DealsManagementPage() {
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs text-zinc-400">
-                          {formatCurrency(deal.raised)} /{" "}
-                          {formatCurrency(deal.target)}
+                          {formatCurrency(raised)} /{" "}
+                          {formatCurrency(cap)}
                         </span>
                         <Progress value={pct} className="w-24" />
                       </div>
                     </TableCell>
                     <TableCell>
-                      {formatLargeNumber(deal.contributors)}
+                      {formatLargeNumber(deal.contributorCount)}
                     </TableCell>
                     <TableCell className="text-zinc-500">
-                      {formatDate(deal.created)}
+                      {formatDate(deal.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div onClick={(e) => e.stopPropagation()}>
                         <Dropdown>
                           <DropdownTrigger className="rounded-md p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50">
-                            <MoreHorizontal className="h-4 w-4" />
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
                           </DropdownTrigger>
                           <DropdownMenu align="right">
-                            <DropdownItem icon={<Edit className="h-4 w-4" />}>
-                              Edit
-                            </DropdownItem>
-                            <DropdownItem icon={<Eye className="h-4 w-4" />}>
+                            <DropdownItem
+                              icon={<Eye className="h-4 w-4" />}
+                              onClick={() => {
+                                window.location.href = `/deals/${deal.slug}`;
+                              }}
+                            >
                               View
                             </DropdownItem>
-                            <DropdownSeparator />
-                            <DropdownItem icon={<Pause className="h-4 w-4" />}>
-                              Pause
-                            </DropdownItem>
                             <DropdownItem
-                              icon={<XCircle className="h-4 w-4" />}
-                              className="text-rose-400 hover:!text-rose-300"
+                              icon={<Edit className="h-4 w-4" />}
+                              onClick={() => {
+                                window.location.href = `/admin/deals/${deal.id}/edit`;
+                              }}
                             >
-                              Cancel
+                              Edit
                             </DropdownItem>
+                            <DropdownSeparator />
+                            {nextAction && (
+                              <DropdownItem
+                                icon={<SkipForward className="h-4 w-4" />}
+                                onClick={() => handlePhaseTransition(deal.id, nextAction.action)}
+                              >
+                                {nextAction.label}
+                              </DropdownItem>
+                            )}
+                            {deal.status !== "CANCELLED" && deal.status !== "COMPLETED" && (
+                              <DropdownItem
+                                icon={<XCircle className="h-4 w-4" />}
+                                className="text-rose-400 hover:!text-rose-300"
+                                onClick={() => handleCancel(deal.id)}
+                              >
+                                Cancel
+                              </DropdownItem>
+                            )}
                           </DropdownMenu>
                         </Dropdown>
                       </div>
@@ -496,7 +526,7 @@ export default function DealsManagementPage() {
                               <div>
                                 <p className="text-xs text-zinc-500">Raised</p>
                                 <p className="font-semibold text-zinc-50">
-                                  {formatCurrency(deal.raised)}
+                                  {formatCurrency(raised)}
                                 </p>
                               </div>
                             </div>
@@ -507,7 +537,7 @@ export default function DealsManagementPage() {
                                   Contributors
                                 </p>
                                 <p className="font-semibold text-zinc-50">
-                                  {formatLargeNumber(deal.contributors)}
+                                  {formatLargeNumber(deal.contributorCount)}
                                 </p>
                               </div>
                             </div>
@@ -523,7 +553,7 @@ export default function DealsManagementPage() {
                               <div>
                                 <p className="text-xs text-zinc-500">Created</p>
                                 <p className="font-semibold text-zinc-50">
-                                  {formatDate(deal.created)}
+                                  {formatDate(deal.createdAt)}
                                 </p>
                               </div>
                             </div>
@@ -534,80 +564,93 @@ export default function DealsManagementPage() {
                             <h4 className="mb-3 text-sm font-medium text-zinc-300">
                               Phase Timeline
                             </h4>
-                            <div className="flex items-center gap-2">
-                              {deal.phases.map((phase, idx) => (
-                                <div key={phase.name} className="flex items-center gap-2">
-                                  <div
-                                    className={cn(
-                                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium",
-                                      phase.status === "completed" &&
-                                        "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-                                      phase.status === "active" &&
-                                        "border-violet-500/30 bg-violet-500/10 text-violet-400",
-                                      phase.status === "upcoming" &&
-                                        "border-zinc-800 bg-zinc-800/50 text-zinc-500"
-                                    )}
-                                  >
-                                    <span
-                                      className={cn(
-                                        "h-1.5 w-1.5 rounded-full",
-                                        phase.status === "completed" && "bg-emerald-400",
-                                        phase.status === "active" && "bg-violet-400",
-                                        phase.status === "upcoming" && "bg-zinc-600"
+                            {phases.length > 0 ? (
+                              <div className="flex items-center gap-2">
+                                {phases.map((phase, idx) => {
+                                  const now = new Date();
+                                  const startsAt = new Date(phase.startsAt);
+                                  const endsAt = new Date(phase.endsAt);
+                                  const phaseStatus = phase.isActive
+                                    ? "active"
+                                    : endsAt < now
+                                      ? "completed"
+                                      : "upcoming";
+                                  return (
+                                    <div key={phase.id} className="flex items-center gap-2">
+                                      <div
+                                        className={cn(
+                                          "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium",
+                                          phaseStatus === "completed" &&
+                                            "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+                                          phaseStatus === "active" &&
+                                            "border-violet-500/30 bg-violet-500/10 text-violet-400",
+                                          phaseStatus === "upcoming" &&
+                                            "border-zinc-800 bg-zinc-800/50 text-zinc-500"
+                                        )}
+                                      >
+                                        <span
+                                          className={cn(
+                                            "h-1.5 w-1.5 rounded-full",
+                                            phaseStatus === "completed" && "bg-emerald-400",
+                                            phaseStatus === "active" && "bg-violet-400",
+                                            phaseStatus === "upcoming" && "bg-zinc-600"
+                                          )}
+                                        />
+                                        {phase.name}
+                                      </div>
+                                      {idx < phases.length - 1 && (
+                                        <ArrowRight className="h-3 w-3 text-zinc-700" />
                                       )}
-                                    />
-                                    {phase.name}
-                                  </div>
-                                  {idx < deal.phases.length - 1 && (
-                                    <ArrowRight className="h-3 w-3 text-zinc-700" />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Recent contributions */}
-                          {deal.recentContributions.length > 0 && (
-                            <div className="mb-6">
-                              <h4 className="mb-3 text-sm font-medium text-zinc-300">
-                                Recent Contributions
-                              </h4>
-                              <div className="space-y-2">
-                                {deal.recentContributions.map((c, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5"
-                                  >
-                                    <span className="font-mono text-sm text-zinc-400">
-                                      {c.wallet}
-                                    </span>
-                                    <span className="font-medium text-zinc-50">
-                                      {formatCurrency(c.amount)}
-                                    </span>
-                                  </div>
-                                ))}
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            </div>
-                          )}
+                            ) : (
+                              <p className="text-xs text-zinc-600">
+                                No phases configured yet
+                              </p>
+                            )}
+                          </div>
 
                           {/* Action buttons */}
                           <div className="flex items-center gap-3">
-                            <Button size="sm">Advance Phase</Button>
-                            <Button size="sm" variant="secondary">
+                            {nextAction && (
+                              <Button
+                                size="sm"
+                                onClick={() => handlePhaseTransition(deal.id, nextAction.action)}
+                                disabled={isLoading}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                ) : null}
+                                {nextAction.label}
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                window.location.href = `/admin/deals/${deal.id}/edit`;
+                              }}
+                            >
                               Edit Deal
                             </Button>
-                            <Button size="sm" variant="secondary">
-                              Finalize
-                            </Button>
-                            <Button size="sm" variant="destructive">
-                              Cancel Deal
-                            </Button>
+                            {deal.status !== "CANCELLED" && deal.status !== "COMPLETED" && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleCancel(deal.id)}
+                                disabled={isLoading}
+                              >
+                                Cancel Deal
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>

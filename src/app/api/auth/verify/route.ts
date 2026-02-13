@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the nonce was previously generated and not expired
-    if (!consumeNonce(siweMessage.nonce)) {
+    if (!(await consumeNonce(siweMessage.nonce))) {
       return apiError("Invalid or expired nonce", 400, "INVALID_NONCE");
     }
 

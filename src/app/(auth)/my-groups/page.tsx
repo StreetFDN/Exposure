@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -8,101 +8,55 @@ import {
   Clock,
   ChevronRight,
   Settings,
-  UserPlus,
   TrendingUp,
   Shield,
+  UserPlus,
+  Loader2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Alert } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelativeTime, formatLargeNumber } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data
+// Types — matching API response from GET /api/groups?membership=mine
 // ---------------------------------------------------------------------------
 
-interface MemberGroup {
+interface GroupLead {
   id: string;
-  name: string;
-  slug: string;
+  walletAddress: string;
+  displayName: string | null;
   avatarUrl: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "LEFT";
-  role: "LEAD" | "CO_LEAD" | "MEMBER";
-  joinedAt: string | null;
-  memberCount: number;
-  dealCount: number;
-  leadName: string;
 }
 
-interface LeadingGroup {
+interface ApiGroup {
   id: string;
   name: string;
   slug: string;
+  description: string;
   avatarUrl: string | null;
+  bannerUrl: string | null;
   status: "PENDING_APPROVAL" | "ACTIVE" | "SUSPENDED" | "CLOSED";
-  memberCount: number;
+  isPublic: boolean;
   maxMembers: number;
-  pendingApplications: number;
+  memberCount: number;
   dealCount: number;
   totalRaised: string;
+  requiresApplication: boolean;
+  lead: GroupLead;
+  _count: {
+    members: number;
+  };
+  // Attached by the membership=mine branch
+  membershipRole: "LEAD" | "CO_LEAD" | "MEMBER";
+  membershipStatus: "APPROVED" | "PENDING";
+  joinedAt: string | null;
 }
-
-const MEMBER_GROUPS: MemberGroup[] = [
-  {
-    id: "1",
-    name: "DeFi Collective",
-    slug: "defi-collective",
-    avatarUrl: null,
-    status: "APPROVED",
-    role: "MEMBER",
-    joinedAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-    memberCount: 156,
-    dealCount: 22,
-    leadName: "Elena Vasquez",
-  },
-  {
-    id: "2",
-    name: "Neural Ventures",
-    slug: "neural-ventures",
-    avatarUrl: null,
-    status: "APPROVED",
-    role: "CO_LEAD",
-    joinedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-    memberCount: 45,
-    dealCount: 8,
-    leadName: "David Chen",
-  },
-  {
-    id: "3",
-    name: "Stealth Syndicate",
-    slug: "stealth-syndicate",
-    avatarUrl: null,
-    status: "PENDING",
-    role: "MEMBER",
-    joinedAt: null,
-    memberCount: 28,
-    dealCount: 6,
-    leadName: "James Whitfield",
-  },
-];
-
-const LEADING_GROUPS: LeadingGroup[] = [
-  {
-    id: "4",
-    name: "Apex Capital",
-    slug: "apex-capital",
-    avatarUrl: null,
-    status: "ACTIVE",
-    memberCount: 72,
-    maxMembers: 100,
-    pendingApplications: 5,
-    dealCount: 14,
-    totalRaised: "28500000",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Status/role badge helpers
@@ -138,10 +92,92 @@ const ROLE_CONFIG: Record<
 };
 
 // ---------------------------------------------------------------------------
+// Loading Skeletons
+// ---------------------------------------------------------------------------
+
+function GroupCardSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} variant="card" className="h-24" />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
 
 export default function MyGroupsPage() {
+  const [groups, setGroups] = useState<ApiGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // -------------------------------------------------------------------------
+  // Fetch user's groups via membership=mine
+  // -------------------------------------------------------------------------
+
+  const fetchGroups = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch("/api/groups?membership=mine&limit=100");
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to load groups");
+      }
+
+      setGroups(json.data.groups);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load groups");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
+
+  // -------------------------------------------------------------------------
+  // Split groups into "member of" vs "leading"
+  // -------------------------------------------------------------------------
+
+  const memberGroups = useMemo(
+    () => groups.filter((g) => g.membershipRole === "MEMBER" || g.membershipRole === "CO_LEAD"),
+    [groups]
+  );
+
+  const leadingGroups = useMemo(
+    () => groups.filter((g) => g.membershipRole === "LEAD"),
+    [groups]
+  );
+
+  // -------------------------------------------------------------------------
+  // Error state
+  // -------------------------------------------------------------------------
+
+  if (error && !loading) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-50">My Groups</h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Manage your group memberships and syndicates
+          </p>
+        </div>
+        <Alert variant="error">{error}</Alert>
+        <Button variant="secondary" size="sm" onClick={fetchGroups}>
+          <Loader2 className="h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
@@ -159,9 +195,9 @@ export default function MyGroupsPage() {
             <span className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Member Of
-              {MEMBER_GROUPS.length > 0 && (
+              {!loading && memberGroups.length > 0 && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400">
-                  {MEMBER_GROUPS.length}
+                  {memberGroups.length}
                 </span>
               )}
             </span>
@@ -170,9 +206,9 @@ export default function MyGroupsPage() {
             <span className="flex items-center gap-2">
               <Crown className="h-4 w-4" />
               Leading
-              {LEADING_GROUPS.length > 0 && (
+              {!loading && leadingGroups.length > 0 && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400">
-                  {LEADING_GROUPS.length}
+                  {leadingGroups.length}
                 </span>
               )}
             </span>
@@ -183,11 +219,15 @@ export default function MyGroupsPage() {
         {/* Member Of Tab                                                   */}
         {/* =============================================================== */}
         <TabsContent value="member">
-          {MEMBER_GROUPS.length > 0 ? (
+          {loading ? (
+            <GroupCardSkeleton />
+          ) : memberGroups.length > 0 ? (
             <div className="space-y-3">
-              {MEMBER_GROUPS.map((group) => {
-                const statusConf = MEMBER_STATUS_CONFIG[group.status];
-                const roleConf = ROLE_CONFIG[group.role];
+              {memberGroups.map((group) => {
+                const statusConf = MEMBER_STATUS_CONFIG[group.membershipStatus] || MEMBER_STATUS_CONFIG.APPROVED;
+                const roleConf = ROLE_CONFIG[group.membershipRole] || ROLE_CONFIG.MEMBER;
+                const memberCount = group._count?.members ?? group.memberCount ?? 0;
+                const leadName = group.lead?.displayName || group.lead?.walletAddress || "Unknown";
 
                 return (
                   <Card key={group.id}>
@@ -215,12 +255,12 @@ export default function MyGroupsPage() {
                             </Badge>
                           </div>
                           <p className="text-sm text-zinc-500">
-                            Led by {group.leadName}
+                            Led by {leadName}
                           </p>
                           <div className="mt-1 flex items-center gap-4 text-xs text-zinc-500">
                             <span className="flex items-center gap-1">
                               <Users className="h-3 w-3" />
-                              {group.memberCount} members
+                              {memberCount} members
                             </span>
                             <span className="flex items-center gap-1">
                               <TrendingUp className="h-3 w-3" />
@@ -268,10 +308,14 @@ export default function MyGroupsPage() {
         {/* Leading Tab                                                     */}
         {/* =============================================================== */}
         <TabsContent value="leading">
-          {LEADING_GROUPS.length > 0 ? (
+          {loading ? (
+            <GroupCardSkeleton />
+          ) : leadingGroups.length > 0 ? (
             <div className="space-y-3">
-              {LEADING_GROUPS.map((group) => {
-                const statusConf = GROUP_STATUS_CONFIG[group.status];
+              {leadingGroups.map((group) => {
+                const statusConf = GROUP_STATUS_CONFIG[group.status] || GROUP_STATUS_CONFIG.ACTIVE;
+                const memberCount = group._count?.members ?? group.memberCount ?? 0;
+                const totalRaised = group.totalRaised || "0";
 
                 return (
                   <Card key={group.id}>
@@ -298,7 +342,7 @@ export default function MyGroupsPage() {
                           <div className="mt-1 flex flex-wrap items-center gap-4 text-xs text-zinc-500">
                             <span className="flex items-center gap-1">
                               <Users className="h-3 w-3" />
-                              {group.memberCount}/{group.maxMembers} members
+                              {memberCount}/{group.maxMembers} members
                             </span>
                             <span className="flex items-center gap-1">
                               <TrendingUp className="h-3 w-3" />
@@ -306,25 +350,14 @@ export default function MyGroupsPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <Shield className="h-3 w-3" />
-                              ${formatLargeNumber(group.totalRaised)} raised
+                              ${formatLargeNumber(totalRaised)} raised
                             </span>
-                            {group.pendingApplications > 0 && (
-                              <span className="flex items-center gap-1 text-amber-400">
-                                <UserPlus className="h-3 w-3" />
-                                {group.pendingApplications} pending
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
 
                       {/* Right: actions */}
                       <div className="flex items-center gap-2">
-                        {group.pendingApplications > 0 && (
-                          <Badge variant="warning" size="sm">
-                            {group.pendingApplications} pending
-                          </Badge>
-                        )}
                         <Link href={`/groups/${group.slug}`}>
                           <Button variant="outline" size="sm">
                             <Settings className="h-4 w-4" />

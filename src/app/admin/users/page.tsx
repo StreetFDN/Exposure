@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Search,
   MoreHorizontal,
@@ -15,6 +15,10 @@ import {
   Activity,
   Copy,
   ExternalLink,
+  Loader2,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
@@ -24,6 +28,7 @@ import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Avatar } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableHeader,
@@ -42,334 +47,151 @@ import {
 import { formatCurrency, formatAddress, formatDate, formatLargeNumber } from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
-/*  Types                                                                     */
+/*  Types (matching API response shape)                                       */
 /* -------------------------------------------------------------------------- */
 
-interface User {
+interface ApiUser {
   id: string;
-  wallet: string;
-  displayName: string;
-  email: string;
-  kycStatus: "Verified" | "Pending" | "Failed" | "Not Started";
-  tier: "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
-  role: "User" | "Admin" | "Moderator";
-  totalContributed: number;
-  dealsCount: number;
-  joined: string;
-  banned: boolean;
-  linkedWallets: string[];
-  stakingPositions: { token: string; amount: number; apy: number }[];
-  complianceFlags: string[];
-  recentActivity: { action: string; date: string }[];
+  walletAddress: string;
+  displayName: string | null;
+  email: string | null;
+  role: string;
+  kycStatus: string;
+  kycTier: string | null;
+  tierLevel: string;
+  totalContributed: string;
+  totalPoints: number;
+  isBanned: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+  _count: {
+    wallets: number;
+    contributions: number;
+    referrals: number;
+  };
+}
+
+interface UserDetail {
+  id: string;
+  walletAddress: string;
+  displayName: string | null;
+  email: string | null;
+  role: string;
+  kycStatus: string;
+  tierLevel: string;
+  totalContributed: string;
+  totalPoints: number;
+  isBanned: boolean;
+  banReason: string | null;
+  country: string | null;
+  createdAt: string;
+  wallets: { id: string; address: string; chain: string; isPrimary: boolean }[];
+  contributions: {
+    id: string;
+    amount: string;
+    amountUsd: string;
+    currency: string;
+    chain: string;
+    status: string;
+    txHash: string | null;
+    createdAt: string;
+    deal: { id: string; title: string };
+  }[];
+  stakingPositions: {
+    id: string;
+    amount: string;
+    lockPeriod: string;
+    chain: string;
+    lockStartAt: string;
+    lockEndAt: string | null;
+  }[];
+  complianceFlags: {
+    id: string;
+    reason: string;
+    severity: string;
+    description: string | null;
+    isResolved: boolean;
+    createdAt: string;
+  }[];
+  auditLogs: {
+    id: string;
+    action: string;
+    resourceType: string;
+    resourceId: string | null;
+    createdAt: string;
+  }[];
+  _count: {
+    wallets: number;
+    contributions: number;
+    referrals: number;
+    stakingPositions: number;
+  };
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Placeholder data                                                          */
+/*  Badge variant maps                                                        */
 /* -------------------------------------------------------------------------- */
 
-const users: User[] = [
-  {
-    id: "u1",
-    wallet: "0x7a2F3b8C4d5E6f1A9B0c1D2e3F4a5B6c7D8e9F0A",
-    displayName: "CryptoWhale",
-    email: "whale@protonmail.com",
-    kycStatus: "Verified",
-    tier: "Diamond",
-    role: "User",
-    totalContributed: 1_250_000,
-    dealsCount: 18,
-    joined: "2025-03-15",
-    banned: false,
-    linkedWallets: ["0x7a2F...9F0A", "0x1b3C...2D4E"],
-    stakingPositions: [{ token: "EXPO", amount: 500_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Contributed $50,000 to Nexus Protocol", date: "2026-02-12T10:30:00Z" },
-      { action: "Claimed tokens from Quantum Bridge", date: "2026-02-10T14:00:00Z" },
-    ],
-  },
-  {
-    id: "u2",
-    wallet: "0x3E4f5A6b7C8d9E0F1a2B3c4D5e6F7a8B9c0D1E2F",
-    displayName: "DeFiMaster",
-    email: "defi@gmail.com",
-    kycStatus: "Verified",
-    tier: "Platinum",
-    role: "User",
-    totalContributed: 450_000,
-    dealsCount: 12,
-    joined: "2025-05-20",
-    banned: false,
-    linkedWallets: ["0x3E4f...1E2F"],
-    stakingPositions: [{ token: "EXPO", amount: 200_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Registered for AetherFi raise", date: "2026-02-09T08:00:00Z" },
-    ],
-  },
-  {
-    id: "u3",
-    wallet: "0xA1b2C3d4E5f6A7B8c9D0e1F2a3B4c5D6e7F8a9B0",
-    displayName: "AlphaHunter",
-    email: "alpha@outlook.com",
-    kycStatus: "Verified",
-    tier: "Gold",
-    role: "User",
-    totalContributed: 180_000,
-    dealsCount: 8,
-    joined: "2025-07-10",
-    banned: false,
-    linkedWallets: ["0xA1b2...a9B0", "0xC3d4...b1A2", "0xE5f6...c3D4"],
-    stakingPositions: [{ token: "EXPO", amount: 75_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Contributed $10,000 to ZeroLayer", date: "2026-02-11T16:00:00Z" },
-    ],
-  },
-  {
-    id: "u4",
-    wallet: "0xF9e8D7c6B5a4F3E2d1C0b9A8f7E6d5C4b3A2f1E0",
-    displayName: "TokenCollector",
-    email: "tokens@yahoo.com",
-    kycStatus: "Pending",
-    tier: "Silver",
-    role: "User",
-    totalContributed: 25_000,
-    dealsCount: 3,
-    joined: "2025-10-05",
-    banned: false,
-    linkedWallets: ["0xF9e8...f1E0"],
-    stakingPositions: [],
-    complianceFlags: ["KYC document unclear"],
-    recentActivity: [
-      { action: "Submitted KYC documents", date: "2026-02-08T12:00:00Z" },
-    ],
-  },
-  {
-    id: "u5",
-    wallet: "0x1234567890aBcDeF1234567890AbCdEf12345678",
-    displayName: "NewbieTrader",
-    email: "newbie@gmail.com",
-    kycStatus: "Not Started",
-    tier: "Bronze",
-    role: "User",
-    totalContributed: 0,
-    dealsCount: 0,
-    joined: "2026-02-01",
-    banned: false,
-    linkedWallets: ["0x1234...5678"],
-    stakingPositions: [],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Account created", date: "2026-02-01T10:00:00Z" },
-    ],
-  },
-  {
-    id: "u6",
-    wallet: "0x9876543210FeDcBa9876543210FeDcBa98765432",
-    displayName: "ShadyAccount",
-    email: "shadow@tempmail.com",
-    kycStatus: "Failed",
-    tier: "Bronze",
-    role: "User",
-    totalContributed: 5_000,
-    dealsCount: 1,
-    joined: "2025-12-15",
-    banned: true,
-    linkedWallets: ["0x9876...5432", "0xAbCd...EfGh"],
-    stakingPositions: [],
-    complianceFlags: ["Sanctions match", "Fraudulent KYC documents"],
-    recentActivity: [
-      { action: "Account banned — sanctions match", date: "2026-01-20T09:00:00Z" },
-    ],
-  },
-  {
-    id: "u7",
-    wallet: "0xaAbBcCdDeEfF0011223344556677889900AaBbCc",
-    displayName: "InstitutionalInvestor",
-    email: "invest@blackrock.com",
-    kycStatus: "Verified",
-    tier: "Diamond",
-    role: "User",
-    totalContributed: 2_500_000,
-    dealsCount: 6,
-    joined: "2025-06-01",
-    banned: false,
-    linkedWallets: ["0xaAbB...BbCc"],
-    stakingPositions: [{ token: "EXPO", amount: 1_000_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Contributed $500,000 to Nexus Protocol", date: "2026-02-12T09:00:00Z" },
-    ],
-  },
-  {
-    id: "u8",
-    wallet: "0x1122334455667788990011223344556677889900",
-    displayName: "YieldFarmer",
-    email: "farmer@proton.me",
-    kycStatus: "Verified",
-    tier: "Gold",
-    role: "User",
-    totalContributed: 95_000,
-    dealsCount: 7,
-    joined: "2025-08-22",
-    banned: false,
-    linkedWallets: ["0x1122...9900"],
-    stakingPositions: [{ token: "EXPO", amount: 50_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Unstaked 10,000 EXPO", date: "2026-02-10T11:00:00Z" },
-    ],
-  },
-  {
-    id: "u9",
-    wallet: "0xfFeEdDcCbBaA9988776655443322110000112233",
-    displayName: "AdminSarah",
-    email: "sarah@exposure.io",
-    kycStatus: "Verified",
-    tier: "Diamond",
-    role: "Admin",
-    totalContributed: 0,
-    dealsCount: 0,
-    joined: "2025-01-01",
-    banned: false,
-    linkedWallets: ["0xfFeE...2233"],
-    stakingPositions: [],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Approved NeuralDAO application", date: "2026-02-02T11:30:00Z" },
-    ],
-  },
-  {
-    id: "u10",
-    wallet: "0xAAbbCCddEEff00112233445566778899AAbbCCdd",
-    displayName: "ModMike",
-    email: "mike@exposure.io",
-    kycStatus: "Verified",
-    tier: "Platinum",
-    role: "Moderator",
-    totalContributed: 50_000,
-    dealsCount: 4,
-    joined: "2025-02-15",
-    banned: false,
-    linkedWallets: ["0xAAbb...CCdd"],
-    stakingPositions: [{ token: "EXPO", amount: 100_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Reviewed GameVerse application", date: "2026-02-06T10:00:00Z" },
-    ],
-  },
-  {
-    id: "u11",
-    wallet: "0x0000111122223333444455556666777788889999",
-    displayName: "EarlyBird",
-    email: "early@proton.me",
-    kycStatus: "Verified",
-    tier: "Silver",
-    role: "User",
-    totalContributed: 42_000,
-    dealsCount: 5,
-    joined: "2025-04-10",
-    banned: false,
-    linkedWallets: ["0x0000...9999"],
-    stakingPositions: [{ token: "EXPO", amount: 25_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Claimed vesting tokens from Onchain Labs", date: "2026-02-07T14:00:00Z" },
-    ],
-  },
-  {
-    id: "u12",
-    wallet: "0xAAAABBBBCCCCDDDDEEEEFFFF0000111122223333",
-    displayName: "MegaDegen",
-    email: "degen@yahoo.com",
-    kycStatus: "Verified",
-    tier: "Gold",
-    role: "User",
-    totalContributed: 200_000,
-    dealsCount: 15,
-    joined: "2025-05-30",
-    banned: false,
-    linkedWallets: ["0xAAAA...3333", "0xBBBB...4444"],
-    stakingPositions: [{ token: "EXPO", amount: 150_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Registered for Helix Network raise", date: "2026-02-05T18:00:00Z" },
-    ],
-  },
-  {
-    id: "u13",
-    wallet: "0x4444555566667777888899990000AAAABBBBcCCC",
-    displayName: "SmartMoney",
-    email: "smart@investment.co",
-    kycStatus: "Verified",
-    tier: "Platinum",
-    role: "User",
-    totalContributed: 680_000,
-    dealsCount: 9,
-    joined: "2025-06-15",
-    banned: false,
-    linkedWallets: ["0x4444...cCCC"],
-    stakingPositions: [{ token: "EXPO", amount: 300_000, apy: 12.5 }],
-    complianceFlags: [],
-    recentActivity: [
-      { action: "Contributed $25,000 to Prism Finance", date: "2026-02-11T20:00:00Z" },
-    ],
-  },
-  {
-    id: "u14",
-    wallet: "0xDDDDEEEEFFFF00001111222233334444555566667",
-    displayName: "PassiveIncome",
-    email: "passive@gmail.com",
-    kycStatus: "Pending",
-    tier: "Bronze",
-    role: "User",
-    totalContributed: 8_000,
-    dealsCount: 1,
-    joined: "2026-01-20",
-    banned: false,
-    linkedWallets: ["0xDDDD...6667"],
-    stakingPositions: [],
-    complianceFlags: ["Pending KYC verification"],
-    recentActivity: [
-      { action: "Submitted KYC documents", date: "2026-02-05T08:00:00Z" },
-    ],
-  },
-  {
-    id: "u15",
-    wallet: "0x7777888899990000AAAABBBBcCCCDDDDEEEEFFFF",
-    displayName: "GhostTrader",
-    email: "ghost@tempmail.org",
-    kycStatus: "Failed",
-    tier: "Bronze",
-    role: "User",
-    totalContributed: 0,
-    dealsCount: 0,
-    joined: "2026-01-05",
-    banned: false,
-    linkedWallets: ["0x7777...FFFF"],
-    stakingPositions: [],
-    complianceFlags: ["KYC document mismatch", "Multiple accounts suspected"],
-    recentActivity: [
-      { action: "KYC verification failed", date: "2026-01-10T14:00:00Z" },
-    ],
-  },
-];
-
 const kycVariant: Record<string, "success" | "warning" | "error" | "outline"> = {
-  Verified: "success",
-  Pending: "warning",
-  Failed: "error",
-  "Not Started": "outline",
+  APPROVED: "success",
+  PENDING: "warning",
+  REJECTED: "error",
+  EXPIRED: "error",
+  NONE: "outline",
+};
+
+const kycLabel: Record<string, string> = {
+  APPROVED: "Verified",
+  PENDING: "Pending",
+  REJECTED: "Failed",
+  EXPIRED: "Expired",
+  NONE: "Not Started",
 };
 
 const tierVariant: Record<string, "default" | "info" | "success" | "warning" | "outline"> = {
-  Bronze: "outline",
-  Silver: "info",
-  Gold: "warning",
-  Platinum: "default",
-  Diamond: "success",
+  BRONZE: "outline",
+  SILVER: "info",
+  GOLD: "warning",
+  PLATINUM: "default",
+  DIAMOND: "success",
 };
+
+const tierLabel: Record<string, string> = {
+  BRONZE: "Bronze",
+  SILVER: "Silver",
+  GOLD: "Gold",
+  PLATINUM: "Platinum",
+  DIAMOND: "Diamond",
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Loading skeleton                                                          */
+/* -------------------------------------------------------------------------- */
+
+function TableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-zinc-800">
+      <div className="flex flex-col gap-0">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-4 border-b border-zinc-800/50 px-4 py-3"
+          >
+            <Skeleton variant="circle" width="2rem" height="2rem" />
+            <Skeleton variant="text" width="120px" />
+            <Skeleton variant="text" width="100px" />
+            <Skeleton variant="text" width="140px" />
+            <Skeleton variant="text" width="70px" />
+            <Skeleton variant="text" width="60px" />
+            <Skeleton variant="text" width="80px" />
+            <Skeleton variant="text" width="50px" />
+            <Skeleton variant="text" width="80px" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                      */
@@ -381,23 +203,150 @@ export default function UserManagementPage() {
   const [tierFilter, setTierFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [bannedFilter, setBannedFilter] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  const filtered = users.filter((user) => {
-    if (
-      searchQuery &&
-      !user.wallet.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !user.email.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !user.displayName.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-      return false;
-    if (kycFilter && user.kycStatus !== kycFilter) return false;
-    if (tierFilter && user.tier !== tierFilter) return false;
-    if (roleFilter && user.role !== roleFilter) return false;
-    if (bannedFilter === "banned" && !user.banned) return false;
-    if (bannedFilter === "active" && user.banned) return false;
-    return true;
-  });
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Detail modal
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Action state
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch users
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      params.set("page", page.toString());
+      params.set("limit", "20");
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (kycFilter) params.set("kycStatus", kycFilter);
+      if (tierFilter) params.set("tierLevel", tierFilter);
+      if (roleFilter) params.set("role", roleFilter);
+
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
+      const json = await res.json();
+
+      if (!json.success) {
+        throw new Error(json.error?.message || "Failed to fetch users");
+      }
+
+      setUsers(json.data.users);
+      setTotal(json.data.total);
+      setTotalPages(json.data.totalPages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch users");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedSearch, kycFilter, tierFilter, roleFilter]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [kycFilter, tierFilter, roleFilter, bannedFilter]);
+
+  // Fetch user detail
+  const fetchUserDetail = useCallback(async (userId: string) => {
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`);
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error?.message || "Failed to fetch user details");
+      }
+      setUserDetail(json.data.user);
+    } catch {
+      setUserDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedUserId) {
+      fetchUserDetail(selectedUserId);
+    } else {
+      setUserDetail(null);
+    }
+  }, [selectedUserId, fetchUserDetail]);
+
+  // Admin actions
+  const handleBanUser = async (userId: string, currentlyBanned: boolean) => {
+    setActionLoading(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          currentlyBanned
+            ? { isBanned: false, banReason: null }
+            : { isBanned: true, banReason: "Banned by admin" }
+        ),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error?.message || "Action failed");
+      }
+      // Refresh list
+      await fetchUsers();
+    } catch {
+      // Silently handle
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResetKyc = async (userId: string) => {
+    setActionLoading(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kycStatus: "NONE" }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error?.message || "Action failed");
+      }
+      await fetchUsers();
+    } catch {
+      // Silently handle
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Client-side filter for banned status (API doesn't have isBanned filter)
+  const filtered = bannedFilter
+    ? users.filter((u) => {
+        if (bannedFilter === "banned") return u.isBanned;
+        if (bannedFilter === "active") return !u.isBanned;
+        return true;
+      })
+    : users;
 
   return (
     <div className="flex flex-col gap-6">
@@ -405,7 +354,7 @@ export default function UserManagementPage() {
       <div>
         <h1 className="text-2xl font-bold text-zinc-50">User Management</h1>
         <p className="mt-1 text-sm text-zinc-400">
-          {users.length} registered users on the platform
+          {loading ? "Loading..." : `${total} registered users on the platform`}
         </p>
       </div>
 
@@ -428,10 +377,10 @@ export default function UserManagementPage() {
             onChange={(e) => setKycFilter(e.target.value)}
             options={[
               { value: "", label: "All" },
-              { value: "Verified", label: "Verified" },
-              { value: "Pending", label: "Pending" },
-              { value: "Failed", label: "Failed" },
-              { value: "Not Started", label: "Not Started" },
+              { value: "APPROVED", label: "Verified" },
+              { value: "PENDING", label: "Pending" },
+              { value: "REJECTED", label: "Failed" },
+              { value: "NONE", label: "Not Started" },
             ]}
           />
         </div>
@@ -443,11 +392,11 @@ export default function UserManagementPage() {
             onChange={(e) => setTierFilter(e.target.value)}
             options={[
               { value: "", label: "All Tiers" },
-              { value: "Bronze", label: "Bronze" },
-              { value: "Silver", label: "Silver" },
-              { value: "Gold", label: "Gold" },
-              { value: "Platinum", label: "Platinum" },
-              { value: "Diamond", label: "Diamond" },
+              { value: "BRONZE", label: "Bronze" },
+              { value: "SILVER", label: "Silver" },
+              { value: "GOLD", label: "Gold" },
+              { value: "PLATINUM", label: "Platinum" },
+              { value: "DIAMOND", label: "Diamond" },
             ]}
           />
         </div>
@@ -459,9 +408,9 @@ export default function UserManagementPage() {
             onChange={(e) => setRoleFilter(e.target.value)}
             options={[
               { value: "", label: "All Roles" },
-              { value: "User", label: "User" },
-              { value: "Moderator", label: "Moderator" },
-              { value: "Admin", label: "Admin" },
+              { value: "INVESTOR", label: "User" },
+              { value: "PLATFORM_ADMIN", label: "Admin" },
+              { value: "COMPLIANCE_OFFICER", label: "Compliance" },
             ]}
           />
         </div>
@@ -480,144 +429,252 @@ export default function UserManagementPage() {
         </div>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="flex items-center gap-3 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={fetchUsers}
+            className="ml-auto"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-zinc-800">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Wallet</TableHead>
-              <TableHead>Display Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>KYC</TableHead>
-              <TableHead>Tier</TableHead>
-              <TableHead>Contributed</TableHead>
-              <TableHead>Deals</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((user) => (
-              <TableRow
-                key={user.id}
-                className={cn(user.banned && "opacity-60")}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar alt={user.displayName} size="sm" />
-                    <span className="font-mono text-xs text-zinc-400">
-                      {formatAddress(user.wallet)}
-                    </span>
-                    {user.banned && (
-                      <Badge variant="error" size="sm">Banned</Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="font-medium text-zinc-50">
-                  {user.displayName}
-                </TableCell>
-                <TableCell className="text-zinc-400">{user.email}</TableCell>
-                <TableCell>
-                  <Badge variant={kycVariant[user.kycStatus]}>
-                    {user.kycStatus}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={tierVariant[user.tier]}>{user.tier}</Badge>
-                </TableCell>
-                <TableCell>{formatCurrency(user.totalContributed)}</TableCell>
-                <TableCell>{user.dealsCount}</TableCell>
-                <TableCell className="text-zinc-500">
-                  {formatDate(user.joined)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Dropdown>
-                    <DropdownTrigger className="rounded-md p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </DropdownTrigger>
-                    <DropdownMenu align="right">
-                      <DropdownItem
-                        icon={<Eye className="h-4 w-4" />}
-                        onClick={() => setSelectedUser(user)}
-                      >
-                        View Profile
-                      </DropdownItem>
-                      <DropdownItem icon={<Edit className="h-4 w-4" />}>
-                        Edit Role
-                      </DropdownItem>
-                      <DropdownSeparator />
-                      <DropdownItem icon={<Ban className="h-4 w-4" />}>
-                        {user.banned ? "Unban User" : "Ban User"}
-                      </DropdownItem>
-                      <DropdownItem icon={<RotateCcw className="h-4 w-4" />}>
-                        Reset KYC
-                      </DropdownItem>
-                      <DropdownSeparator />
-                      <DropdownItem icon={<Download className="h-4 w-4" />}>
-                        Export Data
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </TableCell>
+      {loading ? (
+        <TableSkeleton />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-zinc-800">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Wallet</TableHead>
+                <TableHead>Display Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>KYC</TableHead>
+                <TableHead>Tier</TableHead>
+                <TableHead>Contributed</TableHead>
+                <TableHead>Deals</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-12 text-center">
+                    <div className="flex flex-col items-center gap-2 text-zinc-500">
+                      <Users className="h-8 w-8" />
+                      <p className="text-sm font-medium">No users found</p>
+                      <p className="text-xs">
+                        Try adjusting your filters or search query
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((user) => (
+                  <TableRow
+                    key={user.id}
+                    className={cn(user.isBanned && "opacity-60")}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar alt={user.displayName || "User"} size="sm" />
+                        <span className="font-mono text-xs text-zinc-400">
+                          {formatAddress(user.walletAddress)}
+                        </span>
+                        {user.isBanned && (
+                          <Badge variant="error" size="sm">
+                            Banned
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-zinc-50">
+                      {user.displayName || "---"}
+                    </TableCell>
+                    <TableCell className="text-zinc-400">
+                      {user.email || "---"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={kycVariant[user.kycStatus] || "outline"}>
+                        {kycLabel[user.kycStatus] || user.kycStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={tierVariant[user.tierLevel] || "outline"}>
+                        {tierLabel[user.tierLevel] || user.tierLevel}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(user.totalContributed)}
+                    </TableCell>
+                    <TableCell>{user._count.contributions}</TableCell>
+                    <TableCell className="text-zinc-500">
+                      {formatDate(user.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Dropdown>
+                        <DropdownTrigger className="rounded-md p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50">
+                          {actionLoading === user.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
+                        </DropdownTrigger>
+                        <DropdownMenu align="right">
+                          <DropdownItem
+                            icon={<Eye className="h-4 w-4" />}
+                            onClick={() => setSelectedUserId(user.id)}
+                          >
+                            View Profile
+                          </DropdownItem>
+                          <DropdownItem icon={<Edit className="h-4 w-4" />}>
+                            Edit Role
+                          </DropdownItem>
+                          <DropdownSeparator />
+                          <DropdownItem
+                            icon={<Ban className="h-4 w-4" />}
+                            onClick={() =>
+                              handleBanUser(user.id, user.isBanned)
+                            }
+                          >
+                            {user.isBanned ? "Unban User" : "Ban User"}
+                          </DropdownItem>
+                          <DropdownItem
+                            icon={<RotateCcw className="h-4 w-4" />}
+                            onClick={() => handleResetKyc(user.id)}
+                          >
+                            Reset KYC
+                          </DropdownItem>
+                          <DropdownSeparator />
+                          <DropdownItem icon={<Download className="h-4 w-4" />}>
+                            Export Data
+                          </DropdownItem>
+                        </DropdownMenu>
+                      </Dropdown>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-zinc-500">
+            Showing {(page - 1) * 20 + 1}--
+            {Math.min(page * 20, total)} of {total} users
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm text-zinc-400">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* User detail modal */}
       <Modal
-        isOpen={!!selectedUser}
-        onClose={() => setSelectedUser(null)}
-        title={selectedUser?.displayName ?? "User Profile"}
-        description={selectedUser ? formatAddress(selectedUser.wallet) : ""}
+        isOpen={!!selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+        title={userDetail?.displayName ?? "User Profile"}
+        description={
+          userDetail ? formatAddress(userDetail.walletAddress) : ""
+        }
         size="xl"
       >
-        {selectedUser && (
+        {detailLoading ? (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-1">
+                  <Skeleton variant="text" width="60px" height="12px" />
+                  <Skeleton variant="text" width="120px" height="16px" />
+                </div>
+              ))}
+            </div>
+            <Skeleton variant="rect" height="80px" />
+            <Skeleton variant="rect" height="80px" />
+          </div>
+        ) : userDetail ? (
           <div className="flex flex-col gap-5 max-h-[60vh] overflow-y-auto pr-1">
             {/* Basic info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-zinc-500">Email</p>
-                <p className="text-sm text-zinc-200">{selectedUser.email}</p>
+                <p className="text-sm text-zinc-200">
+                  {userDetail.email || "---"}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">Role</p>
-                <p className="text-sm text-zinc-200">{selectedUser.role}</p>
+                <p className="text-sm text-zinc-200">{userDetail.role}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">KYC Status</p>
-                <Badge variant={kycVariant[selectedUser.kycStatus]}>
-                  {selectedUser.kycStatus}
+                <Badge
+                  variant={kycVariant[userDetail.kycStatus] || "outline"}
+                >
+                  {kycLabel[userDetail.kycStatus] || userDetail.kycStatus}
                 </Badge>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">Tier</p>
-                <Badge variant={tierVariant[selectedUser.tier]}>
-                  {selectedUser.tier}
+                <Badge
+                  variant={tierVariant[userDetail.tierLevel] || "outline"}
+                >
+                  {tierLabel[userDetail.tierLevel] || userDetail.tierLevel}
                 </Badge>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">Total Contributed</p>
                 <p className="text-sm font-semibold text-zinc-200">
-                  {formatCurrency(selectedUser.totalContributed)}
+                  {formatCurrency(userDetail.totalContributed)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">Deals Participated</p>
                 <p className="text-sm font-semibold text-zinc-200">
-                  {selectedUser.dealsCount}
+                  {userDetail._count.contributions}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">Joined</p>
                 <p className="text-sm text-zinc-200">
-                  {formatDate(selectedUser.joined)}
+                  {formatDate(userDetail.createdAt)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">Status</p>
-                {selectedUser.banned ? (
+                {userDetail.isBanned ? (
                   <Badge variant="error">Banned</Badge>
                 ) : (
                   <Badge variant="success">Active</Badge>
@@ -631,34 +688,50 @@ export default function UserManagementPage() {
                 Linked Wallets
               </h4>
               <div className="space-y-1.5">
-                {selectedUser.linkedWallets.map((w, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 px-3 py-2"
-                  >
-                    <span className="font-mono text-sm text-zinc-400">{w}</span>
-                    <CopyButton text={w} />
-                  </div>
-                ))}
+                {userDetail.wallets.length === 0 ? (
+                  <p className="text-sm text-zinc-500">No linked wallets</p>
+                ) : (
+                  userDetail.wallets.map((w) => (
+                    <div
+                      key={w.id}
+                      className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-zinc-400">
+                          {formatAddress(w.address)}
+                        </span>
+                        <Badge variant="outline" size="sm">
+                          {w.chain}
+                        </Badge>
+                        {w.isPrimary && (
+                          <Badge variant="info" size="sm">
+                            Primary
+                          </Badge>
+                        )}
+                      </div>
+                      <CopyButton text={w.address} />
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
             {/* Staking positions */}
-            {selectedUser.stakingPositions.length > 0 && (
+            {userDetail.stakingPositions.length > 0 && (
               <div>
                 <h4 className="mb-2 text-sm font-semibold text-zinc-300">
                   Staking Positions
                 </h4>
                 <div className="space-y-1.5">
-                  {selectedUser.stakingPositions.map((sp, i) => (
+                  {userDetail.stakingPositions.map((sp) => (
                     <div
-                      key={i}
+                      key={sp.id}
                       className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 px-3 py-2"
                     >
                       <span className="text-sm text-zinc-300">
-                        {formatLargeNumber(sp.amount)} {sp.token}
+                        {formatLargeNumber(sp.amount)} EXPO
                       </span>
-                      <Badge variant="success">{sp.apy}% APY</Badge>
+                      <Badge variant="success">{sp.lockPeriod}</Badge>
                     </div>
                   ))}
                 </div>
@@ -666,44 +739,119 @@ export default function UserManagementPage() {
             )}
 
             {/* Compliance flags */}
-            {selectedUser.complianceFlags.length > 0 && (
+            {userDetail.complianceFlags.length > 0 && (
               <div>
                 <h4 className="mb-2 text-sm font-semibold text-zinc-300">
                   Compliance Flags
                 </h4>
                 <div className="space-y-1.5">
-                  {selectedUser.complianceFlags.map((flag, i) => (
+                  {userDetail.complianceFlags.map((flag) => (
                     <div
-                      key={i}
-                      className="flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2"
+                      key={flag.id}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border px-3 py-2",
+                        flag.isResolved
+                          ? "border-zinc-800 bg-zinc-800/30"
+                          : "border-rose-500/20 bg-rose-500/5"
+                      )}
                     >
-                      <Shield className="h-4 w-4 text-rose-400" />
-                      <span className="text-sm text-rose-300">{flag}</span>
+                      <Shield
+                        className={cn(
+                          "h-4 w-4",
+                          flag.isResolved
+                            ? "text-zinc-500"
+                            : "text-rose-400"
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "text-sm",
+                          flag.isResolved
+                            ? "text-zinc-500"
+                            : "text-rose-300"
+                        )}
+                      >
+                        {flag.reason} — {flag.severity}
+                        {flag.description && `: ${flag.description}`}
+                      </span>
+                      {flag.isResolved && (
+                        <Badge variant="success" size="sm">
+                          Resolved
+                        </Badge>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Activity log */}
-            <div>
-              <h4 className="mb-2 text-sm font-semibold text-zinc-300">
-                Recent Activity
-              </h4>
-              <div className="space-y-1.5">
-                {selectedUser.recentActivity.map((act, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 px-3 py-2"
-                  >
-                    <span className="text-sm text-zinc-400">{act.action}</span>
-                    <span className="text-xs text-zinc-600">
-                      {formatDate(act.date)}
-                    </span>
-                  </div>
-                ))}
+            {/* Recent activity from audit logs */}
+            {userDetail.auditLogs.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-sm font-semibold text-zinc-300">
+                  Recent Activity
+                </h4>
+                <div className="space-y-1.5">
+                  {userDetail.auditLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 px-3 py-2"
+                    >
+                      <span className="text-sm text-zinc-400">
+                        {log.action} on {log.resourceType}
+                        {log.resourceId ? ` (${log.resourceId.slice(0, 8)}...)` : ""}
+                      </span>
+                      <span className="text-xs text-zinc-600">
+                        {formatDate(log.createdAt)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Recent contributions */}
+            {userDetail.contributions.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-sm font-semibold text-zinc-300">
+                  Recent Contributions
+                </h4>
+                <div className="space-y-1.5">
+                  {userDetail.contributions.slice(0, 5).map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-zinc-300">
+                          {c.deal.title}
+                        </span>
+                        <Badge
+                          variant={
+                            c.status === "CONFIRMED"
+                              ? "success"
+                              : c.status === "PENDING"
+                                ? "warning"
+                                : "error"
+                          }
+                          size="sm"
+                        >
+                          {c.status}
+                        </Badge>
+                      </div>
+                      <span className="text-sm font-semibold text-zinc-200">
+                        {formatCurrency(c.amountUsd)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2 py-8 text-zinc-500">
+            <AlertTriangle className="h-6 w-6" />
+            <p className="text-sm">Failed to load user details</p>
           </div>
         )}
       </Modal>

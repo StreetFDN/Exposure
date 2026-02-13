@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Users,
   Link2,
@@ -11,6 +11,7 @@ import {
   Crown,
   Copy,
   Check,
+  Loader2,
 } from "lucide-react";
 import {
   Card,
@@ -30,184 +31,60 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
+import { Alert } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils/cn";
 import {
   formatCurrency,
-  formatAddress,
   formatDate,
-  formatToken,
 } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data
+// Types — matching API response from GET /api/referrals
 // ---------------------------------------------------------------------------
 
-const REFERRAL_LINK = "https://exposure.fi/ref/7a3B1c2D";
+interface ReferralStats {
+  total: number;
+  active: number;
+  pending: number;
+  totalEarned: string;
+  pendingRewards: string;
+  lifetimeVolume: string;
+}
 
-const STATS = {
-  totalReferrals: 18,
-  activeReferrals: 14,
-  totalEarned: 2847.5,
-  pendingRewards: 425.0,
-};
+interface RewardStructure {
+  registrationBonus: string;
+  contributionPercent: number;
+  stakingPercent: number;
+  maxRewardPerReferral: string;
+  vestingPeriod: string;
+}
 
-interface Referral {
+interface ApiReferral {
   id: string;
-  wallet: string;
-  status: "Active" | "Pending" | "Inactive";
-  joinedDate: string;
-  contributions: number;
-  yourEarnings: number;
+  userId: string;
+  walletAddress: string;
+  displayName: string | null;
+  status: "ACTIVE" | "PENDING";
+  joinedAt: string;
+  firstContributionAt: string | null;
+  totalContributed: string;
+  rewardEarned: string;
+  rewardStatus: string;
+  tier: string;
 }
 
-const REFERRALS: Referral[] = [
-  {
-    id: "1",
-    wallet: "0x8b3C...4d2E",
-    status: "Active",
-    joinedDate: "2025-12-01",
-    contributions: 12500,
-    yourEarnings: 312.5,
-  },
-  {
-    id: "2",
-    wallet: "0xa1D2...9f3B",
-    status: "Active",
-    joinedDate: "2025-11-15",
-    contributions: 8000,
-    yourEarnings: 200.0,
-  },
-  {
-    id: "3",
-    wallet: "0x5e7F...1a2C",
-    status: "Active",
-    joinedDate: "2025-11-01",
-    contributions: 25000,
-    yourEarnings: 625.0,
-  },
-  {
-    id: "4",
-    wallet: "0x3c4D...8b9E",
-    status: "Pending",
-    joinedDate: "2026-01-20",
-    contributions: 0,
-    yourEarnings: 0,
-  },
-  {
-    id: "5",
-    wallet: "0x9f0A...2c3D",
-    status: "Active",
-    joinedDate: "2025-10-10",
-    contributions: 5000,
-    yourEarnings: 125.0,
-  },
-  {
-    id: "6",
-    wallet: "0x6b7C...0d1E",
-    status: "Inactive",
-    joinedDate: "2025-09-05",
-    contributions: 1000,
-    yourEarnings: 25.0,
-  },
-  {
-    id: "7",
-    wallet: "0x2d3E...7f8A",
-    status: "Active",
-    joinedDate: "2025-12-20",
-    contributions: 15000,
-    yourEarnings: 375.0,
-  },
-  {
-    id: "8",
-    wallet: "0x4e5F...6a7B",
-    status: "Active",
-    joinedDate: "2026-01-05",
-    contributions: 3500,
-    yourEarnings: 87.5,
-  },
-];
-
-interface LeaderboardEntry {
-  rank: number;
-  address: string;
-  referralCount: number;
-  totalEarned: number;
-  isYou: boolean;
+interface ReferralData {
+  referralCode: string;
+  referralLink: string;
+  stats: ReferralStats;
+  rewardStructure: RewardStructure;
+  referrals: ApiReferral[];
 }
 
-const LEADERBOARD: LeaderboardEntry[] = [
-  {
-    rank: 1,
-    address: "0x1a2B...3c4D",
-    referralCount: 87,
-    totalEarned: 15420,
-    isYou: false,
-  },
-  {
-    rank: 2,
-    address: "0x5e6F...7a8B",
-    referralCount: 63,
-    totalEarned: 11250,
-    isYou: false,
-  },
-  {
-    rank: 3,
-    address: "0x9c0D...1e2F",
-    referralCount: 51,
-    totalEarned: 8730,
-    isYou: false,
-  },
-  {
-    rank: 4,
-    address: "0x3a4B...5c6D",
-    referralCount: 42,
-    totalEarned: 6890,
-    isYou: false,
-  },
-  {
-    rank: 5,
-    address: "0x7e8F...9a0B",
-    referralCount: 35,
-    totalEarned: 5410,
-    isYou: false,
-  },
-  {
-    rank: 6,
-    address: "0x1c2D...3e4F",
-    referralCount: 29,
-    totalEarned: 4120,
-    isYou: false,
-  },
-  {
-    rank: 7,
-    address: "0x7a3B...9f4E",
-    referralCount: 18,
-    totalEarned: 2847,
-    isYou: true,
-  },
-  {
-    rank: 8,
-    address: "0x5a6B...7c8D",
-    referralCount: 15,
-    totalEarned: 2210,
-    isYou: false,
-  },
-  {
-    rank: 9,
-    address: "0x9e0F...1a2B",
-    referralCount: 12,
-    totalEarned: 1850,
-    isYou: false,
-  },
-  {
-    rank: 10,
-    address: "0x3c4D...5e6F",
-    referralCount: 9,
-    totalEarned: 1340,
-    isYou: false,
-  },
-];
+// ---------------------------------------------------------------------------
+// Referral Tier Config (static — commission tiers from the reward structure)
+// ---------------------------------------------------------------------------
 
 interface ReferralTier {
   name: string;
@@ -274,13 +151,58 @@ function statusVariant(
   status: string
 ): "success" | "warning" | "outline" {
   switch (status) {
-    case "Active":
+    case "ACTIVE":
       return "success";
-    case "Pending":
+    case "PENDING":
       return "warning";
     default:
       return "outline";
   }
+}
+
+function statusLabel(status: string): string {
+  switch (status) {
+    case "ACTIVE":
+      return "Active";
+    case "PENDING":
+      return "Pending";
+    default:
+      return status;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Loading Skeletons
+// ---------------------------------------------------------------------------
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} variant="card" className="h-24" />
+      ))}
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} variant="rect" className="h-12 w-full" />
+      ))}
+    </div>
+  );
+}
+
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} variant="rect" className="h-14 w-full" />
+      ))}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -288,12 +210,56 @@ function statusVariant(
 // ---------------------------------------------------------------------------
 
 export default function ReferralsPage() {
+  const [data, setData] = useState<ReferralData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
-  const currentRefTier = getCurrentReferralTier(STATS.totalReferrals);
+
+  // -------------------------------------------------------------------------
+  // Fetch referral data
+  // -------------------------------------------------------------------------
+
+  const fetchReferrals = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch("/api/referrals");
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to load referrals");
+      }
+
+      setData(json.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load referrals");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchReferrals();
+  }, [fetchReferrals]);
+
+  // -------------------------------------------------------------------------
+  // Derived values
+  // -------------------------------------------------------------------------
+
+  const stats = data?.stats;
+  const referralLink = data?.referralLink || "";
+  const referrals = data?.referrals || [];
+  const totalReferralCount = stats?.total ?? 0;
+  const currentRefTier = getCurrentReferralTier(totalReferralCount);
+
+  // -------------------------------------------------------------------------
+  // Copy link handler
+  // -------------------------------------------------------------------------
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(REFERRAL_LINK);
+      await navigator.clipboard.writeText(referralLink);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
@@ -301,8 +267,31 @@ export default function ReferralsPage() {
     }
   };
 
-  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on Exposure -- the premier crypto capital raising platform! Use my referral link: ${REFERRAL_LINK}`)}`;
-  const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(REFERRAL_LINK)}&text=${encodeURIComponent("Join Exposure -- crypto capital raising made simple!")}`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on Exposure -- the premier crypto capital raising platform! Use my referral link: ${referralLink}`)}`;
+  const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join Exposure -- crypto capital raising made simple!")}`;
+
+  // -------------------------------------------------------------------------
+  // Error state
+  // -------------------------------------------------------------------------
+
+  if (error && !loading) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-50">Referrals</h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Invite friends, earn rewards. Get commission on every contribution your
+            referrals make.
+          </p>
+        </div>
+        <Alert variant="error">{error}</Alert>
+        <Button variant="secondary" size="sm" onClick={fetchReferrals}>
+          <Loader2 className="h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -316,137 +305,159 @@ export default function ReferralsPage() {
       </div>
 
       {/* Referral Link */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-zinc-300">
-                Your Referral Link
-              </p>
-              <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-2.5">
-                <Link2 className="h-4 w-4 shrink-0 text-violet-400" />
-                <code className="text-sm text-zinc-200">{REFERRAL_LINK}</code>
-                <button
-                  onClick={handleCopyLink}
-                  className="ml-2 rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50"
-                  aria-label="Copy referral link"
+      {loading ? (
+        <Skeleton variant="card" className="h-20" />
+      ) : (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-zinc-300">
+                  Your Referral Link
+                </p>
+                <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-2.5">
+                  <Link2 className="h-4 w-4 shrink-0 text-violet-400" />
+                  <code className="text-sm text-zinc-200">{referralLink}</code>
+                  <button
+                    onClick={handleCopyLink}
+                    className="ml-2 rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50"
+                    aria-label="Copy referral link"
+                  >
+                    {linkCopied ? (
+                      <Check className="h-4 w-4 text-emerald-400" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href={twitterShareUrl} target="_blank" rel="noopener noreferrer">
+                  <Button variant="secondary" size="sm">
+                    <svg
+                      className="h-4 w-4"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    Share on X
+                  </Button>
+                </a>
+                <a
+                  href={telegramShareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  {linkCopied ? (
-                    <Check className="h-4 w-4 text-emerald-400" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
+                  <Button variant="secondary" size="sm">
+                    <svg
+                      className="h-4 w-4"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                    </svg>
+                    Telegram
+                  </Button>
+                </a>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <a href={twitterShareUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary" size="sm">
-                  <svg
-                    className="h-4 w-4"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                  Share on X
-                </Button>
-              </a>
-              <a
-                href={telegramShareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="secondary" size="sm">
-                  <svg
-                    className="h-4 w-4"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                  </svg>
-                  Telegram
-                </Button>
-              </a>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          label="Total Referrals"
-          value={String(STATS.totalReferrals)}
-          icon={<Users className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Active Referrals"
-          value={String(STATS.activeReferrals)}
-          icon={<Users className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Total Earned"
-          value={formatCurrency(STATS.totalEarned)}
-          icon={<DollarSign className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Pending Rewards"
-          value={formatCurrency(STATS.pendingRewards)}
-          icon={<Clock className="h-5 w-5" />}
-        />
-      </div>
+      {loading ? (
+        <StatsSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard
+            label="Total Referrals"
+            value={String(stats?.total ?? 0)}
+            icon={<Users className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Active Referrals"
+            value={String(stats?.active ?? 0)}
+            icon={<Users className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Total Earned"
+            value={formatCurrency(parseFloat(stats?.totalEarned ?? "0"))}
+            icon={<DollarSign className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Pending Rewards"
+            value={formatCurrency(parseFloat(stats?.pendingRewards ?? "0"))}
+            icon={<Clock className="h-5 w-5" />}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Referral List — 2/3 */}
+        {/* Referral List -- 2/3 */}
         <div className="space-y-6 lg:col-span-2">
           {/* Referrals Table */}
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Your Referrals</CardTitle>
-              <Badge variant="outline">{REFERRALS.length} total</Badge>
+              <Badge variant="outline">
+                {loading ? "..." : `${referrals.length} total`}
+              </Badge>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Wallet</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Contributions</TableHead>
-                    <TableHead className="text-right">
-                      Your Earnings
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {REFERRALS.map((ref) => (
-                    <TableRow key={ref.id}>
-                      <TableCell className="font-mono text-zinc-300">
-                        {ref.wallet}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant(ref.status)} size="sm">
-                          {ref.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-zinc-400">
-                        {formatDate(ref.joinedDate)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {ref.contributions > 0
-                          ? formatCurrency(ref.contributions)
-                          : "--"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums font-medium text-emerald-400">
-                        {ref.yourEarnings > 0
-                          ? formatCurrency(ref.yourEarnings)
-                          : "--"}
-                      </TableCell>
+              {loading ? (
+                <TableSkeleton />
+              ) : referrals.length === 0 ? (
+                <div className="py-8 text-center text-sm text-zinc-500">
+                  No referrals yet. Share your link to get started.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Wallet</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Contributions</TableHead>
+                      <TableHead className="text-right">
+                        Your Earnings
+                      </TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {referrals.map((ref) => {
+                      const contributed = parseFloat(ref.totalContributed);
+                      const earned = parseFloat(ref.rewardEarned);
+                      return (
+                        <TableRow key={ref.id}>
+                          <TableCell className="font-mono text-zinc-300">
+                            {ref.displayName || ref.walletAddress}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant(ref.status)} size="sm">
+                              {statusLabel(ref.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-zinc-400">
+                            {formatDate(ref.joinedAt)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {contributed > 0
+                              ? formatCurrency(contributed)
+                              : "--"}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums font-medium text-emerald-400">
+                            {earned > 0
+                              ? formatCurrency(earned)
+                              : "--"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
@@ -457,10 +468,16 @@ export default function ReferralsPage() {
                 <div>
                   <p className="text-sm text-zinc-400">Claimable Rewards</p>
                   <p className="text-2xl font-bold text-zinc-50">
-                    {formatCurrency(STATS.pendingRewards)}
+                    {loading
+                      ? "--"
+                      : formatCurrency(parseFloat(stats?.pendingRewards ?? "0"))}
                   </p>
                 </div>
-                <Button leftIcon={<Gift className="h-4 w-4" />}>
+                <Button
+                  leftIcon={<Gift className="h-4 w-4" />}
+                  disabled
+                  title="Coming soon"
+                >
                   Claim Rewards
                 </Button>
               </div>
@@ -468,67 +485,56 @@ export default function ReferralsPage() {
           </Card>
         </div>
 
-        {/* Right Column — 1/3 */}
+        {/* Right Column -- 1/3 */}
         <div className="space-y-6">
-          {/* Leaderboard */}
+          {/* Reward Structure */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-amber-400" />
-                Leaderboard
+                Reward Structure
               </CardTitle>
-              <CardDescription>Top 10 referrers</CardDescription>
+              <CardDescription>How you earn from referrals</CardDescription>
             </CardHeader>
             <CardContent className="space-y-1">
-              {LEADERBOARD.map((entry) => (
-                <div
-                  key={entry.rank}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
-                    entry.isYou
-                      ? "border border-violet-500/30 bg-violet-500/5"
-                      : "hover:bg-zinc-800/40"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                      entry.rank === 1
-                        ? "bg-amber-500/20 text-amber-400"
-                        : entry.rank === 2
-                        ? "bg-zinc-400/20 text-zinc-300"
-                        : entry.rank === 3
-                        ? "bg-orange-500/20 text-orange-400"
-                        : "bg-zinc-800 text-zinc-500"
-                    )}
-                  >
-                    {entry.rank}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        "truncate font-mono text-sm",
-                        entry.isYou
-                          ? "font-semibold text-violet-400"
-                          : "text-zinc-300"
-                      )}
-                    >
-                      {entry.address}
-                      {entry.isYou && (
-                        <span className="ml-2 font-sans text-xs text-violet-400">
-                          (You)
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      {entry.referralCount} referrals
-                    </p>
+              {loading ? (
+                <LeaderboardSkeleton />
+              ) : data?.rewardStructure ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-zinc-800/40">
+                    <span className="text-sm text-zinc-400">Contribution Commission</span>
+                    <span className="text-sm font-medium tabular-nums text-zinc-200">
+                      {data.rewardStructure.contributionPercent}%
+                    </span>
                   </div>
-                  <span className="text-sm font-medium tabular-nums text-zinc-200">
-                    {formatCurrency(entry.totalEarned)}
-                  </span>
+                  <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-zinc-800/40">
+                    <span className="text-sm text-zinc-400">Staking Commission</span>
+                    <span className="text-sm font-medium tabular-nums text-zinc-200">
+                      {data.rewardStructure.stakingPercent}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-zinc-800/40">
+                    <span className="text-sm text-zinc-400">Max per Referral</span>
+                    <span className="text-sm font-medium tabular-nums text-zinc-200">
+                      {formatCurrency(parseFloat(data.rewardStructure.maxRewardPerReferral))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-zinc-800/40">
+                    <span className="text-sm text-zinc-400">Vesting Period</span>
+                    <span className="text-sm font-medium text-zinc-200">
+                      {data.rewardStructure.vestingPeriod}
+                    </span>
+                  </div>
+                  <div className="mt-2 border-t border-zinc-800 pt-3">
+                    <div className="flex items-center justify-between rounded-lg px-3 py-2">
+                      <span className="text-sm font-medium text-zinc-300">Lifetime Volume</span>
+                      <span className="text-sm font-medium tabular-nums text-zinc-200">
+                        {formatCurrency(parseFloat(stats?.lifetimeVolume ?? "0"))}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              ) : null}
             </CardContent>
           </Card>
 
@@ -543,12 +549,6 @@ export default function ReferralsPage() {
             <CardContent className="space-y-3">
               {REFERRAL_TIERS.map((tier) => {
                 const isCurrent = currentRefTier?.name === tier.name;
-                const isBelow =
-                  currentRefTier &&
-                  STATS.totalReferrals >= tier.minRefs &&
-                  !isCurrent &&
-                  REFERRAL_TIERS.indexOf(tier) <
-                    REFERRAL_TIERS.indexOf(currentRefTier);
 
                 return (
                   <div

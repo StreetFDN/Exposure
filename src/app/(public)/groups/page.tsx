@@ -53,16 +53,14 @@ const CATEGORY_OPTIONS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Placeholder groups
+// Types for the API response
 // ---------------------------------------------------------------------------
 
-interface GroupCardData {
+interface GroupData {
   id: string;
   name: string;
   slug: string;
   description: string;
-  leadName: string;
-  leadWallet: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
   memberCount: number;
@@ -71,133 +69,18 @@ interface GroupCardData {
   totalRaised: string;
   minTierRequired: string | null;
   carryPercent: string;
-  status: "ACTIVE" | "PENDING_APPROVAL" | "CLOSED";
+  status: string;
   isPublic: boolean;
-  category: string;
+  lead: {
+    id: string;
+    walletAddress: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+  _count: {
+    members: number;
+  };
 }
-
-const PLACEHOLDER_GROUPS: GroupCardData[] = [
-  {
-    id: "1",
-    name: "Apex Capital",
-    slug: "apex-capital",
-    description:
-      "Premier crypto VC syndicate focused on seed and Series A investments in DeFi infrastructure. Led by former a16z partner with $500M+ deployed across 40+ portfolio companies.",
-    leadName: "Marcus Reynolds",
-    leadWallet: "0x7a3B...9f4E",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 72,
-    maxMembers: 100,
-    dealCount: 14,
-    totalRaised: "28500000",
-    minTierRequired: "GOLD",
-    carryPercent: "20",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "VC",
-  },
-  {
-    id: "2",
-    name: "DeFi Collective",
-    slug: "defi-collective",
-    description:
-      "Community-driven investment group specializing in DeFi protocols, liquid staking, and yield infrastructure. Rigorous due diligence with 3x average return on investments.",
-    leadName: "Elena Vasquez",
-    leadWallet: "0x4c2D...8bA1",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 156,
-    maxMembers: 200,
-    dealCount: 22,
-    totalRaised: "15200000",
-    minTierRequired: "SILVER",
-    carryPercent: "15",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "DEFI",
-  },
-  {
-    id: "3",
-    name: "Neural Ventures",
-    slug: "neural-ventures",
-    description:
-      "AI and machine learning focused investment syndicate. Backing the convergence of AI and blockchain with investments in decentralized compute, inference networks, and AI agents.",
-    leadName: "David Chen",
-    leadWallet: "0x9f1E...3cD7",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 45,
-    maxMembers: 50,
-    dealCount: 8,
-    totalRaised: "12800000",
-    minTierRequired: "PLATINUM",
-    carryPercent: "25",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "AI",
-  },
-  {
-    id: "4",
-    name: "GameFi Alliance",
-    slug: "gamefi-alliance",
-    description:
-      "Gaming and metaverse investment group backed by industry veterans from EA, Riot, and Epic Games. Focus on fully on-chain games with sustainable token economies.",
-    leadName: "Sophie Nakamura",
-    leadWallet: "0x2bA8...6eF3",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 89,
-    maxMembers: 150,
-    dealCount: 11,
-    totalRaised: "8900000",
-    minTierRequired: null,
-    carryPercent: "18",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "GAMING",
-  },
-  {
-    id: "5",
-    name: "Infra Maxi Club",
-    slug: "infra-maxi-club",
-    description:
-      "Infrastructure-focused syndicate investing in L1s, L2s, bridges, oracles, and developer tooling. Long-term thesis-driven approach with 2-4 year investment horizons.",
-    leadName: "Alex Thompson",
-    leadWallet: "0x5dC9...2aB4",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 100,
-    maxMembers: 100,
-    dealCount: 19,
-    totalRaised: "42000000",
-    minTierRequired: "GOLD",
-    carryPercent: "20",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "INFRA",
-  },
-  {
-    id: "6",
-    name: "Stealth Syndicate",
-    slug: "stealth-syndicate",
-    description:
-      "Invite-only syndicate for accredited investors. Access to pre-seed deals, OTC opportunities, and exclusive token allocations not available on any launchpad.",
-    leadName: "James Whitfield",
-    leadWallet: "0x8eF2...1cA5",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 28,
-    maxMembers: 30,
-    dealCount: 6,
-    totalRaised: "55000000",
-    minTierRequired: "DIAMOND",
-    carryPercent: "30",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "VC",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Tier badge helpers
@@ -230,6 +113,33 @@ function useHasSession(): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Loading skeleton for group cards
+// ---------------------------------------------------------------------------
+
+function GroupCardSkeleton() {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 animate-pulse">
+      <div className="relative h-24 bg-zinc-800" />
+      <div className="flex flex-1 flex-col p-4 pt-8">
+        <div className="mb-2">
+          <div className="h-5 w-32 rounded bg-zinc-800" />
+          <div className="mt-1 h-3 w-40 rounded bg-zinc-800" />
+        </div>
+        <div className="mb-4 h-4 w-full rounded bg-zinc-800" />
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="h-4 w-20 rounded bg-zinc-800" />
+          <div className="h-4 w-20 rounded bg-zinc-800" />
+          <div className="h-4 w-20 rounded bg-zinc-800" />
+          <div className="h-4 w-20 rounded bg-zinc-800" />
+        </div>
+        <div className="mb-4 h-2 w-full rounded-full bg-zinc-800" />
+        <div className="mt-auto h-8 w-full rounded bg-zinc-800" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -243,48 +153,102 @@ export default function GroupsPage() {
 
   const perPage = 6;
 
-  // Filter
-  const filtered = React.useMemo(() => {
-    let result = [...PLACEHOLDER_GROUPS];
+  // API data state
+  const [groups, setGroups] = React.useState<GroupData[]>([]);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (g) =>
-          g.name.toLowerCase().includes(q) ||
-          g.description.toLowerCase().includes(q) ||
-          g.leadName.toLowerCase().includes(q)
-      );
+  // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = React.useState(search);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch groups from API
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchGroups() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams();
+        params.set("page", String(currentPage));
+        params.set("limit", String(perPage));
+
+        // The API supports status and search filters
+        if (statusFilter === "OPEN" || statusFilter === "FULL") {
+          // The API filters by group status (ACTIVE, PENDING_APPROVAL, etc.)
+          // For "open/full" we send status=ACTIVE and do client-side capacity filtering
+          params.set("status", "ACTIVE");
+        }
+
+        if (debouncedSearch) {
+          params.set("search", debouncedSearch);
+        }
+
+        // Only show public groups
+        params.set("isPublic", "true");
+
+        const res = await fetch(`/api/groups?${params.toString()}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch groups (${res.status})`);
+        }
+
+        const json = await res.json();
+
+        if (!json.success) {
+          throw new Error(json.error || "Failed to fetch groups");
+        }
+
+        let apiGroups: GroupData[] = json.data.groups;
+
+        // Client-side filtering for status (open/full) and tier/category
+        // since the API doesn't support all these filters natively
+        if (statusFilter === "OPEN") {
+          apiGroups = apiGroups.filter((g) => g.memberCount < g.maxMembers);
+        } else if (statusFilter === "FULL") {
+          apiGroups = apiGroups.filter((g) => g.memberCount >= g.maxMembers);
+        }
+
+        if (tierFilter !== "ALL") {
+          const tierOrder = ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND"];
+          const minIdx = tierOrder.indexOf(tierFilter);
+          apiGroups = apiGroups.filter((g) => {
+            if (!g.minTierRequired) return true;
+            return tierOrder.indexOf(g.minTierRequired) >= minIdx;
+          });
+        }
+
+        // Note: category is not a native field on InvestmentGroup in the schema,
+        // so we skip category filtering against the API response
+
+        setGroups(apiGroups);
+        setTotalPages(json.data.totalPages || 1);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setError((err as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    if (statusFilter === "OPEN") {
-      result = result.filter((g) => g.memberCount < g.maxMembers);
-    } else if (statusFilter === "FULL") {
-      result = result.filter((g) => g.memberCount >= g.maxMembers);
-    }
+    fetchGroups();
+    return () => controller.abort();
+  }, [currentPage, statusFilter, tierFilter, categoryFilter, debouncedSearch]);
 
-    if (tierFilter !== "ALL") {
-      const tierOrder = ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND"];
-      const minIdx = tierOrder.indexOf(tierFilter);
-      result = result.filter((g) => {
-        if (!g.minTierRequired) return true;
-        return tierOrder.indexOf(g.minTierRequired) >= minIdx;
-      });
-    }
-
-    if (categoryFilter !== "ALL") {
-      result = result.filter((g) => g.category === categoryFilter);
-    }
-
-    return result;
-  }, [search, statusFilter, tierFilter, categoryFilter]);
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paginated = filtered.slice(
-    (currentPage - 1) * perPage,
-    currentPage * perPage
-  );
+  // Client-side pagination for filtered results
+  const paginatedGroups = groups;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
@@ -328,7 +292,6 @@ export default function GroupsPage() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              setCurrentPage(1);
             }}
             leftAddon={<Search className="h-4 w-4" />}
           />
@@ -361,11 +324,33 @@ export default function GroupsPage() {
         </div>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="mb-8 rounded-xl border border-red-900/50 bg-red-950/20 p-5">
+          <p className="text-sm text-red-400">{error}</p>
+          <button
+            onClick={() => setCurrentPage(currentPage)}
+            className="mt-2 text-sm text-red-300 underline hover:text-red-200"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: perPage }).map((_, i) => (
+            <GroupCardSkeleton key={i} />
+          ))}
+        </div>
+      )}
+
       {/* Results */}
-      {paginated.length > 0 ? (
+      {!isLoading && !error && paginatedGroups.length > 0 && (
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {paginated.map((group) => (
+            {paginatedGroups.map((group) => (
               <GroupCard key={group.id} group={group} isAuthenticated={isAuthenticated} />
             ))}
           </div>
@@ -413,7 +398,10 @@ export default function GroupsPage() {
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !error && paginatedGroups.length === 0 && (
         <EmptyState
           icon={<SlidersHorizontal className="h-6 w-6" />}
           title="No groups found"
@@ -443,9 +431,15 @@ export default function GroupsPage() {
 // GroupCard
 // ---------------------------------------------------------------------------
 
-function GroupCard({ group, isAuthenticated = false }: { group: GroupCardData; isAuthenticated?: boolean }) {
+function GroupCard({ group, isAuthenticated = false }: { group: GroupData; isAuthenticated?: boolean }) {
   const isFull = group.memberCount >= group.maxMembers;
   const fillPercent = (group.memberCount / group.maxMembers) * 100;
+
+  // Use the lead's display name or wallet address as the lead name
+  const leadName = group.lead?.displayName || "Anonymous";
+  const leadWallet = group.lead?.walletAddress
+    ? `${group.lead.walletAddress.slice(0, 6)}...${group.lead.walletAddress.slice(-4)}`
+    : "";
 
   return (
     <Card className="flex flex-col overflow-hidden transition-colors hover:border-zinc-700">
@@ -470,8 +464,10 @@ function GroupCard({ group, isAuthenticated = false }: { group: GroupCardData; i
           </h3>
           <p className="text-xs text-zinc-500">
             Led by{" "}
-            <span className="text-zinc-400">{group.leadName}</span>
-            <span className="ml-1 text-zinc-600">{group.leadWallet}</span>
+            <span className="text-zinc-400">{leadName}</span>
+            {leadWallet && (
+              <span className="ml-1 text-zinc-600">{leadWallet}</span>
+            )}
           </p>
         </div>
 

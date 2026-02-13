@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Gift,
   Clock,
@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Countdown } from "@/components/ui/countdown";
+import { Alert } from "@/components/ui/alert";
 import { cn } from "@/lib/utils/cn";
 import {
   formatCurrency,
@@ -30,11 +31,39 @@ import {
 } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data
+// Types
 // ---------------------------------------------------------------------------
+
+interface PortfolioItem {
+  deal: {
+    id: string;
+    title: string;
+    slug: string;
+    projectName: string;
+    status: string;
+    tokenPrice: string;
+    distributionTokenSymbol: string | null;
+  };
+  contribution: {
+    id: string;
+    amountUsd: string;
+    createdAt: string;
+  };
+  vesting: {
+    totalAmount: string;
+    claimedAmount: string;
+    claimableAmount: string;
+    nextUnlockAt: string | null;
+    nextUnlockAmount: string | null;
+    percentComplete: number;
+  } | null;
+  currentValueUsd: string;
+  roiPercent: number;
+}
 
 interface ClaimDeal {
   id: string;
+  dealId: string;
   name: string;
   icon: string;
   tokenSymbol: string;
@@ -42,86 +71,12 @@ interface ClaimDeal {
   claimed: number;
   claimable: number;
   locked: number;
-  nextUnlockDate: Date;
+  nextUnlockDate: Date | null;
   nextUnlockAmount: number;
   vestingType: string;
   tokenPrice: number;
 }
 
-const CLAIM_DEALS: ClaimDeal[] = [
-  {
-    id: "1",
-    name: "Aether Protocol",
-    icon: "AE",
-    tokenSymbol: "AETH",
-    totalAllocation: 100000,
-    claimed: 35000,
-    claimable: 12500,
-    locked: 52500,
-    nextUnlockDate: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000),
-    nextUnlockAmount: 25000,
-    vestingType: "Linear with Cliff",
-    tokenPrice: 0.031,
-  },
-  {
-    id: "2",
-    name: "NexusVault",
-    icon: "NX",
-    tokenSymbol: "NXV",
-    totalAllocation: 50000,
-    claimed: 29750,
-    claimable: 5000,
-    locked: 15250,
-    nextUnlockDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
-    nextUnlockAmount: 4250,
-    vestingType: "Monthly Cliff",
-    tokenPrice: 0.144,
-  },
-  {
-    id: "3",
-    name: "ZKBridge",
-    icon: "ZK",
-    tokenSymbol: "ZKB",
-    totalAllocation: 50000,
-    claimed: 12500,
-    claimable: 7500,
-    locked: 30000,
-    nextUnlockDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
-    nextUnlockAmount: 12500,
-    vestingType: "Linear with Cliff",
-    tokenPrice: 0.042,
-  },
-  {
-    id: "4",
-    name: "OmniLedger",
-    icon: "OL",
-    tokenSymbol: "OMNI",
-    totalAllocation: 20000,
-    claimed: 16800,
-    claimable: 2000,
-    locked: 1200,
-    nextUnlockDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    nextUnlockAmount: 1200,
-    vestingType: "Monthly Cliff",
-    tokenPrice: 0.1725,
-  },
-  {
-    id: "5",
-    name: "Quantum Swap",
-    icon: "QS",
-    tokenSymbol: "QSWP",
-    totalAllocation: 16666,
-    claimed: 6664,
-    claimable: 1666,
-    locked: 8336,
-    nextUnlockDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
-    nextUnlockAmount: 1666,
-    vestingType: "Monthly Cliff",
-    tokenPrice: 0.14,
-  },
-];
-
-// Calendar events — dates that have unlocks
 interface CalendarEvent {
   date: Date;
   amount: number;
@@ -129,50 +84,49 @@ interface CalendarEvent {
   deal: string;
 }
 
-const CALENDAR_EVENTS: CalendarEvent[] = [
-  {
-    date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
-    amount: 4250,
-    symbol: "NXV",
-    deal: "NexusVault",
-  },
-  {
-    date: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
-    amount: 1666,
-    symbol: "QSWP",
-    deal: "Quantum Swap",
-  },
-  {
-    date: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000),
-    amount: 25000,
-    symbol: "AETH",
-    deal: "Aether Protocol",
-  },
-  {
-    date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    amount: 1200,
-    symbol: "OMNI",
-    deal: "OmniLedger",
-  },
-  {
-    date: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
-    amount: 12500,
-    symbol: "ZKB",
-    deal: "ZKBridge",
-  },
-];
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
 
-// Summary calculations
-const totalClaimableValue = CLAIM_DEALS.reduce(
-  (s, d) => s + d.claimable * d.tokenPrice,
-  0
-);
-const totalClaimedAllTime = 98432;
-const nextUnlock = CLAIM_DEALS.reduce(
-  (earliest, d) =>
-    d.nextUnlockDate < earliest ? d.nextUnlockDate : earliest,
-  CLAIM_DEALS[0].nextUnlockDate
-);
+function ClaimsSkeleton() {
+  return (
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex justify-between">
+        <div>
+          <div className="h-7 w-20 animate-pulse rounded bg-zinc-800" />
+          <div className="mt-2 h-4 w-64 animate-pulse rounded bg-zinc-800" />
+        </div>
+        <div className="h-10 w-40 animate-pulse rounded bg-zinc-800" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex flex-col gap-2 rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-5">
+            <div className="h-3 w-24 animate-pulse rounded bg-zinc-800" />
+            <div className="h-7 w-28 animate-pulse rounded bg-zinc-800" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 animate-pulse rounded-lg bg-zinc-800" />
+                  <div className="space-y-2">
+                    <div className="h-5 w-32 animate-pulse rounded bg-zinc-800" />
+                    <div className="h-3 w-24 animate-pulse rounded bg-zinc-800" />
+                  </div>
+                </div>
+                <div className="h-3 w-full animate-pulse rounded-full bg-zinc-800" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Calendar Helpers
@@ -191,10 +145,114 @@ function getFirstDayOfMonth(year: number, month: number) {
 // ---------------------------------------------------------------------------
 
 export default function ClaimsPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [claimDeals, setClaimDeals] = useState<ClaimDeal[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [totalClaimedAllTime, setTotalClaimedAllTime] = useState(0);
+
   const now = new Date();
   const [calMonth, setCalMonth] = useState(now.getMonth());
   const [calYear, setCalYear] = useState(now.getFullYear());
 
+  useEffect(() => {
+    async function fetchClaims() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch("/api/users/me/portfolio");
+        const json = await res.json();
+        if (!json.success) {
+          throw new Error(json.error?.message || "Failed to load claims data");
+        }
+
+        const items: PortfolioItem[] = json.data.portfolio.items;
+
+        // Filter to items with vesting data
+        const vestingItems = items.filter((item) => item.vesting !== null);
+
+        // Map to ClaimDeal format
+        const deals: ClaimDeal[] = vestingItems.map((item) => {
+          const vesting = item.vesting!;
+          const totalTokens = parseFloat(vesting.totalAmount);
+          const claimedTokens = parseFloat(vesting.claimedAmount);
+          const claimableTokens = parseFloat(vesting.claimableAmount);
+          const lockedTokens = Math.max(0, totalTokens - claimedTokens - claimableTokens);
+          const tokenPrice = parseFloat(item.deal.tokenPrice);
+          const tokenSymbol = item.deal.distributionTokenSymbol || "TOKEN";
+
+          return {
+            id: item.contribution.id,
+            dealId: item.deal.id,
+            name: item.deal.projectName || item.deal.title,
+            icon: (item.deal.projectName || item.deal.title).substring(0, 2).toUpperCase(),
+            tokenSymbol,
+            totalAllocation: Math.round(totalTokens),
+            claimed: Math.round(claimedTokens),
+            claimable: Math.round(claimableTokens),
+            locked: Math.round(lockedTokens),
+            nextUnlockDate: vesting.nextUnlockAt ? new Date(vesting.nextUnlockAt) : null,
+            nextUnlockAmount: 0, // Not available from API
+            vestingType: "Vesting",
+            tokenPrice,
+          };
+        });
+
+        // Build calendar events from next unlock dates
+        const events: CalendarEvent[] = deals
+          .filter((d) => d.nextUnlockDate)
+          .map((d) => ({
+            date: d.nextUnlockDate!,
+            amount: d.locked > 0 ? d.locked : d.claimable,
+            symbol: d.tokenSymbol,
+            deal: d.name,
+          }));
+
+        // Calculate total claimed all time
+        const totalClaimed = deals.reduce((sum, d) => sum + d.claimed, 0);
+
+        setClaimDeals(deals);
+        setCalendarEvents(events);
+        setTotalClaimedAllTime(totalClaimed);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load claims data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchClaims();
+  }, []);
+
+  if (loading) return <ClaimsSkeleton />;
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Alert variant="error" title="Error loading claims">
+          {error}
+        </Alert>
+      </div>
+    );
+  }
+
+  // Summary calculations
+  const totalClaimableValue = claimDeals.reduce(
+    (s, d) => s + d.claimable * d.tokenPrice,
+    0
+  );
+  const nextUnlock = claimDeals.reduce(
+    (earliest: Date | null, d) => {
+      if (!d.nextUnlockDate) return earliest;
+      if (!earliest) return d.nextUnlockDate;
+      return d.nextUnlockDate < earliest ? d.nextUnlockDate : earliest;
+    },
+    null
+  );
+  const nextUnlockEvent = calendarEvents.find(
+    (e) => nextUnlock && e.date.getTime() === nextUnlock.getTime()
+  );
+
+  // Calendar
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfMonth(calYear, calMonth);
 
@@ -216,14 +274,12 @@ export default function ClaimsPage() {
     }
   }
 
-  // Build calendar grid
   const calendarDays: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
 
-  // Map events to day numbers for current month view
   function getEventsForDay(day: number): CalendarEvent[] {
-    return CALENDAR_EVENTS.filter((e) => {
+    return calendarEvents.filter((e) => {
       const d = e.date;
       return (
         d.getFullYear() === calYear &&
@@ -234,18 +290,8 @@ export default function ClaimsPage() {
   }
 
   const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
   ];
 
   return (
@@ -258,7 +304,12 @@ export default function ClaimsPage() {
             Manage and claim your vested token allocations.
           </p>
         </div>
-        <Button size="lg" leftIcon={<Zap className="h-5 w-5" />}>
+        <Button
+          size="lg"
+          leftIcon={<Zap className="h-5 w-5" />}
+          disabled={totalClaimableValue <= 0}
+          title={totalClaimableValue <= 0 ? "No tokens to claim" : "Coming soon"}
+        >
           Claim All ({formatCurrency(totalClaimableValue)})
         </Button>
       </div>
@@ -269,7 +320,7 @@ export default function ClaimsPage() {
           label="Total Claimable Value"
           value={formatCurrency(totalClaimableValue)}
           icon={<Gift className="h-5 w-5" />}
-          description={`${CLAIM_DEALS.reduce((s, d) => s + d.claimable, 0).toLocaleString()} tokens across ${CLAIM_DEALS.filter((d) => d.claimable > 0).length} deals`}
+          description={`${claimDeals.reduce((s, d) => s + d.claimable, 0).toLocaleString()} tokens across ${claimDeals.filter((d) => d.claimable > 0).length} deals`}
         />
         <StatCard
           label="Total Claimed All Time"
@@ -278,9 +329,13 @@ export default function ClaimsPage() {
         />
         <StatCard
           label="Next Unlock"
-          value={formatDate(nextUnlock)}
+          value={nextUnlock ? formatDate(nextUnlock) : "No upcoming unlocks"}
           icon={<Clock className="h-5 w-5" />}
-          description={`${CALENDAR_EVENTS.find((e) => e.date.getTime() === nextUnlock.getTime())?.amount.toLocaleString()} ${CALENDAR_EVENTS.find((e) => e.date.getTime() === nextUnlock.getTime())?.symbol}`}
+          description={
+            nextUnlockEvent
+              ? `${nextUnlockEvent.amount.toLocaleString()} ${nextUnlockEvent.symbol}`
+              : undefined
+          }
         />
       </div>
 
@@ -288,123 +343,136 @@ export default function ClaimsPage() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-zinc-50">Your Allocations</h2>
 
-        {CLAIM_DEALS.map((deal) => {
-          const claimedPct = (deal.claimed / deal.totalAllocation) * 100;
-          const claimablePct = (deal.claimable / deal.totalAllocation) * 100;
-          const lockedPct = (deal.locked / deal.totalAllocation) * 100;
+        {claimDeals.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-sm text-zinc-500">
+                No vesting allocations found. Contribute to deals to start earning tokens.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          claimDeals.map((deal) => {
+            const claimedPct = deal.totalAllocation > 0 ? (deal.claimed / deal.totalAllocation) * 100 : 0;
+            const claimablePct = deal.totalAllocation > 0 ? (deal.claimable / deal.totalAllocation) * 100 : 0;
+            const lockedPct = deal.totalAllocation > 0 ? (deal.locked / deal.totalAllocation) * 100 : 0;
 
-          return (
-            <Card key={deal.id}>
-              <CardContent className="p-6">
-                <div className="flex flex-col gap-5">
-                  {/* Header Row */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800 text-sm font-bold text-zinc-300">
-                        {deal.icon}
+            return (
+              <Card key={deal.id}>
+                <CardContent className="p-6">
+                  <div className="flex flex-col gap-5">
+                    {/* Header Row */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800 text-sm font-bold text-zinc-300">
+                          {deal.icon}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-zinc-50">
+                            {deal.name}
+                          </h3>
+                          <p className="text-xs text-zinc-500">
+                            {deal.tokenSymbol} -- {deal.vestingType}
+                          </p>
+                        </div>
+                      </div>
+                      {deal.claimable > 0 && (
+                        <Button size="sm" disabled title="Coming soon">
+                          Claim {deal.claimable.toLocaleString()} {deal.tokenSymbol}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      <div>
+                        <p className="text-xs text-zinc-500">Total Allocation</p>
+                        <p className="text-sm font-medium tabular-nums text-zinc-200">
+                          {formatToken(deal.totalAllocation, 0, deal.tokenSymbol)}
+                        </p>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-zinc-50">
-                          {deal.name}
-                        </h3>
-                        <p className="text-xs text-zinc-500">
-                          {deal.tokenSymbol} -- {deal.vestingType}
+                        <p className="text-xs text-zinc-500">Claimed</p>
+                        <p className="text-sm font-medium tabular-nums text-emerald-400">
+                          {formatToken(deal.claimed, 0, deal.tokenSymbol)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-zinc-500">Claimable Now</p>
+                        <p className="text-sm font-medium tabular-nums text-violet-400">
+                          {formatToken(deal.claimable, 0, deal.tokenSymbol)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-zinc-500">Locked</p>
+                        <p className="text-sm font-medium tabular-nums text-zinc-400">
+                          {formatToken(deal.locked, 0, deal.tokenSymbol)}
                         </p>
                       </div>
                     </div>
-                    {deal.claimable > 0 && (
-                      <Button size="sm">
-                        Claim {deal.claimable.toLocaleString()} {deal.tokenSymbol}
-                      </Button>
+
+                    {/* Segmented Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-800">
+                        <div
+                          className="h-full bg-emerald-500 transition-all"
+                          style={{ width: `${claimedPct}%` }}
+                        />
+                        <div
+                          className="h-full bg-violet-500 transition-all"
+                          style={{ width: `${claimablePct}%` }}
+                        />
+                        <div
+                          className="h-full bg-zinc-700 transition-all"
+                          style={{ width: `${lockedPct}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-zinc-500">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          Claimed ({claimedPct.toFixed(0)}%)
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-violet-500" />
+                          Claimable ({claimablePct.toFixed(0)}%)
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-zinc-700" />
+                          Locked ({lockedPct.toFixed(0)}%)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Next Unlock */}
+                    {deal.nextUnlockDate && (
+                      <div className="flex items-center justify-between rounded-lg bg-zinc-950/50 px-4 py-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-zinc-500" />
+                          <span className="text-zinc-400">Next unlock:</span>
+                          <span className="font-medium text-zinc-200">
+                            {formatDate(deal.nextUnlockDate)}
+                          </span>
+                          {deal.nextUnlockAmount > 0 && (
+                            <>
+                              <span className="text-zinc-500">--</span>
+                              <span className="font-medium text-violet-400">
+                                {formatToken(deal.nextUnlockAmount, 0, deal.tokenSymbol)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <Countdown
+                          targetDate={deal.nextUnlockDate}
+                          className="text-xs"
+                        />
+                      </div>
                     )}
                   </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <div>
-                      <p className="text-xs text-zinc-500">Total Allocation</p>
-                      <p className="text-sm font-medium tabular-nums text-zinc-200">
-                        {formatToken(deal.totalAllocation, 0, deal.tokenSymbol)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-zinc-500">Claimed</p>
-                      <p className="text-sm font-medium tabular-nums text-emerald-400">
-                        {formatToken(deal.claimed, 0, deal.tokenSymbol)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-zinc-500">Claimable Now</p>
-                      <p className="text-sm font-medium tabular-nums text-violet-400">
-                        {formatToken(deal.claimable, 0, deal.tokenSymbol)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-zinc-500">Locked</p>
-                      <p className="text-sm font-medium tabular-nums text-zinc-400">
-                        {formatToken(deal.locked, 0, deal.tokenSymbol)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Segmented Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-800">
-                      {/* Claimed — green */}
-                      <div
-                        className="h-full bg-emerald-500 transition-all"
-                        style={{ width: `${claimedPct}%` }}
-                      />
-                      {/* Claimable — violet */}
-                      <div
-                        className="h-full bg-violet-500 transition-all"
-                        style={{ width: `${claimablePct}%` }}
-                      />
-                      {/* Locked — zinc */}
-                      <div
-                        className="h-full bg-zinc-700 transition-all"
-                        style={{ width: `${lockedPct}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-zinc-500">
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        Claimed ({claimedPct.toFixed(0)}%)
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-violet-500" />
-                        Claimable ({claimablePct.toFixed(0)}%)
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-zinc-700" />
-                        Locked ({lockedPct.toFixed(0)}%)
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Next Unlock */}
-                  <div className="flex items-center justify-between rounded-lg bg-zinc-950/50 px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Clock className="h-4 w-4 text-zinc-500" />
-                      <span className="text-zinc-400">Next unlock:</span>
-                      <span className="font-medium text-zinc-200">
-                        {formatDate(deal.nextUnlockDate)}
-                      </span>
-                      <span className="text-zinc-500">--</span>
-                      <span className="font-medium text-violet-400">
-                        {formatToken(deal.nextUnlockAmount, 0, deal.tokenSymbol)}
-                      </span>
-                    </div>
-                    <Countdown
-                      targetDate={deal.nextUnlockDate}
-                      className="text-xs"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
       </div>
 
       {/* Vesting Calendar */}

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useParams, notFound } from "next/navigation";
 import {
   ArrowLeft,
   Globe,
@@ -32,154 +33,80 @@ import { formatCurrency, formatLargeNumber } from "@/lib/utils/format";
 import type { Phase } from "@/components/deals/deal-phase-indicator";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data — realistic DeFi project
+// Types for the API response
 // ---------------------------------------------------------------------------
 
-const DEAL = {
-  id: "1",
-  slug: "aetherfi-public-round",
-  projectName: "AetherFi",
-  title: "AetherFi Public Round",
-  status: "GUARANTEED_ALLOCATION" as const,
-  category: "DEFI" as const,
-  chain: "ETHEREUM" as const,
+interface DealData {
+  id: string;
+  slug: string;
+  projectName: string;
+  title: string;
+  status: string;
+  category: string;
+  chain: string;
+  description: string;
+  shortDescription: string | null;
+  projectWebsite: string | null;
+  projectTwitter: string | null;
+  projectDiscord: string | null;
+  projectTelegram: string | null;
+  projectGithub: string | null;
+  tokenPrice: string;
+  totalRaise: string;
+  totalRaised: string;
+  hardCap: string;
+  softCap: string | null;
+  fdv: string | null;
+  minContribution: string;
+  maxContribution: string;
+  contributorCount: number;
+  allocationMethod: string;
+  distributionTokenSymbol: string | null;
+  raiseTokenSymbol: string | null;
+  tgeUnlockPercent: string;
+  vestingCliffDays: number;
+  vestingDurationDays: number;
+  vestingType: string;
+  minTierRequired: string | null;
+  requiresKyc: boolean;
+  requiresAccreditation: boolean;
+  registrationOpenAt: string | null;
+  registrationCloseAt: string | null;
+  contributionOpenAt: string | null;
+  contributionCloseAt: string | null;
+  distributionAt: string | null;
+  pitchDeckUrl: string | null;
+  whitepaperUrl: string | null;
+  auditReportUrl: string | null;
+  teamMembers: TeamMember[] | null;
+  featuredImageUrl: string | null;
+  bannerImageUrl: string | null;
+  isFeatured: boolean;
+  phases: DealPhase[];
+  contributionStats: {
+    totalContributed: string;
+    totalContributors: number;
+    averageContribution: string;
+    percentRaised: number;
+  };
+  allocationCount: number;
+}
 
-  description: `## About AetherFi
+interface TeamMember {
+  name: string;
+  role: string;
+  avatar: string | null;
+  linkedin: string | null;
+}
 
-AetherFi is a decentralized restaking protocol that enables permissionless liquid staking derivatives on Ethereum. By leveraging EigenLayer's restaking primitive, AetherFi allows users to earn staking rewards while simultaneously securing additional actively validated services (AVSs).
-
-### Key Features
-
-- **Non-custodial Restaking**: Maintain full control of your assets while earning layered yields across multiple AVSs.
-- **Liquid Staking Derivatives**: Receive aeETH tokens representing your restaked position, freely composable across DeFi.
-- **Operator Marketplace**: Transparent node operator selection with on-chain performance tracking and slashing insurance.
-- **Governance**: Token holders direct protocol parameters, fee structures, and AVS onboarding decisions.
-
-### Market Opportunity
-
-The liquid staking market has grown to over $40B in TVL, yet restaking remains nascent with significant room for growth. AetherFi aims to capture a meaningful share of this expanding market by providing the most user-friendly and secure restaking experience.
-
-### Roadmap
-
-- **Q1 2026**: Mainnet launch with core restaking functionality
-- **Q2 2026**: Operator marketplace and delegation features
-- **Q3 2026**: Cross-chain expansion to Arbitrum and Base
-- **Q4 2026**: Governance token launch and DAO transition`,
-
-  shortDescription:
-    "Decentralized restaking protocol enabling permissionless liquid staking derivatives on Ethereum.",
-
-  projectWebsite: "https://aetherfi.io",
-  projectTwitter: "https://twitter.com/aetherfi",
-  projectDiscord: "https://discord.gg/aetherfi",
-  projectTelegram: "https://t.me/aetherfi",
-  projectGithub: "https://github.com/aetherfi",
-
-  tokenPrice: "0.045",
-  totalRaise: "2000000",
-  totalRaised: "1420000",
-  hardCap: "2000000",
-  softCap: "500000",
-  fdv: "180000000",
-  minContribution: "100",
-  maxContribution: "10000",
-  contributorCount: 1247,
-  allocationMethod: "GUARANTEED" as const,
-
-  distributionTokenSymbol: "AETH",
-  distributionTokenName: "AetherFi Token",
-  totalTokenSupply: "1000000000",
-  raiseTokenSymbol: "USDC",
-
-  tgeUnlockPercent: "15",
-  vestingCliffDays: 30,
-  vestingDurationDays: 365,
-  vestingType: "TGE_PLUS_LINEAR" as const,
-
-  minTierRequired: "SILVER" as const,
-  requiresKyc: true,
-  requiresAccreditation: false,
-
-  registrationOpenAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-  registrationCloseAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-  contributionOpenAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-  contributionCloseAt: new Date(Date.now() + 5 * 86400000).toISOString(),
-  distributionAt: new Date(Date.now() + 14 * 86400000).toISOString(),
-
-  pitchDeckUrl: "#",
-  whitepaperUrl: "#",
-  auditReportUrl: "#",
-
-  teamMembers: [
-    {
-      name: "Elena Vasquez",
-      role: "Co-Founder & CEO",
-      avatar: null,
-      linkedin: "https://linkedin.com/in/",
-    },
-    {
-      name: "Marcus Chen",
-      role: "CTO",
-      avatar: null,
-      linkedin: "https://linkedin.com/in/",
-    },
-    {
-      name: "Sophie Nakamura",
-      role: "Head of Protocol",
-      avatar: null,
-      linkedin: "https://linkedin.com/in/",
-    },
-    {
-      name: "David Okonkwo",
-      role: "Head of BD",
-      avatar: null,
-      linkedin: "https://linkedin.com/in/",
-    },
-  ],
-};
-
-const PHASES: Phase[] = [
-  {
-    id: "p1",
-    name: "Registration",
-    startsAt: DEAL.registrationOpenAt,
-    endsAt: DEAL.registrationCloseAt,
-    status: "completed",
-  },
-  {
-    id: "p2",
-    name: "Guaranteed",
-    startsAt: DEAL.contributionOpenAt,
-    endsAt: new Date(Date.now() + 2 * 86400000).toISOString(),
-    status: "active",
-  },
-  {
-    id: "p3",
-    name: "FCFS",
-    startsAt: new Date(Date.now() + 2 * 86400000).toISOString(),
-    endsAt: DEAL.contributionCloseAt,
-    status: "upcoming",
-  },
-  {
-    id: "p4",
-    name: "Distribution",
-    startsAt: DEAL.contributionCloseAt,
-    endsAt: DEAL.distributionAt,
-    status: "upcoming",
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Tokenomics data for chart
-// ---------------------------------------------------------------------------
-
-const TOKENOMICS_DATA = [
-  { name: "Public Sale", value: 20, color: "#71717a" },
-  { name: "Team", value: 30, color: "#52525b" },
-  { name: "Ecosystem", value: 15, color: "#3f3f46" },
-  { name: "Liquidity", value: 20, color: "#a1a1aa" },
-  { name: "Reserve", value: 15, color: "#d4d4d8" },
-];
+interface DealPhase {
+  id: string;
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  phaseOrder: number;
+  status: string;
+}
 
 // ---------------------------------------------------------------------------
 // Status helpers
@@ -218,14 +145,229 @@ const CHAIN_LABELS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Default tokenomics data (used when deal doesn't include it)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TOKENOMICS_DATA = [
+  { name: "Public Sale", value: 20, color: "#71717a" },
+  { name: "Team", value: 30, color: "#52525b" },
+  { name: "Ecosystem", value: 15, color: "#3f3f46" },
+  { name: "Liquidity", value: 20, color: "#a1a1aa" },
+  { name: "Reserve", value: 15, color: "#d4d4d8" },
+];
+
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+
+function DealDetailSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 animate-pulse">
+      <div className="mb-8">
+        <div className="mb-4 h-4 w-20 rounded bg-zinc-800" />
+        <div className="mb-3 flex gap-2">
+          <div className="h-5 w-16 rounded bg-zinc-800" />
+          <div className="h-5 w-12 rounded bg-zinc-800" />
+          <div className="h-5 w-16 rounded bg-zinc-800" />
+        </div>
+        <div className="h-9 w-64 rounded bg-zinc-800" />
+        <div className="mt-2 h-5 w-96 rounded bg-zinc-800" />
+        <div className="mt-4 flex gap-2">
+          <div className="h-8 w-24 rounded bg-zinc-800" />
+          <div className="h-8 w-24 rounded bg-zinc-800" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="flex flex-1 flex-col gap-8 lg:max-w-[60%]">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="mb-4 h-6 w-20 rounded bg-zinc-800" />
+            <div className="space-y-2">
+              <div className="h-4 w-full rounded bg-zinc-800" />
+              <div className="h-4 w-5/6 rounded bg-zinc-800" />
+              <div className="h-4 w-4/6 rounded bg-zinc-800" />
+              <div className="h-4 w-full rounded bg-zinc-800" />
+              <div className="h-4 w-3/4 rounded bg-zinc-800" />
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-6 lg:w-[40%]">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="mb-4 h-6 w-32 rounded bg-zinc-800" />
+            <div className="h-4 w-full rounded bg-zinc-800" />
+            <div className="mt-4 h-20 w-full rounded bg-zinc-800" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helper: map API phases to Phase type
+// ---------------------------------------------------------------------------
+
+function mapApiPhasesToPhases(phases: DealPhase[]): Phase[] {
+  const now = Date.now();
+  return phases.map((p) => {
+    const start = new Date(p.startsAt).getTime();
+    const end = new Date(p.endsAt).getTime();
+    let status: "completed" | "active" | "upcoming";
+    if (now > end) {
+      status = "completed";
+    } else if (now >= start && now <= end) {
+      status = "active";
+    } else {
+      status = "upcoming";
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      startsAt: p.startsAt,
+      endsAt: p.endsAt,
+      status,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
 
 export default function DealDetailPage() {
-  const deal = DEAL;
-  const statusConfig = STATUS_CONFIG[deal.status];
+  const params = useParams();
+  const dealId = params.id as string;
 
+  const [deal, setDeal] = React.useState<DealData | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   const [showParticipation, setShowParticipation] = React.useState(false);
+
+  // Fetch deal data
+  React.useEffect(() => {
+    async function fetchDeal() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`/api/deals/${dealId}`);
+
+        if (res.status === 404) {
+          setError("NOT_FOUND");
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch deal (${res.status})`);
+        }
+
+        const json = await res.json();
+
+        if (!json.success) {
+          throw new Error(json.error || "Failed to fetch deal");
+        }
+
+        const d = json.data.deal;
+
+        // Normalize field types from API (Decimals come as strings from Prisma JSON serialization)
+        const dealData: DealData = {
+          id: d.id,
+          slug: d.slug,
+          projectName: d.projectName,
+          title: d.title,
+          status: d.status,
+          category: d.category,
+          chain: d.chain,
+          description: d.description || "",
+          shortDescription: d.shortDescription ?? null,
+          projectWebsite: d.projectWebsite ?? null,
+          projectTwitter: d.projectTwitter ?? null,
+          projectDiscord: d.projectDiscord ?? null,
+          projectTelegram: d.projectTelegram ?? null,
+          projectGithub: d.projectGithub ?? null,
+          tokenPrice: String(d.tokenPrice),
+          totalRaise: String(d.totalRaise),
+          totalRaised: String(d.totalRaised),
+          hardCap: String(d.hardCap),
+          softCap: d.softCap != null ? String(d.softCap) : null,
+          fdv: d.fdv != null ? String(d.fdv) : null,
+          minContribution: String(d.minContribution ?? "0"),
+          maxContribution: String(d.maxContribution ?? "0"),
+          contributorCount: d.contributorCount ?? 0,
+          allocationMethod: d.allocationMethod,
+          distributionTokenSymbol: d.distributionTokenSymbol ?? null,
+          raiseTokenSymbol: d.raiseTokenSymbol ?? null,
+          tgeUnlockPercent: String(d.tgeUnlockPercent ?? "0"),
+          vestingCliffDays: d.vestingCliffDays ?? 0,
+          vestingDurationDays: d.vestingDurationDays ?? 0,
+          vestingType: d.vestingType ?? "LINEAR",
+          minTierRequired: d.minTierRequired ?? null,
+          requiresKyc: d.requiresKyc ?? true,
+          requiresAccreditation: d.requiresAccreditation ?? false,
+          registrationOpenAt: d.registrationOpenAt ?? null,
+          registrationCloseAt: d.registrationCloseAt ?? null,
+          contributionOpenAt: d.contributionOpenAt ?? null,
+          contributionCloseAt: d.contributionCloseAt ?? null,
+          distributionAt: d.distributionAt ?? null,
+          pitchDeckUrl: d.pitchDeckUrl ?? null,
+          whitepaperUrl: d.whitepaperUrl ?? null,
+          auditReportUrl: d.auditReportUrl ?? null,
+          teamMembers: Array.isArray(d.teamMembers) ? d.teamMembers : null,
+          featuredImageUrl: d.featuredImageUrl ?? null,
+          bannerImageUrl: d.bannerImageUrl ?? null,
+          isFeatured: d.isFeatured ?? false,
+          phases: Array.isArray(d.phases) ? d.phases : [],
+          contributionStats: d.contributionStats ?? {
+            totalContributed: "0",
+            totalContributors: 0,
+            averageContribution: "0",
+            percentRaised: 0,
+          },
+          allocationCount: d.allocationCount ?? 0,
+        };
+
+        setDeal(dealData);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (dealId) fetchDeal();
+  }, [dealId]);
+
+  // Loading state
+  if (isLoading) {
+    return <DealDetailSkeleton />;
+  }
+
+  // Not found state
+  if (error === "NOT_FOUND") {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center">
+        <h1 className="font-serif text-3xl font-light text-zinc-100">Deal not found</h1>
+        <p className="mt-2 text-zinc-500">The deal you are looking for does not exist or has been removed.</p>
+        <Link href="/deals" className="mt-6 inline-block">
+          <Button variant="outline">Back to Deals</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !deal) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center">
+        <h1 className="font-serif text-3xl font-light text-zinc-100">Something went wrong</h1>
+        <p className="mt-2 text-zinc-500">{error || "Failed to load deal data."}</p>
+        <Link href="/deals" className="mt-6 inline-block">
+          <Button variant="outline">Back to Deals</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const statusConfig = STATUS_CONFIG[deal.status] || STATUS_CONFIG.DRAFT;
 
   const isContributionPhase =
     deal.status === "GUARANTEED_ALLOCATION" || deal.status === "FCFS";
@@ -233,6 +375,15 @@ export default function DealDetailPage() {
   const isUpcoming = deal.status === "APPROVED";
   const isCompleted =
     deal.status === "COMPLETED" || deal.status === "DISTRIBUTING";
+
+  // Map API phases or build from deal dates
+  const phases: Phase[] =
+    deal.phases.length > 0
+      ? mapApiPhasesToPhases(deal.phases)
+      : buildPhasesFromDeal(deal);
+
+  const tokenSymbol = deal.distributionTokenSymbol || "TOKEN";
+  const raiseSymbol = deal.raiseTokenSymbol || "USDC";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -255,10 +406,10 @@ export default function DealDetailPage() {
             {statusConfig.label}
           </span>
           <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
-            {CATEGORY_LABELS[deal.category]}
+            {CATEGORY_LABELS[deal.category] || deal.category}
           </span>
           <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
-            {CHAIN_LABELS[deal.chain]}
+            {CHAIN_LABELS[deal.chain] || deal.chain}
           </span>
           {deal.requiresKyc && (
             <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
@@ -387,29 +538,27 @@ export default function DealDetailPage() {
                 <div className="flex flex-col gap-3">
                   <TokenomicRow
                     label="Token Name"
-                    value={deal.distributionTokenName}
+                    value={tokenSymbol}
                   />
                   <TokenomicRow
                     label="Ticker"
-                    value={`$${deal.distributionTokenSymbol}`}
-                  />
-                  <TokenomicRow
-                    label="Total Supply"
-                    value={`${formatLargeNumber(deal.totalTokenSupply)} ${deal.distributionTokenSymbol}`}
+                    value={`$${tokenSymbol}`}
                   />
                   <TokenomicRow
                     label="Token Price"
                     value={formatCurrency(deal.tokenPrice)}
                   />
-                  <TokenomicRow
-                    label="FDV"
-                    value={`$${formatLargeNumber(deal.fdv)}`}
-                  />
+                  {deal.fdv && (
+                    <TokenomicRow
+                      label="FDV"
+                      value={`$${formatLargeNumber(deal.fdv)}`}
+                    />
+                  )}
                 </div>
 
                 {/* Tokenomics donut chart */}
                 <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                  <TokenomicsChart data={TOKENOMICS_DATA} />
+                  <TokenomicsChart data={DEFAULT_TOKENOMICS_DATA} />
                 </div>
               </div>
             </CardContent>
@@ -463,7 +612,7 @@ export default function DealDetailPage() {
                     <div
                       className="bg-zinc-700"
                       style={{
-                        width: `${(deal.vestingCliffDays / deal.vestingDurationDays) * (100 - parseFloat(deal.tgeUnlockPercent))}%`,
+                        width: `${deal.vestingDurationDays > 0 ? (deal.vestingCliffDays / deal.vestingDurationDays) * (100 - parseFloat(deal.tgeUnlockPercent)) : 0}%`,
                       }}
                     />
                     <div className="flex-1 bg-zinc-500" />
@@ -476,7 +625,7 @@ export default function DealDetailPage() {
                     tgeUnlock: parseFloat(deal.tgeUnlockPercent),
                     cliffMonths: Math.round(deal.vestingCliffDays / 30),
                     vestingMonths: Math.round(deal.vestingDurationDays / 30),
-                    totalAmount: parseFloat(deal.totalTokenSupply) * 0.2, // Public sale portion
+                    totalAmount: parseFloat(deal.totalRaise) * 0.2,
                     claimed: 0,
                   }}
                 />
@@ -485,74 +634,84 @@ export default function DealDetailPage() {
           </Card>
 
           {/* Team */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Team</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {deal.teamMembers.map((member) => (
-                  <div
-                    key={member.name}
-                    className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3"
-                  >
-                    {/* Avatar placeholder */}
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-medium text-zinc-300">
-                      {member.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
+          {deal.teamMembers && deal.teamMembers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Team</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {deal.teamMembers.map((member) => (
+                    <div
+                      key={member.name}
+                      className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3"
+                    >
+                      {/* Avatar placeholder */}
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-medium text-zinc-300">
+                        {member.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-zinc-50">
+                          {member.name}
+                        </p>
+                        <p className="text-xs text-zinc-400">{member.role}</p>
+                      </div>
+                      {member.linkedin && (
+                        <a
+                          href={member.linkedin}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+                        >
+                          <Linkedin className="h-4 w-4" />
+                        </a>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-zinc-50">
-                        {member.name}
-                      </p>
-                      <p className="text-xs text-zinc-400">{member.role}</p>
-                    </div>
-                    {member.linkedin && (
-                      <a
-                        href={member.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-                      >
-                        <Linkedin className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Documents</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <DocumentCard
-                  title="Pitch Deck"
-                  description="Project overview and business plan"
-                  href={deal.pitchDeckUrl}
-                  icon={<FileText className="h-5 w-5" />}
-                />
-                <DocumentCard
-                  title="Whitepaper"
-                  description="Technical documentation"
-                  href={deal.whitepaperUrl}
-                  icon={<FileText className="h-5 w-5" />}
-                />
-                <DocumentCard
-                  title="Audit Report"
-                  description="Smart contract security audit"
-                  href={deal.auditReportUrl}
-                  icon={<Shield className="h-5 w-5" />}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {(deal.pitchDeckUrl || deal.whitepaperUrl || deal.auditReportUrl) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Documents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {deal.pitchDeckUrl && (
+                    <DocumentCard
+                      title="Pitch Deck"
+                      description="Project overview and business plan"
+                      href={deal.pitchDeckUrl}
+                      icon={<FileText className="h-5 w-5" />}
+                    />
+                  )}
+                  {deal.whitepaperUrl && (
+                    <DocumentCard
+                      title="Whitepaper"
+                      description="Technical documentation"
+                      href={deal.whitepaperUrl}
+                      icon={<FileText className="h-5 w-5" />}
+                    />
+                  )}
+                  {deal.auditReportUrl && (
+                    <DocumentCard
+                      title="Audit Report"
+                      description="Smart contract security audit"
+                      href={deal.auditReportUrl}
+                      icon={<Shield className="h-5 w-5" />}
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* =============================================================== */}
@@ -569,7 +728,7 @@ export default function DealDetailPage() {
                 {/* Contribution progress bar */}
                 <ContributionProgress
                   raised={parseFloat(deal.totalRaised)}
-                  softCap={parseFloat(deal.softCap)}
+                  softCap={deal.softCap ? parseFloat(deal.softCap) : 0}
                   hardCap={parseFloat(deal.hardCap)}
                 />
 
@@ -592,9 +751,11 @@ export default function DealDetailPage() {
                 )}
 
                 {/* Phase indicator */}
-                <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-                  <DealPhaseIndicator phases={PHASES} />
-                </div>
+                {phases.length > 0 && (
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+                    <DealPhaseIndicator phases={phases} />
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -604,15 +765,15 @@ export default function DealDetailPage() {
                 dealName={deal.projectName}
                 roundType="Public Round"
                 allocationMethod={deal.allocationMethod.replace("_", " ")}
-                tokenSymbol={deal.distributionTokenSymbol}
-                raiseTokenSymbol={deal.raiseTokenSymbol}
+                tokenSymbol={tokenSymbol}
+                raiseTokenSymbol={raiseSymbol}
                 tokenPrice={parseFloat(deal.tokenPrice)}
                 minContribution={parseFloat(deal.minContribution)}
                 maxContribution={parseFloat(deal.maxContribution)}
-                walletBalance={24350.0}
-                guaranteedAllocation={5000}
-                userTier="Gold"
-                tierMultiplier="2x"
+                walletBalance={0}
+                guaranteedAllocation={0}
+                userTier="None"
+                tierMultiplier="1x"
                 onClose={() => setShowParticipation(false)}
               />
             ) : (
@@ -634,10 +795,10 @@ export default function DealDetailPage() {
                       <ContributionForm
                         minContribution={parseFloat(deal.minContribution)}
                         maxContribution={parseFloat(deal.maxContribution)}
-                        walletBalance={24350.0}
+                        walletBalance={0}
                         tokenPrice={parseFloat(deal.tokenPrice)}
-                        tokenSymbol={deal.distributionTokenSymbol}
-                        raiseTokenSymbol={deal.raiseTokenSymbol}
+                        tokenSymbol={tokenSymbol}
+                        raiseTokenSymbol={raiseSymbol}
                       />
                       <div className="border-t border-zinc-800 pt-4">
                         <Button
@@ -664,7 +825,21 @@ export default function DealDetailPage() {
                       <Button
                         className="w-full"
                         size="lg"
-                        onClick={() => setShowParticipation(true)}
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/deals/${deal.id}/register`, {
+                              method: "POST",
+                            });
+                            const json = await res.json();
+                            if (json.success) {
+                              setShowParticipation(true);
+                            } else {
+                              alert(json.error || "Registration failed");
+                            }
+                          } catch {
+                            alert("Failed to register. Please sign in first.");
+                          }
+                        }}
                       >
                         Register Interest
                       </Button>
@@ -724,11 +899,11 @@ export default function DealDetailPage() {
                 tokenPrice: deal.tokenPrice,
                 totalRaise: deal.totalRaise,
                 hardCap: deal.hardCap,
-                fdv: deal.fdv,
+                fdv: deal.fdv ?? undefined,
                 tgeUnlockPercent: deal.tgeUnlockPercent,
                 vestingDurationDays: deal.vestingDurationDays,
                 allocationMethod: deal.allocationMethod,
-                minTierRequired: deal.minTierRequired,
+                minTierRequired: deal.minTierRequired ?? undefined,
               }}
             />
 
@@ -771,6 +946,53 @@ export default function DealDetailPage() {
       </div>
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Helper: build phases from deal dates when API phases are empty
+// ---------------------------------------------------------------------------
+
+function buildPhasesFromDeal(deal: DealData): Phase[] {
+  const now = Date.now();
+  const phases: Phase[] = [];
+
+  if (deal.registrationOpenAt && deal.registrationCloseAt) {
+    const start = new Date(deal.registrationOpenAt).getTime();
+    const end = new Date(deal.registrationCloseAt).getTime();
+    phases.push({
+      id: "registration",
+      name: "Registration",
+      startsAt: deal.registrationOpenAt,
+      endsAt: deal.registrationCloseAt,
+      status: now > end ? "completed" : now >= start ? "active" : "upcoming",
+    });
+  }
+
+  if (deal.contributionOpenAt && deal.contributionCloseAt) {
+    const start = new Date(deal.contributionOpenAt).getTime();
+    const end = new Date(deal.contributionCloseAt).getTime();
+    phases.push({
+      id: "contribution",
+      name: "Contribution",
+      startsAt: deal.contributionOpenAt,
+      endsAt: deal.contributionCloseAt,
+      status: now > end ? "completed" : now >= start ? "active" : "upcoming",
+    });
+  }
+
+  if (deal.contributionCloseAt && deal.distributionAt) {
+    const start = new Date(deal.contributionCloseAt).getTime();
+    const end = new Date(deal.distributionAt).getTime();
+    phases.push({
+      id: "distribution",
+      name: "Distribution",
+      startsAt: deal.contributionCloseAt,
+      endsAt: deal.distributionAt,
+      status: now > end ? "completed" : now >= start ? "active" : "upcoming",
+    });
+  }
+
+  return phases;
 }
 
 // ---------------------------------------------------------------------------

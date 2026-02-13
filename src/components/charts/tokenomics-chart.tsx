@@ -111,7 +111,6 @@ export function TokenomicsChart({ data, className }: TokenomicsChartProps) {
               dataKey="value"
               strokeWidth={1}
               stroke="#18181b"
-              activeIndex={activeIndex}
               activeShape={renderActiveShape}
               onMouseEnter={(_, index) => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(undefined)}

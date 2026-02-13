@@ -1,5 +1,8 @@
-import { Decimal } from "@prisma/client/runtime/library";
+import { Prisma } from "@prisma/client";
 import type { AllocationMethod, TierLevel } from "@prisma/client";
+
+type Decimal = Prisma.Decimal;
+const Decimal = Prisma.Decimal;
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getTierConfig, TIER_CONFIG } from "@/lib/constants/tiers";

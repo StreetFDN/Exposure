@@ -8,6 +8,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ConnectPrompt } from "@/components/layout/connect-prompt";
 import { Button } from "@/components/ui/button";
+import { ToastContainer } from "@/components/ui/toast";
 
 // ---------------------------------------------------------------------------
 // Helper: read a cookie value on the client
@@ -104,6 +105,7 @@ export function AuthShell({
         {isConnected ? children : <ConnectPrompt />}
       </main>
       <Footer />
+      <ToastContainer />
     </div>
   );
 }

@@ -15,6 +15,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@supabase/ssr": "^0.8.0",
@@ -26,6 +27,7 @@
     "ethers": "^6.16.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
+    "pg": "^8.18.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
@@ -41,6 +43,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",

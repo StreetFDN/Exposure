@@ -21,11 +21,11 @@ export interface DealStatsData {
   tokenPrice: string;
   totalRaise: string;
   hardCap: string;
-  fdv: string | null;
+  fdv?: string | null;
   tgeUnlockPercent: string;
   vestingDurationDays: number;
   allocationMethod: string;
-  minTierRequired: string | null;
+  minTierRequired?: string | null;
 }
 
 export interface DealStatsProps {

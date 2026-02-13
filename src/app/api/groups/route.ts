@@ -10,6 +10,7 @@ import {
   apiError,
   handleApiError,
   requireAuth,
+  getSession,
   validateBody,
   parsePagination,
   setCacheHeaders,
@@ -46,12 +47,84 @@ const createGroupSchema = z.object({
 
 // ---------------------------------------------------------------------------
 // GET handler — List groups with filters
+// Supports `membership=mine` query param to return only the authenticated
+// user's groups (with their role in each).
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, limit, offset } = parsePagination(searchParams);
+
+    const membership = searchParams.get("membership");
+
+    // -----------------------------------------------------------------
+    // Branch: Return the authenticated user's groups
+    // -----------------------------------------------------------------
+    if (membership === "mine") {
+      const user = await getSession(request);
+      if (!user) {
+        return apiError("Authentication required to view your groups", 401, "UNAUTHORIZED");
+      }
+
+      const where: Prisma.GroupMembershipWhereInput = {
+        userId: user.id,
+        status: { in: ["APPROVED", "PENDING"] },
+      };
+
+      const [total, memberships] = await Promise.all([
+        prisma.groupMembership.count({ where }),
+        prisma.groupMembership.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: offset,
+          take: limit,
+          include: {
+            group: {
+              include: {
+                lead: {
+                  select: {
+                    id: true,
+                    walletAddress: true,
+                    displayName: true,
+                    avatarUrl: true,
+                  },
+                },
+                _count: {
+                  select: {
+                    members: {
+                      where: { status: "APPROVED" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      // Flatten: return groups with the user's membership role attached
+      const groups = memberships.map((m) => ({
+        ...m.group,
+        membershipRole: m.role,
+        membershipStatus: m.status,
+        joinedAt: m.joinedAt,
+      }));
+
+      return apiResponse({
+        groups,
+        total,
+        page,
+        limit,
+        totalPages,
+      });
+    }
+
+    // -----------------------------------------------------------------
+    // Default branch: List all groups with filters
+    // -----------------------------------------------------------------
 
     // Parse filter params
     const status = searchParams.get("status");

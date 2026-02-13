@@ -69,7 +69,7 @@ function Tooltip({
     >
       {React.cloneElement(children, {
         "aria-describedby": visible ? tooltipId : undefined,
-      })}
+      } as React.HTMLAttributes<HTMLElement>)}
 
       {visible && (
         <span

@@ -8,7 +8,7 @@ const progressFillVariants = cva(
   "h-full rounded-full transition-all duration-500 ease-out",
   {
     variants: {
-      color: {
+      colorVariant: {
         default: "bg-violet-500",
         success: "bg-emerald-500",
         warning: "bg-amber-500",
@@ -16,7 +16,7 @@ const progressFillVariants = cva(
       },
     },
     defaultVariants: {
-      color: "default",
+      colorVariant: "default",
     },
   }
 );
@@ -39,7 +39,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       value,
       label,
       showPercentage = false,
-      color,
+      colorVariant,
       ...props
     },
     ref
@@ -67,7 +67,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
           className="h-2 w-full overflow-hidden rounded-full bg-zinc-800"
         >
           <div
-            className={progressFillVariants({ color })}
+            className={progressFillVariants({ colorVariant })}
             style={{ width: `${clamped}%` }}
           />
         </div>

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Users,
@@ -24,109 +25,72 @@ import { Avatar } from "@/components/ui/avatar";
 import { formatCurrency, formatLargeNumber, formatPercent } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data — Apex Capital group
+// Types for the API response
 // ---------------------------------------------------------------------------
 
-const GROUP = {
-  id: "1",
-  name: "Apex Capital",
-  slug: "apex-capital",
-  description: `Apex Capital is a premier crypto venture syndicate focused on seed and Series A investments in DeFi infrastructure, cross-chain protocols, and next-generation financial primitives.
+interface GroupMemberUser {
+  id: string;
+  walletAddress: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
 
-Founded by Marcus Reynolds, former partner at a top-tier crypto VC fund, Apex Capital brings institutional-grade due diligence to the syndicate model. Our investment thesis centers on protocols building critical infrastructure for the on-chain economy.
+interface GroupMember {
+  id: string;
+  groupId: string;
+  userId: string;
+  role: string;
+  status: string;
+  joinedAt: string | null;
+  user: GroupMemberUser;
+}
 
-### Investment Philosophy
+interface GroupDealAllocation {
+  id: string;
+  allocatedAmount: string | number;
+  filledAmount: string | number;
+  presentedAt: string | null;
+  deal: {
+    id: string;
+    title: string;
+    slug: string;
+    status: string;
+    category: string;
+    tokenPrice: string;
+    totalRaise: string;
+    totalRaised: string;
+    hardCap: string;
+    featuredImageUrl: string | null;
+  };
+}
 
-We look for teams building category-defining protocols with strong technical moats, clear token utility, and sustainable value accrual. Our typical check size ranges from $500K to $5M, with follow-on capacity for breakout performers.
-
-### Track Record
-
-Since inception, Apex Capital has deployed over $28.5M across 14 deals, with a realized portfolio average return of 4.2x. Our top-performing investment returned 18x at peak, and we maintain an 85% win rate across our portfolio.
-
-### Member Benefits
-
-- Exclusive access to pre-seed and seed deals not available on public launchpads
-- Detailed investment memos and due diligence reports for every deal
-- Monthly portfolio reviews and market outlook calls
-- Direct access to the lead investor for Q&A on active deals
-- Pro-rata co-investment rights on all group allocations`,
-  leadId: "lead-1",
-  leadName: "Marcus Reynolds",
-  leadWallet: "0x7a3B1c2D8e5F6a9B0c1D2e3F4a5B6c7D8e9f4E",
-  leadDisplayName: "Marcus Reynolds",
-  leadAvatarUrl: null,
-  leadTrackRecord: {
-    totalDeals: 14,
-    avgReturn: "4.2x",
-    winRate: 85,
-    totalDeployed: "28500000",
-  },
-  avatarUrl: null,
-  bannerUrl: null,
-  isPublic: true,
-  status: "ACTIVE" as const,
-  maxMembers: 100,
-  memberCount: 72,
-  dealCount: 14,
-  totalRaised: "28500000",
-  minTierRequired: "GOLD" as const,
-  requiresApplication: true,
-  carryPercent: "20",
-  createdAt: new Date(Date.now() - 180 * 86400000).toISOString(),
-};
-
-const ACTIVE_DEALS = [
-  {
-    id: "d1",
-    name: "AetherFi Public Round",
-    slug: "aetherfi-public-round",
-    status: "GUARANTEED_ALLOCATION",
-    category: "DEFI",
-    allocatedAmount: "500000",
-    filledAmount: "380000",
-    tokenPrice: "0.045",
-    presentedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-  },
-  {
-    id: "d2",
-    name: "Nexus AI Community Round",
-    slug: "nexus-ai-community",
-    status: "REGISTRATION_OPEN",
-    category: "AI",
-    allocatedAmount: "750000",
-    filledAmount: "120000",
-    tokenPrice: "0.12",
-    presentedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-  },
-  {
-    id: "d3",
-    name: "LayerBridge Strategic Sale",
-    slug: "layerbridge-strategic",
-    status: "FCFS",
-    category: "INFRASTRUCTURE",
-    allocatedAmount: "1000000",
-    filledAmount: "920000",
-    tokenPrice: "0.28",
-    presentedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-  },
-];
-
-const PAST_DEALS = [
-  { name: "SynapseDAO Genesis", invested: "400000", returnMultiple: "3.8x", status: "Distributed" },
-  { name: "Chrono Social Seed", invested: "250000", returnMultiple: "2.1x", status: "Distributed" },
-  { name: "Voxelheim Pre-Seed", invested: "600000", returnMultiple: "6.5x", status: "Vesting" },
-  { name: "ZKBridge Series A", invested: "1200000", returnMultiple: "1.4x", status: "Vesting" },
-  { name: "Photon Chain Seed", invested: "350000", returnMultiple: "18.2x", status: "Distributed" },
-];
-
-const MEMBERS_PREVIEW = [
-  { id: "m1", name: "Marcus Reynolds", role: "LEAD", wallet: "0x7a3B...9f4E" },
-  { id: "m2", name: "Elena V.", role: "CO_LEAD", wallet: "0x4c2D...8bA1" },
-  { id: "m3", name: "David C.", role: "MEMBER", wallet: "0x9f1E...3cD7" },
-  { id: "m4", name: "Sophie N.", role: "MEMBER", wallet: "0x2bA8...6eF3" },
-  { id: "m5", name: "Alex T.", role: "MEMBER", wallet: "0x5dC9...2aB4" },
-  { id: "m6", name: "James W.", role: "MEMBER", wallet: "0x8eF2...1cA5" },
-];
+interface GroupDetailData {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  leadId: string;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  isPublic: boolean;
+  status: string;
+  maxMembers: number;
+  minTierRequired: string | null;
+  requiresApplication: boolean;
+  carryPercent: string;
+  totalRaised: string;
+  dealCount: number;
+  memberCount: number;
+  createdAt: string;
+  lead: {
+    id: string;
+    walletAddress: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+  members: GroupMember[];
+  dealAllocations: GroupDealAllocation[];
+}
 
 // ---------------------------------------------------------------------------
 // Status helpers
@@ -159,13 +123,176 @@ const ROLE_BADGE: Record<string, { label: string; variant: "default" | "warning"
 };
 
 // ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+
+function GroupDetailSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 animate-pulse">
+      <div className="mb-6 h-4 w-24 rounded bg-zinc-800" />
+      <div className="mb-8 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+        <div className="h-32 bg-zinc-800 sm:h-40" />
+        <div className="px-6 pb-6 pt-12">
+          <div className="h-8 w-48 rounded bg-zinc-800" />
+          <div className="mt-2 h-4 w-64 rounded bg-zinc-800" />
+        </div>
+      </div>
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-xl border border-zinc-800 bg-zinc-900" />
+        ))}
+      </div>
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="flex flex-1 flex-col gap-8 lg:max-w-[60%]">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="mb-4 h-6 w-20 rounded bg-zinc-800" />
+            <div className="space-y-2">
+              <div className="h-4 w-full rounded bg-zinc-800" />
+              <div className="h-4 w-5/6 rounded bg-zinc-800" />
+              <div className="h-4 w-4/6 rounded bg-zinc-800" />
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-6 lg:w-[40%]">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="mb-4 h-6 w-32 rounded bg-zinc-800" />
+            <div className="h-10 w-full rounded bg-zinc-800" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
 
 export default function GroupDetailPage() {
-  const group = GROUP;
-  const statusConfig = GROUP_STATUS_CONFIG[group.status];
+  const params = useParams();
+  const slug = params.slug as string;
+
+  const [group, setGroup] = React.useState<GroupDetailData | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [joinLoading, setJoinLoading] = React.useState(false);
+  const [joinMessage, setJoinMessage] = React.useState<string | null>(null);
+
+  // Fetch group data
+  React.useEffect(() => {
+    async function fetchGroup() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`/api/groups/${slug}`);
+
+        if (res.status === 404) {
+          setError("NOT_FOUND");
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch group (${res.status})`);
+        }
+
+        const json = await res.json();
+
+        if (!json.success) {
+          throw new Error(json.error || "Failed to fetch group");
+        }
+
+        setGroup(json.data);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (slug) fetchGroup();
+  }, [slug]);
+
+  // Handle join group
+  async function handleJoinGroup() {
+    if (!group) return;
+    setJoinLoading(true);
+    setJoinMessage(null);
+
+    try {
+      const res = await fetch(`/api/groups/${group.slug}/join`, {
+        method: "POST",
+      });
+
+      const json = await res.json();
+
+      if (json.success) {
+        setJoinMessage("Application submitted successfully!");
+        // Refresh group data to get updated member count
+        const refreshRes = await fetch(`/api/groups/${slug}`);
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.success) {
+          setGroup(refreshJson.data);
+        }
+      } else {
+        setJoinMessage(json.error || "Failed to join group");
+      }
+    } catch {
+      setJoinMessage("Failed to join. Please sign in first.");
+    } finally {
+      setJoinLoading(false);
+    }
+  }
+
+  // Loading state
+  if (isLoading) {
+    return <GroupDetailSkeleton />;
+  }
+
+  // Not found state
+  if (error === "NOT_FOUND") {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center">
+        <h1 className="text-3xl font-bold text-zinc-100">Group not found</h1>
+        <p className="mt-2 text-zinc-500">The group you are looking for does not exist or has been removed.</p>
+        <Link href="/groups" className="mt-6 inline-block">
+          <Button variant="outline">Back to Groups</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !group) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center">
+        <h1 className="text-3xl font-bold text-zinc-100">Something went wrong</h1>
+        <p className="mt-2 text-zinc-500">{error || "Failed to load group data."}</p>
+        <Link href="/groups" className="mt-6 inline-block">
+          <Button variant="outline">Back to Groups</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const statusConfig = GROUP_STATUS_CONFIG[group.status] || GROUP_STATUS_CONFIG.ACTIVE;
   const fillPercent = (group.memberCount / group.maxMembers) * 100;
+
+  // Derive lead info
+  const leadName = group.lead?.displayName || "Anonymous";
+  const leadWallet = group.lead?.walletAddress || "";
+
+  // Split members into approved and filter for preview
+  const approvedMembers = group.members.filter((m) => m.status === "APPROVED");
+  const membersPreview = approvedMembers.slice(0, 6);
+
+  // Split deal allocations into active and past
+  const activeDeals = group.dealAllocations.filter((da) =>
+    ["REGISTRATION_OPEN", "GUARANTEED_ALLOCATION", "FCFS"].includes(da.deal.status)
+  );
+  const pastDeals = group.dealAllocations.filter((da) =>
+    ["COMPLETED", "DISTRIBUTING", "SETTLEMENT"].includes(da.deal.status)
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -206,10 +333,12 @@ export default function GroupDetailPage() {
               </div>
               <p className="text-sm text-zinc-400">
                 Led by{" "}
-                <span className="font-medium text-zinc-300">{group.leadName}</span>
-                <span className="ml-1 text-zinc-600">
-                  {group.leadWallet.slice(0, 6)}...{group.leadWallet.slice(-4)}
-                </span>
+                <span className="font-medium text-zinc-300">{leadName}</span>
+                {leadWallet && (
+                  <span className="ml-1 text-zinc-600">
+                    {leadWallet.slice(0, 6)}...{leadWallet.slice(-4)}
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -248,8 +377,8 @@ export default function GroupDetailPage() {
         />
         <StatBox
           icon={<BarChart3 className="h-5 w-5 text-sky-400" />}
-          label="Avg Return"
-          value={group.leadTrackRecord.avgReturn}
+          label="Deals"
+          value={String(group.dealAllocations.length)}
         />
       </div>
 
@@ -306,137 +435,137 @@ export default function GroupDetailPage() {
           </Card>
 
           {/* Active Deals */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Deals</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {ACTIVE_DEALS.map((deal) => {
-                const progress =
-                  (parseFloat(deal.filledAmount) / parseFloat(deal.allocatedAmount)) * 100;
-                const statusConf = DEAL_STATUS_CONFIG[deal.status] || {
-                  label: deal.status,
-                  variant: "outline" as const,
-                };
+          {activeDeals.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Deals</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {activeDeals.map((da) => {
+                  const allocated = Number(da.allocatedAmount) || 0;
+                  const filled = Number(da.filledAmount) || 0;
+                  const progress = allocated > 0 ? (filled / allocated) * 100 : 0;
+                  const statusConf = DEAL_STATUS_CONFIG[da.deal.status] || {
+                    label: da.deal.status,
+                    variant: "outline" as const,
+                  };
 
-                return (
-                  <div
-                    key={deal.id}
-                    className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <div>
-                        <Link
-                          href={`/deals/${deal.id}`}
-                          className="text-sm font-medium text-zinc-50 transition-colors hover:text-violet-400"
-                        >
-                          {deal.name}
-                        </Link>
-                        <p className="text-xs text-zinc-500">{deal.category}</p>
+                  return (
+                    <div
+                      key={da.id}
+                      className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4"
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <Link
+                            href={`/deals/${da.deal.slug}`}
+                            className="text-sm font-medium text-zinc-50 transition-colors hover:text-violet-400"
+                          >
+                            {da.deal.title}
+                          </Link>
+                          <p className="text-xs text-zinc-500">{da.deal.category}</p>
+                        </div>
+                        <Badge variant={statusConf.variant} size="sm">
+                          {statusConf.label}
+                        </Badge>
                       </div>
-                      <Badge variant={statusConf.variant} size="sm">
-                        {statusConf.label}
-                      </Badge>
+                      <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <p className="text-xs text-zinc-500">Allocation</p>
+                          <p className="font-medium text-zinc-200">
+                            {formatCurrency(allocated)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-zinc-500">Filled</p>
+                          <p className="font-medium text-zinc-200">
+                            {formatCurrency(filled)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-zinc-500">Token Price</p>
+                          <p className="font-medium text-zinc-200">
+                            {formatCurrency(da.deal.tokenPrice)}
+                          </p>
+                        </div>
+                      </div>
+                      <Progress
+                        value={progress}
+                        label="Fill Progress"
+                        showPercentage
+                        color={progress > 80 ? "warning" : "default"}
+                      />
                     </div>
-                    <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
-                      <div>
-                        <p className="text-xs text-zinc-500">Allocation</p>
-                        <p className="font-medium text-zinc-200">
-                          {formatCurrency(deal.allocatedAmount)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-zinc-500">Filled</p>
-                        <p className="font-medium text-zinc-200">
-                          {formatCurrency(deal.filledAmount)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-zinc-500">Token Price</p>
-                        <p className="font-medium text-zinc-200">
-                          {formatCurrency(deal.tokenPrice)}
-                        </p>
-                      </div>
-                    </div>
-                    <Progress
-                      value={progress}
-                      label="Fill Progress"
-                      showPercentage
-                      color={progress > 80 ? "warning" : "default"}
-                    />
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Past Deals */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Past Deals</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-800 text-left">
-                      <th className="pb-3 pr-4 font-medium text-zinc-500">Deal</th>
-                      <th className="pb-3 pr-4 font-medium text-zinc-500">Invested</th>
-                      <th className="pb-3 pr-4 font-medium text-zinc-500">Return</th>
-                      <th className="pb-3 font-medium text-zinc-500">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {PAST_DEALS.map((deal) => (
-                      <tr key={deal.name} className="border-b border-zinc-800/50 last:border-0">
-                        <td className="py-3 pr-4 font-medium text-zinc-200">
-                          {deal.name}
-                        </td>
-                        <td className="py-3 pr-4 text-zinc-400">
-                          {formatCurrency(deal.invested)}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className="font-medium text-emerald-400">
-                            {deal.returnMultiple}
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          <Badge
-                            variant={deal.status === "Distributed" ? "success" : "info"}
-                            size="sm"
-                          >
-                            {deal.status}
-                          </Badge>
-                        </td>
+          {pastDeals.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Past Deals</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-left">
+                        <th className="pb-3 pr-4 font-medium text-zinc-500">Deal</th>
+                        <th className="pb-3 pr-4 font-medium text-zinc-500">Allocated</th>
+                        <th className="pb-3 pr-4 font-medium text-zinc-500">Filled</th>
+                        <th className="pb-3 font-medium text-zinc-500">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {pastDeals.map((da) => (
+                        <tr key={da.id} className="border-b border-zinc-800/50 last:border-0">
+                          <td className="py-3 pr-4 font-medium text-zinc-200">
+                            <Link
+                              href={`/deals/${da.deal.slug}`}
+                              className="transition-colors hover:text-violet-400"
+                            >
+                              {da.deal.title}
+                            </Link>
+                          </td>
+                          <td className="py-3 pr-4 text-zinc-400">
+                            {formatCurrency(Number(da.allocatedAmount))}
+                          </td>
+                          <td className="py-3 pr-4 text-zinc-400">
+                            {formatCurrency(Number(da.filledAmount))}
+                          </td>
+                          <td className="py-3">
+                            <Badge
+                              variant={da.deal.status === "COMPLETED" ? "success" : "info"}
+                              size="sm"
+                            >
+                              {da.deal.status === "COMPLETED" ? "Completed" : da.deal.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-              {/* Performance summary */}
-              <div className="mt-4 flex flex-wrap gap-4 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Avg Return</p>
-                  <p className="text-lg font-bold text-emerald-400">4.2x</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Win Rate</p>
-                  <p className="text-lg font-bold text-zinc-50">85%</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Best Return</p>
-                  <p className="text-lg font-bold text-violet-400">18.2x</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Total Deployed</p>
-                  <p className="text-lg font-bold text-zinc-50">
-                    ${formatLargeNumber(GROUP.leadTrackRecord.totalDeployed)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Show empty state if no deals at all */}
+          {activeDeals.length === 0 && pastDeals.length === 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Deals</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="py-6 text-center text-sm text-zinc-500">
+                  No deals presented to this group yet.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* =============================================================== */}
@@ -490,9 +619,25 @@ export default function GroupDetailPage() {
                   <Progress value={fillPercent} color="default" />
                 </div>
 
+                {/* Join message */}
+                {joinMessage && (
+                  <p className="text-center text-sm text-zinc-400">{joinMessage}</p>
+                )}
+
                 {/* CTA */}
-                <Button className="w-full" size="lg">
-                  {group.requiresApplication ? "Apply to Join" : "Request to Join"}
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handleJoinGroup}
+                  disabled={joinLoading || group.memberCount >= group.maxMembers}
+                >
+                  {joinLoading
+                    ? "Submitting..."
+                    : group.memberCount >= group.maxMembers
+                      ? "Group Full"
+                      : group.requiresApplication
+                        ? "Apply to Join"
+                        : "Request to Join"}
                 </Button>
 
                 <p className="text-center text-xs text-zinc-600">
@@ -509,15 +654,17 @@ export default function GroupDetailPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Avatar
-                    alt={group.leadName}
-                    src={group.leadAvatarUrl}
+                    alt={leadName}
+                    src={group.lead?.avatarUrl}
                     size="lg"
                   />
                   <div>
-                    <p className="font-medium text-zinc-50">{group.leadName}</p>
-                    <p className="text-xs text-zinc-500">
-                      {group.leadWallet.slice(0, 6)}...{group.leadWallet.slice(-4)}
-                    </p>
+                    <p className="font-medium text-zinc-50">{leadName}</p>
+                    {leadWallet && (
+                      <p className="text-xs text-zinc-500">
+                        {leadWallet.slice(0, 6)}...{leadWallet.slice(-4)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -525,25 +672,25 @@ export default function GroupDetailPage() {
                   <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
                     <p className="text-xs text-zinc-500">Deals Led</p>
                     <p className="text-lg font-bold text-zinc-50">
-                      {group.leadTrackRecord.totalDeals}
+                      {group.dealCount}
                     </p>
                   </div>
                   <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Avg Return</p>
-                    <p className="text-lg font-bold text-emerald-400">
-                      {group.leadTrackRecord.avgReturn}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Win Rate</p>
+                    <p className="text-xs text-zinc-500">Total Raised</p>
                     <p className="text-lg font-bold text-zinc-50">
-                      {group.leadTrackRecord.winRate}%
+                      ${formatLargeNumber(group.totalRaised)}
                     </p>
                   </div>
                   <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Deployed</p>
+                    <p className="text-xs text-zinc-500">Members</p>
                     <p className="text-lg font-bold text-zinc-50">
-                      ${formatLargeNumber(group.leadTrackRecord.totalDeployed)}
+                      {group.memberCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
+                    <p className="text-xs text-zinc-500">Carry</p>
+                    <p className="text-lg font-bold text-zinc-50">
+                      {group.carryPercent}%
                     </p>
                   </div>
                 </div>
@@ -559,25 +706,31 @@ export default function GroupDetailPage() {
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-2">
-                {MEMBERS_PREVIEW.map((member) => {
+                {membersPreview.map((member) => {
                   const roleBadge = ROLE_BADGE[member.role] || {
                     label: member.role,
                     variant: "outline" as const,
                   };
+                  const memberName = member.user.displayName || "Anonymous";
+                  const memberWallet = member.user.walletAddress
+                    ? `${member.user.walletAddress.slice(0, 6)}...${member.user.walletAddress.slice(-4)}`
+                    : "";
+
                   return (
                     <div
                       key={member.id}
                       className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-zinc-800/40"
                     >
                       <Avatar
-                        alt={member.name}
+                        alt={memberName}
+                        src={member.user.avatarUrl}
                         size="sm"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-zinc-200">
-                          {member.name}
+                          {memberName}
                         </p>
-                        <p className="text-xs text-zinc-600">{member.wallet}</p>
+                        <p className="text-xs text-zinc-600">{memberWallet}</p>
                       </div>
                       <Badge variant={roleBadge.variant} size="sm">
                         {roleBadge.label}
@@ -585,9 +738,16 @@ export default function GroupDetailPage() {
                     </div>
                   );
                 })}
-                <p className="pt-2 text-center text-xs text-zinc-600">
-                  and {group.memberCount - MEMBERS_PREVIEW.length} more members
-                </p>
+                {approvedMembers.length > membersPreview.length && (
+                  <p className="pt-2 text-center text-xs text-zinc-600">
+                    and {approvedMembers.length - membersPreview.length} more members
+                  </p>
+                )}
+                {approvedMembers.length === 0 && (
+                  <p className="py-4 text-center text-xs text-zinc-600">
+                    No approved members yet
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

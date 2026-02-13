@@ -39,6 +39,20 @@ const updateProfileSchema = z.object({
       pushNotifications: z.boolean().optional(),
     })
     .optional(),
+
+  // --- Onboarding fields ---
+  country: z.string().max(10).optional(),
+  investorClassification: z
+    .enum(["retail", "experienced", "sophisticated", "accredited"])
+    .optional(),
+  isAccreditedUS: z.boolean().optional(),
+  accreditationMethod: z
+    .enum(["income", "net_worth", "licensed_professional", "qualified_purchaser", "none"])
+    .nullable()
+    .optional(),
+  kycStatus: z.enum(["NONE", "PENDING", "APPROVED", "REJECTED", "EXPIRED"]).optional(),
+  kycTier: z.enum(["BASIC", "STANDARD", "ACCREDITED"]).nullable().optional(),
+  attestationHash: z.string().max(255).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -145,6 +159,12 @@ export async function GET(request: NextRequest) {
       referralCode: user.referralCode,
       referredBy: user.referredById,
       avatarUrl: user.avatarUrl,
+      country: user.country,
+      investorClassification: user.investorClassification,
+      isAccreditedUS: user.isAccreditedUS,
+      accreditationMethod: user.accreditationMethod,
+      attestationHash: user.attestationHash,
+      attestationExpiresAt: user.attestationExpiresAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       wallets: user.wallets,
@@ -193,6 +213,41 @@ export async function PATCH(request: NextRequest) {
       updateData.avatarUrl = body.avatarUrl;
     }
 
+    // --- Onboarding fields ---
+    if (body.country !== undefined) {
+      updateData.country = body.country;
+    }
+
+    if (body.investorClassification !== undefined) {
+      updateData.investorClassification = body.investorClassification;
+    }
+
+    if (body.isAccreditedUS !== undefined) {
+      updateData.isAccreditedUS = body.isAccreditedUS;
+    }
+
+    if (body.accreditationMethod !== undefined) {
+      updateData.accreditationMethod = body.accreditationMethod;
+    }
+
+    if (body.kycStatus !== undefined) {
+      updateData.kycStatus = body.kycStatus;
+      if (body.kycStatus === "APPROVED") {
+        updateData.kycApprovedAt = new Date();
+      }
+    }
+
+    if (body.kycTier !== undefined) {
+      updateData.kycTier = body.kycTier;
+    }
+
+    if (body.attestationHash !== undefined) {
+      updateData.attestationHash = body.attestationHash;
+      updateData.attestationExpiresAt = new Date(
+        Date.now() + 365 * 24 * 60 * 60 * 1000
+      ); // 1 year
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: session.id },
       include: {
@@ -223,6 +278,12 @@ export async function PATCH(request: NextRequest) {
       referralCode: updatedUser.referralCode,
       referredBy: updatedUser.referredById,
       avatarUrl: updatedUser.avatarUrl,
+      country: updatedUser.country,
+      investorClassification: updatedUser.investorClassification,
+      isAccreditedUS: updatedUser.isAccreditedUS,
+      accreditationMethod: updatedUser.accreditationMethod,
+      attestationHash: updatedUser.attestationHash,
+      attestationExpiresAt: updatedUser.attestationExpiresAt,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
       wallets: updatedUser.wallets,

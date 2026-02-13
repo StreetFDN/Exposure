@@ -1,0 +1,409 @@
+EXPOSURE: Demo → Production Plan
+=================================
+
+CURRENT STATE ASSESSMENT
+========================
+
+What's Built:
+- 39 API routes — ALL real, all using Prisma database queries (zero mock APIs)
+- 21 page files — ALL have production-quality UI design
+- 20 Prisma models — Comprehensive schema covering full platform
+- 6 backend services — Allocation engine, deal lifecycle, eligibility checker, application scorer, merkle tree, refund calculator
+- 110 passing tests across 6 test suites
+- Middleware — Auth checks, KYC gating, CORS, security headers
+- Seed file — 1,660 lines seeding realistic data (10 users, 8 deals, 21 contributions, etc.)
+
+The Gap: Frontend <-> Backend Disconnect
+Every single page (except Settings) uses hardcoded placeholder arrays instead of calling the existing API routes. The APIs exist and work. The UIs exist and look great. They're just not connected.
+
+  Layer                       Status
+  -------------------------   ---------------------------
+  Prisma Schema               Done
+  API Routes (39)             Done — all real
+  Backend Services (6)        Done
+  UI Components               Done
+  Page Layouts                Done
+  Pages -> API Integration    0% (except Settings ~40%)
+
+TypeScript Errors (41 total):
+- 18 errors: BigInt literals need ES2020 target (tsconfig.json says ES2017)
+- 2 errors: @prisma/client/runtime/library import not found (allocation-engine, refund-calculator)
+- 4 errors: seed.ts type mismatches (minContribution, GroupMemberRole, allocatedAmount)
+- 4 errors: Deal page comparing non-overlapping DealStatus types
+- 1 error: Recharts activeIndex prop doesn't exist on Pie
+- 2 errors: Progress component color prop type conflict
+- 1 error: Tooltip aria-describedby prop error
+- 1 error: useAuth hook .user on unknown type
+- 1 error: prisma.ts datasourceUrl typed as never
+- 1 error: Missing ../../src/app/page.js module (root page deleted)
+- 1 error: deal-lifecycle.ts Record type vs Prisma JSON type
+- 5 errors: BigInt in test files
+
+
+================================================================================
+PHASE 0: Build Fixes [~1 hour]
+================================================================================
+Must complete before any other work. Zero tolerance for broken builds.
+
+0.1 Fix tsconfig.json target
+    - Change "target": "ES2017" -> "target": "ES2020" (fixes all 18 BigInt errors + 5 test file errors)
+
+0.2 Fix Prisma import paths
+    - allocation-engine.ts and refund-calculator.ts: Replace import { Decimal } from '@prisma/client/runtime/library' with import { Prisma } from '@prisma/client' and use Prisma.Decimal
+
+0.3 Fix prisma.ts datasourceUrl
+    - The datasourceUrl option may not be valid in Prisma 7 client constructor — use url or remove if using prisma.config.ts
+
+0.4 Fix seed.ts types
+    - Remove minContribution from InvestmentGroup creates (not in schema)
+    - Cast role to GroupMemberRole enum
+    - Add missing allocatedAmount to GroupDeal creates
+
+0.5 Fix component type errors
+    - progress.tsx: Rename color variant prop to avoid conflict with HTML color attribute
+    - tooltip.tsx: Fix aria-describedby prop typing
+    - tokenomics-chart.tsx: Remove activeIndex from Pie or use Recharts v3 API
+
+0.6 Fix deal page status comparisons
+    - deals/[id]/page.tsx: Fix DealStatus comparisons (comparing against wrong enum values)
+
+0.7 Fix useAuth hook
+    - Type the response properly instead of unknown
+
+0.8 Fix deal-lifecycle.ts JSON type
+    - Cast Record<string, unknown> to Prisma.InputJsonValue
+
+0.9 Create root page redirect
+    - Add src/app/page.tsx that redirects to /(public) or exports the landing page
+
+0.10 Verify clean build
+    - Run tsc --noEmit — expect 0 errors
+    - Run next build — expect success
+    - Run vitest run — expect 110/110 passing
+
+
+================================================================================
+PHASE 1: Connect All Pages to Existing APIs [~4 hours]
+================================================================================
+This is the biggest phase. Every page gets rewritten to fetch real data.
+
+1.1 Deals Listing (/deals)
+    - Replace PLACEHOLDER_DEALS with fetch('/api/deals') call
+    - Wire up filter/sort/search params to API query params
+    - Add loading skeleton and error state
+    - Keep existing UI components, just swap data source
+
+1.2 Deal Detail (/deals/[id])
+    - Replace hardcoded DEAL with fetch('/api/deals/${id}') using dynamic route param
+    - Wire registration button -> POST /api/deals/${id}/register
+    - Wire contribution form -> POST /api/deals/${id}/contribute
+    - Wire eligibility check -> GET /api/deals/${id}/eligibility
+    - Show real phase timeline from API response
+
+1.3 Groups Listing (/groups)
+    - Replace PLACEHOLDER_GROUPS with fetch('/api/groups') call
+    - Wire filters to API params
+
+1.4 Group Detail (/groups/[slug])
+    - Replace hardcoded GROUP with fetch('/api/groups/${slug}') call
+    - Wire join button -> POST /api/groups/${slug}/join
+    - Show real members from API
+
+1.5 Dashboard (/dashboard)
+    - Replace all hardcoded stats with:
+      - GET /api/users/me — profile, tier, points
+      - GET /api/users/me/portfolio — portfolio value, positions
+      - GET /api/contributions?limit=5 — recent activity
+      - GET /api/staking — staked amount, tier progress
+
+1.6 Portfolio (/portfolio)
+    - Replace PORTFOLIO_DATA with GET /api/users/me/portfolio
+    - Map API response to existing table format
+    - Wire export button -> GET /api/users/me/portfolio/export (already partially done in Settings)
+
+1.7 Staking (/staking)
+    - Replace CURRENT_POSITION and STAKING_HISTORY with GET /api/staking
+    - Wire stake form -> POST /api/staking
+    - Replace TIERS with GET /api/staking/tiers
+
+1.8 Claims (/claims)
+    - Build from GET /api/users/me/portfolio — filter to positions with vesting schedules
+    - Show real vesting unlock dates from VestingSchedule data
+    - Claim button: needs new API route POST /api/deals/[id]/claim
+
+1.9 Referrals (/referrals)
+    - Replace all hardcoded data with GET /api/referrals
+    - Wire copy link to use real referral code from API
+
+1.10 My Groups (/my-groups)
+    - Build from GET /api/groups?membership=mine (need to add this filter to groups API)
+    - Show groups where user is member vs lead
+
+1.11 Settings (/settings) — Complete remaining
+    - Wire profile form -> PATCH /api/users/me
+    - Wire 2FA setup -> POST /api/auth/2fa/setup + POST /api/auth/2fa/verify
+    - Wire 2FA disable -> POST /api/auth/2fa/disable
+    - Wire active sessions display (from session cookie data)
+
+1.12 Admin Dashboard (/admin/dashboard)
+    - Replace all placeholder data with GET /api/admin/stats
+    - Implement real Recharts charts using API response data (raise volume, user signups)
+
+1.13 Admin Deals (/admin/deals)
+    - Replace hardcoded deals with GET /api/deals (admin view — show all statuses)
+    - Wire action dropdown:
+      - Edit -> navigate to edit page
+      - Pause/Resume -> PATCH /api/deals/${id} status change
+      - Cancel -> DELETE /api/deals/${id}
+      - Phase transition -> POST /api/deals/${id}/phase
+
+1.14 Admin Create Deal (/admin/deals/create)
+    - Wire submit button -> POST /api/deals with form data
+    - Need: File upload endpoint for pitch decks, images (Supabase Storage or S3)
+
+1.15 Admin Applications (/admin/applications)
+    - Replace hardcoded data with GET /api/admin/applications
+    - Wire approve -> PATCH /api/admin/applications/${id} with status: "APPROVED"
+    - Wire reject -> PATCH /api/admin/applications/${id} with status: "REJECTED"
+    - Wire scoring -> PUT /api/admin/applications/${id}/score
+
+1.16 Admin Users (/admin/users)
+    - Replace hardcoded users with GET /api/admin/users
+    - Wire actions:
+      - Ban user: need PATCH /api/admin/users/${id} route (to set isBanned)
+      - Reset KYC: need PATCH /api/admin/users/${id} route (to reset kycStatus)
+      - View detail: modal fetches from existing API
+
+1.17 Admin Compliance (/admin/compliance)
+    - Replace hardcoded data with GET /api/admin/compliance/flags
+    - Wire resolve -> PATCH /api/admin/compliance/flags/${id}
+    - KYC Queue: need new API route GET /api/admin/users?kycStatus=PENDING
+    - Audit Log: need new API route GET /api/admin/audit-logs
+
+1.18 Admin Treasury (/admin/treasury)
+    - Replace placeholder data with GET /api/admin/treasury
+    - Show real chain balances, fund flows, disbursements from API
+
+1.19 Admin Analytics (/admin/analytics)
+    - Need new API route: GET /api/admin/analytics with date range param
+    - Build real Recharts charts (bar, line, pie, funnel)
+    - Pull real data: raise volume, user signups, conversion funnel, geo distribution, tier distribution
+
+
+================================================================================
+PHASE 2: Missing API Routes & Functionality [~2 hours]
+================================================================================
+
+2.1 New API routes needed
+    - POST /api/deals/[id]/claim — Token claim (creates ClaimRecord, updates VestingSchedule)
+    - GET /api/admin/audit-logs — Paginated audit log listing
+    - GET /api/admin/analytics — Aggregated analytics with date ranges
+    - PATCH /api/admin/users/[id] — Admin user actions (ban, update role, reset KYC)
+    - POST /api/admin/deals — Redirect (currently POST /api/deals handles this, may need admin-specific route)
+    - POST /api/upload — File upload endpoint (Supabase Storage integration)
+
+2.2 Admin user management route
+    - PATCH for updating isBanned, kycStatus, role, tierLevel
+    - Audit log on every admin action
+
+2.3 Admin audit log route
+    - Query AuditLog table with pagination and filters (action, resourceType, userId, dateRange)
+
+2.4 Admin analytics route
+    - Aggregations: total raised by period, user signups by day, contribution conversion funnel
+    - Tier distribution, geo distribution (from user.country), top deals by raise
+
+2.5 File upload
+    - Supabase Storage integration for deal images, pitch decks, whitepapers
+    - Return public URL after upload
+
+2.6 Claims API
+    - Verify vesting schedule, calculate claimable amount
+    - Create ClaimRecord, update VestingSchedule.claimedAmount
+    - Return claim details for frontend confirmation
+
+
+================================================================================
+PHASE 3: Onboarding Flow Integration [~1.5 hours]
+================================================================================
+
+3.1 Step 1: Sign In
+    - Integrate with SIWE auth flow (GET /api/auth/nonce -> POST /api/auth/verify)
+    - Use wagmi/RainbowKit for wallet connection
+
+3.2 Step 2: Investor Assessment
+    - Save investor classification to user record via PATCH /api/users/me
+    - Store investorClassification, isAccreditedUS, accreditationMethod
+
+3.3 Step 3: KYC Verification
+    - For now: Set kycStatus directly via API (Sumsub integration is Phase 4)
+    - Wire the form to update user KYC fields via PATCH /api/users/me
+
+3.4 Step 4: Connect Wallet
+    - Already have wallet linking API (POST /api/users/me/wallets)
+    - Wire to wagmi wallet connection flow
+
+3.5 Step 5: Attestation
+    - Save attestation acceptance via PATCH /api/users/me
+    - Set KYC cookie on completion to pass middleware gate
+
+
+================================================================================
+PHASE 4: Recharts Implementation [~1 hour]
+================================================================================
+
+4.1 Admin Dashboard Charts
+    - Raise volume over time (BarChart)
+    - User growth (LineChart)
+    - Use real data from GET /api/admin/stats or GET /api/admin/analytics
+
+4.2 Admin Analytics Charts
+    - Raise volume bar chart
+    - User signups + KYC completions dual line chart
+    - Contributions by chain pie chart
+    - Tier distribution horizontal bars (already partially done with CSS)
+
+4.3 Admin Treasury Charts
+    - Revenue breakdown over time
+
+4.4 Portfolio Chart
+    - Already have portfolio-chart.tsx component — just needs real data wiring
+
+
+================================================================================
+PHASE 5: Production Hardening [~1.5 hours]
+================================================================================
+
+5.1 Move in-memory stores to database
+    - Nonce store (currently Map<string, { nonce, expiry }>) -> use PlatformConfig or new NonceStore table
+    - 2FA pending secrets (currently Map<string, string>) -> use PlatformConfig or temp column on User
+
+5.2 Session improvements
+    - Add session expiry check (currently just HMAC validation)
+    - Add session invalidation on logout (server-side session store)
+    - Consider using database-backed sessions
+
+5.3 Environment variables
+    - Verify DATABASE_URL is configured for Supabase
+    - Add SESSION_SECRET (strong random string)
+    - Add TOTP_ENCRYPTION_KEY (32-byte key for 2FA secret encryption)
+    - Add WEBHOOK_SECRET for blockchain webhook validation
+    - WalletConnect project ID (register at cloud.walletconnect.com)
+    - Alchemy API key (register at alchemy.com)
+
+5.4 Error handling
+    - Add error boundaries per route segment
+    - Add consistent loading states with skeletons
+    - Add retry logic on failed API calls (React Query handles this)
+    - Add toast notifications for user-facing actions
+
+5.5 Security review
+    - Review all API routes for proper auth checks
+    - Verify rate limiting is applied to auth routes
+    - Review input validation on all POST/PATCH routes
+    - Add Content Security Policy header
+
+
+================================================================================
+PHASE 6: Testing & QA [~1 hour]
+================================================================================
+
+6.1 Build verification
+    - Clean tsc --noEmit (0 errors)
+    - Clean next build (no warnings)
+    - All existing tests still pass
+
+6.2 Add critical integration tests
+    - Auth flow: nonce -> verify -> session -> protected route
+    - Deal flow: list -> detail -> register -> contribute
+    - Admin flow: list deals -> create deal -> manage phases
+    - Staking flow: create position -> tier calculation
+
+6.3 Manual smoke test
+    - Walk through every page, verify data loads from API
+    - Test all CRUD operations in admin panel
+    - Test onboarding flow end-to-end
+    - Test on mobile viewport
+
+6.4 Run next build
+    - Verify production build succeeds
+    - Check for any SSR errors or hydration mismatches
+
+
+================================================================================
+EXECUTION TIMELINE (12h autonomous run)
+================================================================================
+
+  Hour    Phase              Work
+  ------  -----------------  --------------------------------------------------------
+  0-1     Phase 0            Fix all 41 TypeScript errors, verify clean build
+  1-3     Phase 1 (Public)   Connect deals, groups, landing pages to APIs
+  3-5     Phase 1 (Auth)     Connect dashboard, portfolio, staking, claims, referrals, my-groups
+  5-7     Phase 1 (Admin)    Connect all 8 admin pages to APIs
+  7-8     Phase 2            Build missing API routes (claim, audit-logs, analytics, admin users, upload)
+  8-9     Phase 3            Wire onboarding flow to auth + SIWE + wallet APIs
+  9-10    Phase 4            Implement all Recharts visualizations
+  10-11   Phase 5            Production hardening (sessions, env, security, error handling)
+  11-12   Phase 6            Testing, build verification, manual QA
+
+
+================================================================================
+FILES THAT WILL BE MODIFIED
+================================================================================
+
+Pages (rewritten to use real data):
+  - src/app/(public)/deals/page.tsx
+  - src/app/(public)/deals/[id]/page.tsx
+  - src/app/(public)/groups/page.tsx
+  - src/app/(public)/groups/[slug]/page.tsx
+  - src/app/(public)/onboarding/page.tsx
+  - src/app/(auth)/dashboard/page.tsx
+  - src/app/(auth)/portfolio/page.tsx
+  - src/app/(auth)/staking/page.tsx
+  - src/app/(auth)/claims/page.tsx
+  - src/app/(auth)/referrals/page.tsx
+  - src/app/(auth)/my-groups/page.tsx
+  - src/app/(auth)/settings/page.tsx
+  - src/app/admin/dashboard/page.tsx
+  - src/app/admin/deals/page.tsx
+  - src/app/admin/deals/create/page.tsx
+  - src/app/admin/applications/page.tsx
+  - src/app/admin/users/page.tsx
+  - src/app/admin/compliance/page.tsx
+  - src/app/admin/treasury/page.tsx
+  - src/app/admin/analytics/page.tsx
+
+Bug fixes:
+  - tsconfig.json
+  - src/lib/prisma.ts
+  - src/lib/services/allocation-engine.ts
+  - src/lib/services/refund-calculator.ts
+  - src/lib/services/deal-lifecycle.ts
+  - src/components/ui/progress.tsx
+  - src/components/ui/tooltip.tsx
+  - src/components/charts/tokenomics-chart.tsx
+  - src/hooks/useAuth.ts
+  - prisma/seed.ts
+
+New files:
+  - src/app/page.tsx (root redirect)
+  - src/app/api/deals/[id]/claim/route.ts
+  - src/app/api/admin/audit-logs/route.ts
+  - src/app/api/admin/analytics/route.ts
+  - src/app/api/admin/users/[id]/route.ts
+  - src/app/api/upload/route.ts
+
+
+================================================================================
+WHAT'S NOT IN SCOPE (external dependencies)
+================================================================================
+- Smart contract deployment (requires Solidity work)
+- Sumsub KYC provider integration (requires API key + approval)
+- SendGrid email integration (requires API key)
+- Chainalysis sanctions screening (requires API key)
+- WalletConnect project registration (requires account)
+- Alchemy RPC setup (requires account)
+- Domain/DNS configuration
+- CI/CD pipeline
+- Mobile app (Phase 2 per spec)
+- Governance module (Phase 3 per spec)

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -11,6 +12,7 @@ import {
   MessageCircle,
   Github,
   Info,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
-/*  Types                                                                     */
+/*  Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
 interface FormData {
@@ -38,6 +40,8 @@ interface FormData {
   discord: string;
   telegram: string;
   github: string;
+  featuredImageUrl: string;
+  bannerImageUrl: string;
   // Step 2 — Token Details
   tokenName: string;
   ticker: string;
@@ -84,6 +88,8 @@ const defaultForm: FormData = {
   discord: "",
   telegram: "",
   github: "",
+  featuredImageUrl: "",
+  bannerImageUrl: "",
   tokenName: "",
   ticker: "",
   totalSupply: "",
@@ -115,7 +121,7 @@ const defaultForm: FormData = {
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Steps config                                                              */
+/*  Steps config                                                               */
 /* -------------------------------------------------------------------------- */
 
 const STEPS = [
@@ -128,7 +134,7 @@ const STEPS = [
 ];
 
 /* -------------------------------------------------------------------------- */
-/*  Validation                                                                */
+/*  Validation                                                                 */
 /* -------------------------------------------------------------------------- */
 
 function validateStep(step: number, form: FormData): Record<string, string> {
@@ -165,7 +171,7 @@ function validateStep(step: number, form: FormData): Record<string, string> {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Helper: auto-generate slug                                                */
+/*  Helper: auto-generate slug                                                 */
 /* -------------------------------------------------------------------------- */
 
 function toSlug(name: string): string {
@@ -176,13 +182,73 @@ function toSlug(name: string): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Page                                                                      */
+/*  Helper: map form category to API enum                                      */
+/* -------------------------------------------------------------------------- */
+
+const categoryApiMap: Record<string, string> = {
+  DeFi: "DEFI",
+  Infrastructure: "INFRASTRUCTURE",
+  Gaming: "GAMING",
+  AI: "AI",
+  RWA: "OTHER",
+  Social: "SOCIAL",
+  NFT: "NFT",
+  DAO: "OTHER",
+};
+
+const chainApiMap: Record<string, string> = {
+  ethereum: "ETHEREUM",
+  arbitrum: "ARBITRUM",
+  base: "BASE",
+  polygon: "ETHEREUM", // fallback
+  optimism: "ETHEREUM", // fallback
+  avalanche: "ETHEREUM", // fallback
+};
+
+const allocationApiMap: Record<string, string> = {
+  guaranteed: "GUARANTEED",
+  "pro-rata": "PRO_RATA",
+  lottery: "LOTTERY",
+  fcfs: "FCFS",
+  hybrid: "HYBRID",
+};
+
+const vestingApiMap: Record<string, string> = {
+  none: "LINEAR",
+  linear: "LINEAR",
+  "cliff-then-linear": "TGE_PLUS_LINEAR",
+  monthly: "MONTHLY_CLIFF",
+  custom: "CUSTOM",
+};
+
+const tierApiMap: Record<string, string> = {
+  bronze: "BRONZE",
+  silver: "SILVER",
+  gold: "GOLD",
+  platinum: "PLATINUM",
+  diamond: "DIAMOND",
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Helper: datetime-local to ISO string                                       */
+/* -------------------------------------------------------------------------- */
+
+function toISOString(datetimeLocal: string): string | undefined {
+  if (!datetimeLocal) return undefined;
+  return new Date(datetimeLocal).toISOString();
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Page                                                                       */
 /* -------------------------------------------------------------------------- */
 
 export default function CreateDealPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState<FormData>(defaultForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const updateField = useCallback(
     <K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -227,6 +293,77 @@ export default function CreateDealPage() {
     Number(form.totalSupply) > 0 && Number(form.tokenPrice) > 0
       ? Number(form.totalSupply) * Number(form.tokenPrice)
       : 0;
+
+  // Submit handler
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+
+      // Build the API body matching createDealSchema
+      const body: Record<string, unknown> = {
+        title: form.projectName,
+        slug: form.slug || toSlug(form.projectName),
+        shortDescription: form.shortDescription || undefined,
+        description: form.fullDescription || form.shortDescription,
+        projectName: form.projectName,
+        category: categoryApiMap[form.category] || "OTHER",
+        chain: chainApiMap[form.chain] || "ETHEREUM",
+        tokenPrice: form.tokenPrice,
+        totalRaise: form.hardCap, // totalRaise maps to hard cap
+        hardCap: form.hardCap,
+        softCap: form.softCap || undefined,
+        minContribution: form.minContribution || "0",
+        maxContribution: form.maxContribution || "0",
+        allocationMethod: allocationApiMap[form.allocationMethod] || "FCFS",
+        vestingType: vestingApiMap[form.vestingType] || "LINEAR",
+        tgeUnlockPercent: form.tgeUnlockPercent || "0",
+        vestingCliffDays: form.cliffDays ? parseInt(form.cliffDays, 10) : 0,
+        vestingDurationDays: form.vestingDurationDays ? parseInt(form.vestingDurationDays, 10) : 0,
+        minTierRequired: form.minTier ? (tierApiMap[form.minTier] ?? null) : null,
+        distributionTokenSymbol: form.ticker || undefined,
+        raiseTokenSymbol: form.raiseToken || undefined,
+        registrationOpenAt: toISOString(form.registrationOpen),
+        registrationCloseAt: toISOString(form.registrationClose),
+        contributionOpenAt: toISOString(form.contributionOpen),
+        contributionCloseAt: toISOString(form.contributionClose),
+        requiresKyc: form.requireKyc,
+        requiresAccreditation: form.requireAccreditation,
+        projectWebsite: form.website || undefined,
+        projectTwitter: form.twitter || undefined,
+        projectDiscord: form.discord || undefined,
+        featuredImageUrl: form.featuredImageUrl || undefined,
+        bannerImageUrl: form.bannerImageUrl || undefined,
+        isFeatured: false,
+      };
+
+      // Remove undefined values
+      const cleanBody = Object.fromEntries(
+        Object.entries(body).filter(([_, v]) => v !== undefined)
+      );
+
+      const res = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanBody),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(
+          json.error?.message || json.error?.details || "Failed to create deal"
+        );
+      }
+
+      // Success — redirect to admin deals
+      router.push("/admin/deals");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -364,9 +501,6 @@ export default function CreateDealPage() {
                   { value: "ethereum", label: "Ethereum" },
                   { value: "arbitrum", label: "Arbitrum" },
                   { value: "base", label: "Base" },
-                  { value: "polygon", label: "Polygon" },
-                  { value: "optimism", label: "Optimism" },
-                  { value: "avalanche", label: "Avalanche" },
                 ]}
               />
               <Input
@@ -378,7 +512,7 @@ export default function CreateDealPage() {
               />
               <Input
                 label="Twitter"
-                placeholder="@handle"
+                placeholder="https://twitter.com/handle"
                 value={form.twitter}
                 onChange={(e) => updateField("twitter", e.target.value)}
               />
@@ -403,31 +537,21 @@ export default function CreateDealPage() {
                 leftAddon={<Github className="h-4 w-4" />}
               />
 
-              {/* Image upload areas */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-300">
-                  Featured Image
-                </label>
-                <div className="flex h-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 transition-colors hover:border-zinc-600">
-                  <div className="flex flex-col items-center gap-2 text-zinc-500">
-                    <Upload className="h-6 w-6" />
-                    <span className="text-xs">Click to upload or drag & drop</span>
-                    <span className="text-xs text-zinc-600">PNG, JPG up to 5MB</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-300">
-                  Banner Image
-                </label>
-                <div className="flex h-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 transition-colors hover:border-zinc-600">
-                  <div className="flex flex-col items-center gap-2 text-zinc-500">
-                    <Upload className="h-6 w-6" />
-                    <span className="text-xs">Click to upload or drag & drop</span>
-                    <span className="text-xs text-zinc-600">1200x400 recommended</span>
-                  </div>
-                </div>
-              </div>
+              {/* Image URL inputs */}
+              <Input
+                label="Featured Image URL"
+                placeholder="https://example.com/image.png"
+                value={form.featuredImageUrl}
+                onChange={(e) => updateField("featuredImageUrl", e.target.value)}
+                helperText="URL to featured image (PNG, JPG)"
+              />
+              <Input
+                label="Banner Image URL"
+                placeholder="https://example.com/banner.png"
+                value={form.bannerImageUrl}
+                onChange={(e) => updateField("bannerImageUrl", e.target.value)}
+                helperText="1200x400 recommended"
+              />
             </div>
           )}
 
@@ -759,12 +883,12 @@ export default function CreateDealPage() {
                   Basic Info
                 </h4>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow label="Project Name" value={form.projectName || "—"} />
-                  <ReviewRow label="Slug" value={form.slug || "—"} />
-                  <ReviewRow label="Category" value={form.category || "—"} />
-                  <ReviewRow label="Chain" value={form.chain || "—"} />
-                  <ReviewRow label="Short Description" value={form.shortDescription || "—"} />
-                  <ReviewRow label="Website" value={form.website || "—"} />
+                  <ReviewRow label="Project Name" value={form.projectName || "\u2014"} />
+                  <ReviewRow label="Slug" value={form.slug || "\u2014"} />
+                  <ReviewRow label="Category" value={form.category || "\u2014"} />
+                  <ReviewRow label="Chain" value={form.chain || "\u2014"} />
+                  <ReviewRow label="Short Description" value={form.shortDescription || "\u2014"} />
+                  <ReviewRow label="Website" value={form.website || "\u2014"} />
                 </div>
               </div>
 
@@ -774,21 +898,21 @@ export default function CreateDealPage() {
                   Token Details
                 </h4>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow label="Token Name" value={form.tokenName || "—"} />
-                  <ReviewRow label="Ticker" value={form.ticker || "—"} />
+                  <ReviewRow label="Token Name" value={form.tokenName || "\u2014"} />
+                  <ReviewRow label="Ticker" value={form.ticker || "\u2014"} />
                   <ReviewRow
                     label="Total Supply"
-                    value={form.totalSupply ? Number(form.totalSupply).toLocaleString() : "—"}
+                    value={form.totalSupply ? Number(form.totalSupply).toLocaleString() : "\u2014"}
                   />
                   <ReviewRow
                     label="Token Price"
-                    value={form.tokenPrice ? `$${form.tokenPrice}` : "—"}
+                    value={form.tokenPrice ? `$${form.tokenPrice}` : "\u2014"}
                   />
                   <ReviewRow
                     label="FDV"
-                    value={fdv > 0 ? formatCurrency(fdv) : "—"}
+                    value={fdv > 0 ? formatCurrency(fdv) : "\u2014"}
                   />
-                  <ReviewRow label="Raise Token" value={form.raiseToken || "—"} />
+                  <ReviewRow label="Raise Token" value={form.raiseToken || "\u2014"} />
                 </div>
               </div>
 
@@ -800,7 +924,7 @@ export default function CreateDealPage() {
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                   <ReviewRow
                     label="Hard Cap"
-                    value={form.hardCap ? formatCurrency(Number(form.hardCap)) : "—"}
+                    value={form.hardCap ? formatCurrency(Number(form.hardCap)) : "\u2014"}
                   />
                   <ReviewRow
                     label="Soft Cap"
@@ -811,7 +935,7 @@ export default function CreateDealPage() {
                     value={
                       form.minContribution
                         ? formatCurrency(Number(form.minContribution))
-                        : "—"
+                        : "\u2014"
                     }
                   />
                   <ReviewRow
@@ -819,10 +943,10 @@ export default function CreateDealPage() {
                     value={
                       form.maxContribution
                         ? formatCurrency(Number(form.maxContribution))
-                        : "—"
+                        : "\u2014"
                     }
                   />
-                  <ReviewRow label="Allocation Method" value={form.allocationMethod || "—"} />
+                  <ReviewRow label="Allocation Method" value={form.allocationMethod || "\u2014"} />
                   <ReviewRow
                     label="Oversubscription"
                     value={form.oversubscription ? "Enabled" : "Disabled"}
@@ -836,15 +960,15 @@ export default function CreateDealPage() {
                   Timeline
                 </h4>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow label="Registration Open" value={form.registrationOpen || "—"} />
-                  <ReviewRow label="Registration Close" value={form.registrationClose || "—"} />
-                  <ReviewRow label="Contribution Open" value={form.contributionOpen || "—"} />
-                  <ReviewRow label="Contribution Close" value={form.contributionClose || "—"} />
-                  <ReviewRow label="Distribution Date" value={form.distributionDate || "—"} />
+                  <ReviewRow label="Registration Open" value={form.registrationOpen || "\u2014"} />
+                  <ReviewRow label="Registration Close" value={form.registrationClose || "\u2014"} />
+                  <ReviewRow label="Contribution Open" value={form.contributionOpen || "\u2014"} />
+                  <ReviewRow label="Contribution Close" value={form.contributionClose || "\u2014"} />
+                  <ReviewRow label="Distribution Date" value={form.distributionDate || "\u2014"} />
                   <ReviewRow label="Vesting Type" value={form.vestingType || "None"} />
-                  <ReviewRow label="TGE Unlock" value={form.tgeUnlockPercent ? `${form.tgeUnlockPercent}%` : "—"} />
-                  <ReviewRow label="Cliff" value={form.cliffDays ? `${form.cliffDays} days` : "—"} />
-                  <ReviewRow label="Duration" value={form.vestingDurationDays ? `${form.vestingDurationDays} days` : "—"} />
+                  <ReviewRow label="TGE Unlock" value={form.tgeUnlockPercent ? `${form.tgeUnlockPercent}%` : "\u2014"} />
+                  <ReviewRow label="Cliff" value={form.cliffDays ? `${form.cliffDays} days` : "\u2014"} />
+                  <ReviewRow label="Duration" value={form.vestingDurationDays ? `${form.vestingDurationDays} days` : "\u2014"} />
                 </div>
               </div>
 
@@ -861,10 +985,23 @@ export default function CreateDealPage() {
                 </div>
               </div>
 
+              {/* Submit error */}
+              {submitError && (
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4">
+                  <p className="text-sm text-rose-400">{submitError}</p>
+                </div>
+              )}
+
               {/* Submit buttons */}
               <div className="flex items-center gap-3">
-                <Button>Create Deal</Button>
-                <Button variant="secondary">Save as Draft</Button>
+                <Button onClick={handleSubmit} disabled={submitting}>
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Deal
+                </Button>
+                <Button variant="secondary" onClick={handleSubmit} disabled={submitting}>
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save as Draft
+                </Button>
               </div>
             </div>
           )}
@@ -907,7 +1044,7 @@ export default function CreateDealPage() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Review row helper                                                         */
+/*  Review row helper                                                          */
 /* -------------------------------------------------------------------------- */
 
 function ReviewRow({ label, value }: { label: string; value: string }) {

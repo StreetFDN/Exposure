@@ -35,6 +35,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Select } from "@/components/ui/select";
 import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
@@ -72,16 +73,21 @@ interface NotificationPreferences {
   digestMode: "immediate" | "daily" | "weekly";
 }
 
-// ---------------------------------------------------------------------------
-// Placeholder Data (profile / sessions remain placeholder until their APIs)
-// ---------------------------------------------------------------------------
-
-const PROFILE = {
-  displayName: "cryptowhale.eth",
-  email: "whale@proton.me",
-  avatar: null as string | null,
-  walletAddress: "0x7a3B1c2D8e5F6a9B0c1D2e3F4a5B6c7D8e9f4E",
-};
+interface UserProfile {
+  id: string;
+  walletAddress: string;
+  displayName: string | null;
+  email: string | null;
+  role: string;
+  kycStatus: string;
+  kycTier: string | null;
+  kycApprovedAt: string | null;
+  tierLevel: string;
+  referralCode: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  wallets: ApiWallet[];
+}
 
 interface SessionEntry {
   id: string;
@@ -94,6 +100,7 @@ interface SessionEntry {
   isCurrent: boolean;
 }
 
+// Sessions are still placeholder until a sessions API exists
 const SESSIONS: SessionEntry[] = [
   {
     id: "1",
@@ -127,8 +134,6 @@ const SESSIONS: SessionEntry[] = [
   },
 ];
 
-const KYC_STATUS = "Approved" as "Approved" | "Pending" | "Not Started" | "Rejected";
-
 // ---------------------------------------------------------------------------
 // Chain display helpers
 // ---------------------------------------------------------------------------
@@ -156,13 +161,36 @@ const DIGEST_OPTIONS = [
 ];
 
 // ---------------------------------------------------------------------------
+// Loading Skeleton
+// ---------------------------------------------------------------------------
+
+function ProfileSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Skeleton variant="circle" className="h-16 w-16" />
+        <Skeleton variant="text" className="h-8 w-32" />
+      </div>
+      <Skeleton variant="rect" className="h-10 w-full" />
+      <Skeleton variant="rect" className="h-10 w-full" />
+      <Skeleton variant="rect" className="h-10 w-full" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
   // Profile state
-  const [displayName, setDisplayName] = useState(PROFILE.displayName);
-  const [email, setEmail] = useState(PROFILE.email);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
 
   // Wallet state
   const [wallets, setWallets] = useState<ApiWallet[]>([]);
@@ -195,7 +223,40 @@ export default function SettingsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // -------------------------------------------------------------------------
-  // Fetch linked wallets
+  // Fetch user profile from GET /api/users/me
+  // -------------------------------------------------------------------------
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      setProfileLoading(true);
+      setProfileError(null);
+
+      const res = await fetch("/api/users/me");
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to load profile");
+      }
+
+      const user = json.data.user;
+      setProfile(user);
+      setDisplayName(user.displayName || "");
+      setEmail(user.email || "");
+
+      // Also populate wallets from the user profile response
+      if (user.wallets) {
+        setWallets(user.wallets);
+        setWalletsLoading(false);
+      }
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Failed to load profile");
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // Fetch linked wallets (standalone refresh)
   // -------------------------------------------------------------------------
 
   const fetchWallets = useCallback(async () => {
@@ -236,9 +297,58 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    fetchWallets();
+    fetchProfile();
     fetchPreferences();
-  }, [fetchWallets, fetchPreferences]);
+  }, [fetchProfile, fetchPreferences]);
+
+  // -------------------------------------------------------------------------
+  // Save profile handler — PATCH /api/users/me
+  // -------------------------------------------------------------------------
+
+  async function handleSaveProfile() {
+    try {
+      setProfileSaving(true);
+      setProfileMessage(null);
+
+      const body: Record<string, string | null> = {};
+      if (displayName !== (profile?.displayName || "")) {
+        body.displayName = displayName;
+      }
+      if (email !== (profile?.email || "")) {
+        body.email = email || null;
+      }
+
+      // Only call API if there are changes
+      if (Object.keys(body).length === 0) {
+        setProfileMessage("No changes to save");
+        setTimeout(() => setProfileMessage(null), 3000);
+        return;
+      }
+
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to save profile");
+      }
+
+      // Update local profile state
+      const updated = json.data.user;
+      setProfile(updated);
+      setDisplayName(updated.displayName || "");
+      setEmail(updated.email || "");
+      setProfileMessage("Profile saved successfully");
+      setTimeout(() => setProfileMessage(null), 3000);
+    } catch (err) {
+      setProfileMessage(err instanceof Error ? err.message : "Failed to save profile");
+    } finally {
+      setProfileSaving(false);
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Unlink wallet handler
@@ -355,13 +465,31 @@ export default function SettingsPage() {
   // KYC helpers
   // -------------------------------------------------------------------------
 
+  const kycStatus = profile?.kycStatus || "NONE";
+
+  function kycDisplayStatus(status: string): string {
+    switch (status) {
+      case "APPROVED":
+        return "Approved";
+      case "PENDING":
+        return "Pending";
+      case "REJECTED":
+        return "Rejected";
+      case "EXPIRED":
+        return "Expired";
+      default:
+        return "Not Started";
+    }
+  }
+
   function kycBadgeVariant(status: string): "default" | "success" | "warning" | "error" | "info" | "outline" {
     switch (status) {
-      case "Approved":
+      case "APPROVED":
         return "success";
-      case "Pending":
+      case "PENDING":
         return "warning";
-      case "Rejected":
+      case "REJECTED":
+      case "EXPIRED":
         return "error";
       default:
         return "outline";
@@ -370,16 +498,24 @@ export default function SettingsPage() {
 
   function kycIcon(status: string) {
     switch (status) {
-      case "Approved":
+      case "APPROVED":
         return <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
-      case "Pending":
+      case "PENDING":
         return <Clock className="h-5 w-5 text-amber-400" />;
-      case "Rejected":
+      case "REJECTED":
+      case "EXPIRED":
         return <XCircle className="h-5 w-5 text-rose-400" />;
       default:
         return <Shield className="h-5 w-5 text-zinc-400" />;
     }
   }
+
+  // -------------------------------------------------------------------------
+  // Derived values
+  // -------------------------------------------------------------------------
+
+  const primaryWallet = profile?.walletAddress || wallets.find((w) => w.isPrimary)?.address || "";
+  const kycDisplayLabel = kycDisplayStatus(kycStatus);
 
   // -------------------------------------------------------------------------
   // Render
@@ -431,56 +567,89 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Avatar */}
-              <div className="flex items-center gap-4">
-                <Avatar
-                  src={PROFILE.avatar}
-                  alt={displayName}
-                  size="xl"
-                />
-                <div className="space-y-1">
-                  <Button variant="secondary" size="sm">
-                    <Camera className="h-4 w-4" />
-                    Upload Avatar
-                  </Button>
-                  <p className="text-xs text-zinc-500">
-                    JPG, PNG, or GIF. Max 2MB.
-                  </p>
-                </div>
-              </div>
+              {profileLoading ? (
+                <ProfileSkeleton />
+              ) : profileError ? (
+                <Alert variant="error">{profileError}</Alert>
+              ) : (
+                <>
+                  {/* Avatar */}
+                  <div className="flex items-center gap-4">
+                    <Avatar
+                      src={profile?.avatarUrl ?? null}
+                      alt={displayName}
+                      size="xl"
+                    />
+                    <div className="space-y-1">
+                      <Button variant="secondary" size="sm">
+                        <Camera className="h-4 w-4" />
+                        Upload Avatar
+                      </Button>
+                      <p className="text-xs text-zinc-500">
+                        JPG, PNG, or GIF. Max 2MB.
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Display Name */}
-              <Input
-                label="Display Name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Enter display name"
-              />
+                  {/* Display Name */}
+                  <Input
+                    label="Display Name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Enter display name"
+                  />
 
-              {/* Email */}
-              <Input
-                label="Email (optional)"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                helperText="Used for email notifications only. Never shared."
-              />
+                  {/* Email */}
+                  <Input
+                    label="Email (optional)"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    helperText="Used for email notifications only. Never shared."
+                  />
 
-              {/* Wallet Address (read-only) */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-300">
-                  Primary Wallet
-                </label>
-                <div className="flex h-10 items-center rounded-lg border border-zinc-800 bg-zinc-950 px-3">
-                  <code className="text-sm text-zinc-400">
-                    {PROFILE.walletAddress}
-                  </code>
-                </div>
-              </div>
+                  {/* Wallet Address (read-only) */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-zinc-300">
+                      Primary Wallet
+                    </label>
+                    <div className="flex h-10 items-center rounded-lg border border-zinc-800 bg-zinc-950 px-3">
+                      <code className="text-sm text-zinc-400">
+                        {primaryWallet}
+                      </code>
+                    </div>
+                  </div>
+
+                  {/* Save status message */}
+                  {profileMessage && (
+                    <Alert
+                      variant={
+                        profileMessage.includes("success") || profileMessage.includes("No changes")
+                          ? "success"
+                          : "error"
+                      }
+                    >
+                      {profileMessage}
+                    </Alert>
+                  )}
+                </>
+              )}
             </CardContent>
             <CardFooter>
-              <Button>Save Changes</Button>
+              <Button
+                onClick={handleSaveProfile}
+                disabled={profileSaving || profileLoading}
+              >
+                {profileSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -841,32 +1010,34 @@ export default function SettingsPage() {
               <CardContent>
                 <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
                   <div className="flex items-center gap-3">
-                    {kycIcon(KYC_STATUS)}
+                    {kycIcon(kycStatus)}
                     <div>
                       <p className="text-sm font-medium text-zinc-200">
                         Verification Status
                       </p>
                       <p className="text-xs text-zinc-500">
-                        {KYC_STATUS === "Approved"
+                        {kycStatus === "APPROVED"
                           ? "Your identity has been verified successfully"
-                          : KYC_STATUS === "Pending"
+                          : kycStatus === "PENDING"
                           ? "Your documents are being reviewed"
-                          : KYC_STATUS === "Rejected"
+                          : kycStatus === "REJECTED"
                           ? "Your verification was rejected. Please resubmit."
+                          : kycStatus === "EXPIRED"
+                          ? "Your verification has expired. Please re-verify."
                           : "Complete KYC to access regulated deals"}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge
-                      variant={kycBadgeVariant(KYC_STATUS)}
+                      variant={kycBadgeVariant(kycStatus)}
                       size="md"
                     >
-                      {KYC_STATUS}
+                      {kycDisplayLabel}
                     </Badge>
-                    {KYC_STATUS !== "Approved" && KYC_STATUS !== "Pending" && (
+                    {kycStatus !== "APPROVED" && kycStatus !== "PENDING" && (
                       <Button size="sm">
-                        {KYC_STATUS === "Rejected"
+                        {kycStatus === "REJECTED" || kycStatus === "EXPIRED"
                           ? "Resubmit"
                           : "Complete KYC"}
                       </Button>
