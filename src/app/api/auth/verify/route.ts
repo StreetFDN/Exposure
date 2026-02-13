@@ -13,6 +13,7 @@ import {
   setSessionCookie,
   type SessionUser,
 } from "@/lib/utils/api";
+import { withRateLimit, getClientIp } from "@/lib/utils/rate-limit";
 import { consumeNonce } from "@/app/api/auth/nonce/route";
 import { prisma } from "@/lib/prisma";
 
@@ -66,6 +67,11 @@ function mapTierLevel(
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 requests per minute per IP
+    const ip = getClientIp(request);
+    const rateLimited = withRateLimit(request, `verify:${ip}`, 5, 60_000);
+    if (rateLimited) return rateLimited;
+
     const { message, signature } = await validateBody(request, verifySchema);
 
     // Parse the SIWE message

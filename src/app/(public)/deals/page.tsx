@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, Shield, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -198,10 +199,30 @@ const PLACEHOLDER_DEALS: DealCardDeal[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Helper: check if user has a session cookie (client-side)
+// ---------------------------------------------------------------------------
+
+function useHasSession(): boolean {
+  const [hasSession, setHasSession] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check for the session cookie on the client
+    const cookies = document.cookie.split(";").map((c) => c.trim());
+    const sessionCookie = cookies.find((c) =>
+      c.startsWith("exposure_session=")
+    );
+    setHasSession(!!sessionCookie);
+  }, []);
+
+  return hasSession;
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function DealsPage() {
+  const isAuthenticated = useHasSession();
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("ALL");
   const [categoryFilter, setCategoryFilter] = React.useState("ALL");
@@ -281,15 +302,38 @@ export default function DealsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-zinc-50">Deals</h1>
-        <p className="mt-2 text-zinc-400">
-          Explore curated crypto investment opportunities
+      <div className="mb-10">
+        <h1 className="font-serif text-4xl font-light text-zinc-100">Deals</h1>
+        <p className="mt-2 font-light text-zinc-500">
+          Explore curated investment opportunities
         </p>
       </div>
 
+      {/* Verification banner for non-authenticated users */}
+      {!isAuthenticated && (
+        <div className="mb-8 flex flex-col items-start gap-4 rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Shield className="h-4 w-4 shrink-0 text-zinc-500" />
+            <div>
+              <p className="text-sm font-medium text-zinc-200">
+                Sign up and complete verification to invest
+              </p>
+              <p className="text-xs font-light text-zinc-500">
+                Browse deals freely. To participate, complete KYC verification through our quick onboarding process.
+              </p>
+            </div>
+          </div>
+          <Link href="/onboarding" className="shrink-0">
+            <button className="inline-flex items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100">
+              Get Verified
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </Link>
+        </div>
+      )}
+
       {/* Filter bar */}
-      <div className="mb-8 flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4 lg:flex-row lg:items-end">
+      <div className="mb-8 flex flex-col gap-3 rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-4 lg:flex-row lg:items-end">
         <div className="flex-1">
           <Input
             placeholder="Search projects..."
@@ -362,10 +406,10 @@ export default function DealsPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                      className={`flex h-8 w-8 items-center justify-center rounded-md text-sm font-light transition-colors ${
                         page === currentPage
-                          ? "bg-violet-600 text-white"
-                          : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+                          ? "bg-zinc-800 text-zinc-50"
+                          : "text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300"
                       }`}
                     >
                       {page}

@@ -1,12 +1,21 @@
-"use client";
-
-import { useAccount } from "wagmi";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { ConnectPrompt } from "@/components/layout/connect-prompt";
+import type { Metadata } from "next";
+import { AuthShell } from "@/components/layout/auth-shell";
 
 // ---------------------------------------------------------------------------
-// Authenticated layout — shows connect prompt if wallet is not connected.
+// Metadata
+// ---------------------------------------------------------------------------
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s — Exposure",
+    default: "Dashboard — Exposure",
+  },
+  description:
+    "Manage your investments, claims, and staking on the Exposure platform.",
+};
+
+// ---------------------------------------------------------------------------
+// Authenticated layout — server component wrapping the client-side auth shell.
 // ---------------------------------------------------------------------------
 
 export default function AuthLayout({
@@ -14,15 +23,5 @@ export default function AuthLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { isConnected } = useAccount();
-
-  return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-1">
-        {isConnected ? children : <ConnectPrompt />}
-      </main>
-      <Footer />
-    </div>
-  );
+  return <AuthShell>{children}</AuthShell>;
 }

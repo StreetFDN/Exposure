@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Notification } from "@prisma/client";
+import { api } from "@/lib/api/client";
 
 // =============================================================================
 // State & Actions
@@ -68,12 +69,14 @@ export const useNotificationsStore = create<NotificationsStore>()(
           "notifications/markAsRead"
         );
 
-        // Fire-and-forget API call.
-        fetch(`/api/notifications/${notificationId}/read`, {
-          method: "PATCH",
-        }).catch((err) =>
-          console.error("[notifications] markAsRead API failed:", err)
-        );
+        // Fire-and-forget API call via the centralised client.
+        api
+          .patch("/users/me/notifications", {
+            notificationIds: [notificationId],
+          })
+          .catch((err) =>
+            console.error("[notifications] markAsRead API failed:", err)
+          );
       },
 
       markAllAsRead: () => {
@@ -87,21 +90,23 @@ export const useNotificationsStore = create<NotificationsStore>()(
           "notifications/markAllAsRead"
         );
 
-        fetch("/api/notifications/read-all", { method: "PATCH" }).catch(
-          (err) =>
+        api
+          .patch("/users/me/notifications", { markAllRead: true })
+          .catch((err) =>
             console.error("[notifications] markAllAsRead API failed:", err)
-        );
+          );
       },
 
       fetchNotifications: async () => {
         set({ isLoading: true }, undefined, "notifications/fetch:start");
         try {
-          const res = await fetch("/api/notifications");
-          if (!res.ok) {
-            throw new Error(`Failed to fetch notifications: ${res.status}`);
-          }
-          const json = await res.json();
-          const notifications: Notification[] = json.data;
+          const res = await api.get<{
+            notifications: Notification[];
+            unreadCount: number;
+          }>("/users/me/notifications");
+
+          const notifications: Notification[] =
+            res.data?.notifications ?? [];
 
           set(
             {

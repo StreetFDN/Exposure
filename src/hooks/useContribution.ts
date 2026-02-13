@@ -1,22 +1,35 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
-  useReadContract,
 } from "wagmi";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { parseUnits, maxUint256 } from "viem";
 import { DEAL_CONTRACT_ABI, ERC20_ABI } from "@/lib/web3/contracts";
+import { api, ApiError } from "@/lib/api/client";
+import type { ContributionWithDeal } from "@/types/api";
 
 // =============================================================================
-// Types
+// Query Keys
+// =============================================================================
+
+export const contributionKeys = {
+  all: ["contributions"] as const,
+  lists: () => [...contributionKeys.all, "list"] as const,
+  list: (filters?: { dealId?: string; status?: string }) =>
+    [...contributionKeys.lists(), filters ?? {}] as const,
+};
+
+// =============================================================================
+// On-Chain Types
 // =============================================================================
 
 interface UseContributionReturn {
-  /** Execute a contribution — handles ERC-20 approval + deal contribution. */
+  /** Execute a contribution -- handles ERC-20 approval + deal contribution. */
   contribute: (
     dealId: string,
     amount: string,
@@ -42,7 +55,7 @@ interface UseContributionReturn {
 }
 
 // =============================================================================
-// Hook
+// On-Chain Contribution Hook (unchanged behavior)
 // =============================================================================
 
 /**
@@ -94,9 +107,9 @@ export function useContribution(): UseContributionReturn {
   // -------------------------------------------------------------------------
   const contribute = useCallback(
     async (
-      _dealId: string,
+      dealId: string,
       amount: string,
-      _currency: string,
+      currency: string,
       opts: {
         dealContractAddress: Address;
         tokenAddress: Address;
@@ -144,16 +157,12 @@ export function useContribution(): UseContributionReturn {
         });
 
         // 4. Notify the backend about the pending contribution
-        await fetch("/api/contributions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dealId: _dealId,
-            amount,
-            currency: _currency,
-            txHash: contributeHash,
-            walletAddress: address,
-          }),
+        await api.post("/contributions", {
+          dealId,
+          amount,
+          currency,
+          txHash: contributeHash,
+          walletAddress: address,
         });
       } catch (err) {
         const msg =
@@ -178,4 +187,77 @@ export function useContribution(): UseContributionReturn {
     error,
     resetError,
   };
+}
+
+// =============================================================================
+// API-backed Contribution Hooks (server-side data)
+// =============================================================================
+
+/**
+ * Fetch the authenticated user's contribution history from the API.
+ * Supports optional filters by dealId and status.
+ */
+export function useContributions(filters?: {
+  dealId?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: contributionKeys.list(filters),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters?.dealId) params.set("dealId", filters.dealId);
+      if (filters?.status) params.set("status", filters.status);
+      if (filters?.page) params.set("page", String(filters.page));
+      if (filters?.limit) params.set("limit", String(filters.limit));
+
+      const queryString = params.toString();
+      const path = queryString
+        ? `/contributions?${queryString}`
+        : "/contributions";
+
+      const res = await api.get<{
+        contributions: ContributionWithDeal[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>(path);
+
+      if (!res.data) {
+        throw new ApiError("Failed to fetch contributions", 500);
+      }
+
+      return res.data;
+    },
+    staleTime: 15_000, // 15 seconds
+  });
+}
+
+/**
+ * Submit a contribution record to the API (POST /api/deals/[id]/contribute).
+ * This is the API-only version for recording a contribution (used after
+ * on-chain tx is confirmed, or for off-chain contribution flows).
+ */
+export function useSubmitContribution() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      dealId: string;
+      amount: string;
+      currency: string;
+      txHash?: string;
+    }) => {
+      const res = await api.post(
+        `/deals/${encodeURIComponent(params.dealId)}/contribute`,
+        params
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: contributionKeys.all });
+    },
+  });
 }

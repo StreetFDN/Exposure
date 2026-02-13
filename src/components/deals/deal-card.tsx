@@ -52,12 +52,12 @@ const STATUS_CONFIG: Record<
 > = {
   DRAFT: { label: "Draft", variant: "outline" },
   UNDER_REVIEW: { label: "Under Review", variant: "outline" },
-  APPROVED: { label: "Upcoming", variant: "info" },
-  REGISTRATION_OPEN: { label: "Registration Open", variant: "default" },
-  GUARANTEED_ALLOCATION: { label: "Guaranteed", variant: "success" },
-  FCFS: { label: "FCFS", variant: "warning" },
+  APPROVED: { label: "Upcoming", variant: "outline" },
+  REGISTRATION_OPEN: { label: "Registration Open", variant: "outline" },
+  GUARANTEED_ALLOCATION: { label: "Guaranteed", variant: "outline" },
+  FCFS: { label: "FCFS", variant: "outline" },
   SETTLEMENT: { label: "Settlement", variant: "outline" },
-  DISTRIBUTING: { label: "Distributing", variant: "info" },
+  DISTRIBUTING: { label: "Distributing", variant: "outline" },
   COMPLETED: { label: "Completed", variant: "outline" },
   CANCELLED: { label: "Cancelled", variant: "outline" },
 };
@@ -77,19 +77,6 @@ const CHAIN_LABELS: Record<string, string> = {
   BASE: "Base",
   ARBITRUM: "Arbitrum",
 };
-
-function getGradientByCategory(category: DealCategory): string {
-  const gradients: Record<string, string> = {
-    DEFI: "from-violet-600/40 to-blue-600/40",
-    GAMING: "from-emerald-600/40 to-cyan-600/40",
-    AI: "from-fuchsia-600/40 to-violet-600/40",
-    INFRASTRUCTURE: "from-amber-600/40 to-orange-600/40",
-    NFT: "from-pink-600/40 to-rose-600/40",
-    SOCIAL: "from-sky-600/40 to-indigo-600/40",
-    OTHER: "from-zinc-600/40 to-zinc-500/40",
-  };
-  return gradients[category] ?? gradients.OTHER;
-}
 
 function getCountdownTarget(deal: DealCardDeal): string | null {
   if (
@@ -119,74 +106,51 @@ export function DealCard({ deal, className }: DealCardProps) {
     <Link
       href={`/deals/${deal.slug}`}
       className={cn(
-        "group flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900",
-        "transition-all duration-200",
-        "hover:-translate-y-1 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/5",
+        "group flex flex-col overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-900/40",
+        "transition-colors duration-150",
+        "hover:border-zinc-700 hover:bg-zinc-900/60",
         className
       )}
     >
-      {/* Image / Gradient Banner */}
-      <div className="relative h-40 w-full overflow-hidden">
-        {deal.featuredImageUrl ? (
-          <img
-            src={deal.featuredImageUrl}
-            alt={deal.projectName}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div
-            className={cn(
-              "h-full w-full bg-gradient-to-br",
-              getGradientByCategory(deal.category)
-            )}
-          />
-        )}
-
-        {/* Overlay badges */}
-        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-          <Badge variant={statusConfig.variant} size="sm">
-            {statusConfig.label}
-          </Badge>
-          <Badge variant="outline" size="sm">
-            {CATEGORY_LABELS[deal.category]}
-          </Badge>
-        </div>
-
-        {/* Chain badge */}
-        <div className="absolute right-3 top-3">
-          <Badge variant="outline" size="sm">
-            {CHAIN_LABELS[deal.chain]}
-          </Badge>
-        </div>
-
-        {/* Min tier badge */}
-        {deal.minTierRequired && (
-          <div className="absolute bottom-3 right-3">
-            <Badge variant="warning" size="sm">
-              {deal.minTierRequired} Tier
-            </Badge>
-          </div>
-        )}
-      </div>
-
       {/* Content */}
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        {/* Title & description */}
-        <div className="flex flex-col gap-1">
-          <h3 className="text-base font-semibold text-zinc-50 transition-colors group-hover:text-violet-400">
-            {deal.projectName}
-          </h3>
-          {deal.shortDescription && (
-            <p className="line-clamp-2 text-sm text-zinc-400">
-              {deal.shortDescription}
-            </p>
-          )}
+      <div className="flex flex-1 flex-col gap-4 p-5">
+        {/* Header: Name + Status */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-base font-medium text-zinc-100 transition-colors group-hover:text-zinc-50">
+              {deal.projectName}
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-light text-zinc-500">
+                {CATEGORY_LABELS[deal.category]}
+              </span>
+              <span className="text-zinc-700">&middot;</span>
+              <span className="text-xs font-light text-zinc-500">
+                {CHAIN_LABELS[deal.chain]}
+              </span>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
+            {statusConfig.label}
+          </span>
         </div>
+
+        {/* Description */}
+        {deal.shortDescription && (
+          <p className="line-clamp-2 text-sm font-light leading-relaxed text-zinc-500">
+            {deal.shortDescription}
+          </p>
+        )}
 
         {/* Progress */}
         <div className="flex flex-col gap-1.5">
-          <Progress value={raiseProgress} color="default" />
-          <div className="flex items-center justify-between text-xs text-zinc-400">
+          <div className="h-1 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-zinc-500 transition-all"
+              style={{ width: `${Math.min(raiseProgress, 100)}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs font-light text-zinc-500">
             <span>
               {formatCurrency(deal.totalRaised)} raised
             </span>
@@ -194,44 +158,44 @@ export function DealCard({ deal, className }: DealCardProps) {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 border-t border-zinc-800 pt-3">
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-3 border-t border-zinc-800/40 pt-3">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <span className="text-[10px] font-light uppercase tracking-wider text-zinc-600">
               Price
             </span>
-            <span className="text-sm font-medium text-zinc-50">
+            <span className="text-sm font-light text-zinc-200">
               {formatCurrency(deal.tokenPrice)}
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <span className="text-[10px] font-light uppercase tracking-wider text-zinc-600">
               Raise
             </span>
-            <span className="text-sm font-medium text-zinc-50">
+            <span className="text-sm font-light text-zinc-200">
               ${formatLargeNumber(deal.totalRaise)}
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <span className="text-[10px] font-light uppercase tracking-wider text-zinc-600">
               FDV
             </span>
-            <span className="text-sm font-medium text-zinc-50">
+            <span className="text-sm font-light text-zinc-200">
               {deal.fdv ? `$${formatLargeNumber(deal.fdv)}` : "--"}
             </span>
           </div>
         </div>
 
         {/* Countdown / Contributors */}
-        <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <div className="flex items-center justify-between border-t border-zinc-800/40 pt-3">
+          <div className="flex items-center gap-1.5 text-xs font-light text-zinc-500">
             <Users className="h-3.5 w-3.5" />
             <span>{deal.contributorCount.toLocaleString()}</span>
           </div>
           {countdownTarget ? (
             <CompactCountdown targetDate={countdownTarget} />
           ) : (
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs font-light text-zinc-600">
               {deal.status === "COMPLETED" ? "Ended" : "TBA"}
             </span>
           )}
@@ -257,8 +221,8 @@ function CompactCountdown({ targetDate }: { targetDate: string }) {
 
   return (
     <div className="flex items-center gap-1.5 text-xs">
-      <Clock className="h-3.5 w-3.5 text-zinc-500" />
-      <span className="font-mono text-zinc-300">{label}</span>
+      <Clock className="h-3.5 w-3.5 text-zinc-600" />
+      <span className="font-mono font-light text-zinc-400">{label}</span>
     </div>
   );
 }

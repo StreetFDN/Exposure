@@ -4,6 +4,7 @@
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import {
   apiResponse,
   apiError,
@@ -50,13 +51,10 @@ export async function GET(
     // Parse optional status filter
     const statusFilter = searchParams.get("status");
 
-    const where: any = {
+    const where: Prisma.GroupMembershipWhereInput = {
       groupId: group.id,
+      ...(statusFilter ? { status: statusFilter as Prisma.GroupMembershipWhereInput["status"] } : {}),
     };
-
-    if (statusFilter) {
-      where.status = statusFilter;
-    }
 
     const [total, members] = await Promise.all([
       prisma.groupMembership.count({ where }),

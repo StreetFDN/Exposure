@@ -26,7 +26,7 @@ export const TIER_CONFIG: readonly TierConfigEntry[] = [
     level: "BRONZE",
     name: "Bronze",
     stakedAmount: 1_000n * 10n ** 18n, // 1,000 EXPO
-    lockPeriod: "DAYS_30",
+    lockPeriod: "THIRTY_DAYS",
     allocationMultiplier: 1,
     lotteryTickets: 1,
     benefits: [
@@ -40,7 +40,7 @@ export const TIER_CONFIG: readonly TierConfigEntry[] = [
     level: "SILVER",
     name: "Silver",
     stakedAmount: 5_000n * 10n ** 18n, // 5,000 EXPO
-    lockPeriod: "DAYS_30",
+    lockPeriod: "THIRTY_DAYS",
     allocationMultiplier: 2,
     lotteryTickets: 3,
     benefits: [
@@ -55,7 +55,7 @@ export const TIER_CONFIG: readonly TierConfigEntry[] = [
     level: "GOLD",
     name: "Gold",
     stakedAmount: 25_000n * 10n ** 18n, // 25,000 EXPO
-    lockPeriod: "DAYS_90",
+    lockPeriod: "NINETY_DAYS",
     allocationMultiplier: 5,
     lotteryTickets: 8,
     benefits: [
@@ -71,7 +71,7 @@ export const TIER_CONFIG: readonly TierConfigEntry[] = [
     level: "PLATINUM",
     name: "Platinum",
     stakedAmount: 100_000n * 10n ** 18n, // 100,000 EXPO
-    lockPeriod: "DAYS_90",
+    lockPeriod: "NINETY_DAYS",
     allocationMultiplier: 12,
     lotteryTickets: 20,
     benefits: [
@@ -88,7 +88,7 @@ export const TIER_CONFIG: readonly TierConfigEntry[] = [
     level: "DIAMOND",
     name: "Diamond",
     stakedAmount: 500_000n * 10n ** 18n, // 500,000 EXPO
-    lockPeriod: "DAYS_180",
+    lockPeriod: "ONE_EIGHTY_DAYS",
     allocationMultiplier: 25,
     lotteryTickets: 50,
     benefits: [
@@ -125,9 +125,11 @@ export const TIER_COLORS: Record<TierLevel, string> = {
 
 /** Lock period ordering for comparison. */
 const LOCK_PERIOD_ORDER: Record<StakingLockPeriod, number> = {
-  DAYS_30: 0,
-  DAYS_90: 1,
-  DAYS_180: 2,
+  NONE: -1,
+  THIRTY_DAYS: 0,
+  NINETY_DAYS: 1,
+  ONE_EIGHTY_DAYS: 2,
+  THREE_SIXTY_FIVE_DAYS: 3,
 };
 
 /**

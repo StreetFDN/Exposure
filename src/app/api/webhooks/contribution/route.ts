@@ -16,6 +16,7 @@ import {
   handleApiError,
   validateBody,
 } from "@/lib/utils/api";
+import { withRateLimit, getClientIp } from "@/lib/utils/rate-limit";
 
 // ---------------------------------------------------------------------------
 // Webhook secret validation
@@ -74,6 +75,11 @@ const webhookPayloadSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 100 requests per minute per IP
+    const ip = getClientIp(request);
+    const rateLimited = withRateLimit(request, `webhook-contribution:${ip}`, 100, 60_000);
+    if (rateLimited) return rateLimited;
+
     // 1. Validate webhook signature
     if (!validateWebhookSignature(request)) {
       return apiError("Invalid webhook signature", 401, "INVALID_SIGNATURE");

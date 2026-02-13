@@ -5,7 +5,7 @@
 import { NextRequest } from "next/server";
 import { TierLevel } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { apiResponse, handleApiError } from "@/lib/utils/api";
+import { apiResponse, handleApiError, setCacheHeaders } from "@/lib/utils/api";
 
 // ---------------------------------------------------------------------------
 // Tier ladder configuration — this is effectively static/config data
@@ -158,7 +158,7 @@ export async function GET(_request: NextRequest) {
       memberCount: tierCountMap.get(tier.tierLevel as TierLevel) ?? 0,
     }));
 
-    return apiResponse({
+    const response = apiResponse({
       tiers: tiersWithCounts,
       stakingToken: "EXPO",
       stakingContractAddress: "0x0000000000000000000000000000000000000000", // TODO: Replace with real contract address
@@ -171,6 +171,9 @@ export async function GET(_request: NextRequest) {
         THREE_SIXTY_FIVE_DAYS: "18.5%",
       },
     });
+
+    // Cache for 3600s (tier config rarely changes)
+    return setCacheHeaders(response, 3600);
   } catch (error) {
     return handleApiError(error);
   }

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 
 // ---------------------------------------------------------------------------
-// Font
+// Fonts
 // ---------------------------------------------------------------------------
 
 const inter = Inter({
@@ -14,12 +14,20 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+});
+
 // ---------------------------------------------------------------------------
 // Metadata
 // ---------------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: "Exposure — Capital Raising Platform",
+  title: {
+    template: "%s — Exposure",
+    default: "Exposure — by Street",
+  },
   description:
     "Discover and invest in the next generation of crypto projects",
   metadataBase: new URL(
@@ -39,7 +47,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${inter.variable} font-sans bg-zinc-950 text-zinc-50 antialiased`}
+        className={`${inter.variable} ${playfair.variable} font-sans bg-zinc-950 text-zinc-50 antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

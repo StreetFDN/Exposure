@@ -313,3 +313,20 @@ export function clearSessionCookie(response: NextResponse): NextResponse {
   });
   return response;
 }
+
+// =============================================================================
+// setCacheHeaders — Set Cache-Control headers on a response
+// =============================================================================
+
+export function setCacheHeaders(
+  response: NextResponse,
+  maxAge: number,
+  staleWhileRevalidate?: number
+): NextResponse {
+  let cacheControl = `public, max-age=${maxAge}`;
+  if (staleWhileRevalidate !== undefined) {
+    cacheControl += `, stale-while-revalidate=${staleWhileRevalidate}`;
+  }
+  response.headers.set("Cache-Control", cacheControl);
+  return response;
+}

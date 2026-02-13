@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ArrowUpDown,
   ArrowUp,
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency, formatToken, formatDate } from "@/lib/utils/format";
+import { PortfolioChart } from "@/components/charts/portfolio-chart";
 
 // ---------------------------------------------------------------------------
 // Placeholder Data
@@ -323,6 +324,28 @@ const PORTFOLIO_DATA: PortfolioRow[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Portfolio value over time (sample data)
+// ---------------------------------------------------------------------------
+
+const PORTFOLIO_CHART_DATA = (() => {
+  const data: { date: string; value: number }[] = [];
+  const now = new Date();
+  let value = 12000;
+  for (let i = 90; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const change = (Math.random() - 0.42) * 400;
+    value = Math.max(8000, value + change);
+    data.push({
+      date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      value: Math.round(value * 100) / 100,
+    });
+  }
+  data[data.length - 1].value = 27763;
+  return data;
+})();
+
+// ---------------------------------------------------------------------------
 // Sort helpers
 // ---------------------------------------------------------------------------
 
@@ -340,10 +363,10 @@ type SortDir = "asc" | "desc";
 
 function sortData(data: PortfolioRow[], field: SortField, dir: SortDir) {
   return [...data].sort((a, b) => {
-    let aVal: number | string = a[field] as any;
-    let bVal: number | string = b[field] as any;
-    if (typeof aVal === "string") aVal = aVal.toLowerCase();
-    if (typeof bVal === "string") bVal = bVal.toLowerCase();
+    const aRaw = a[field];
+    const bRaw = b[field];
+    let aVal: number | string = typeof aRaw === "number" ? aRaw : String(aRaw).toLowerCase();
+    let bVal: number | string = typeof bRaw === "number" ? bRaw : String(bRaw).toLowerCase();
     if (aVal < bVal) return dir === "asc" ? -1 : 1;
     if (aVal > bVal) return dir === "asc" ? 1 : -1;
     return 0;
@@ -447,6 +470,13 @@ export default function PortfolioPage() {
         />
       </div>
 
+      {/* Portfolio Value Chart */}
+      <Card>
+        <CardContent className="pt-6">
+          <PortfolioChart data={PORTFOLIO_CHART_DATA} />
+        </CardContent>
+      </Card>
+
       {/* Tabs + Table */}
       <Tabs defaultValue="all" onValueChange={(v) => setActiveTab(v)}>
         <TabsList>
@@ -533,9 +563,8 @@ export default function PortfolioPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredData.map((row) => (
-                    <>
+                    <React.Fragment key={row.id}>
                       <TableRow
-                        key={row.id}
                         className="cursor-pointer"
                         onClick={() =>
                           setExpandedRow(expandedRow === row.id ? null : row.id)
@@ -559,7 +588,7 @@ export default function PortfolioPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={row.categoryVariant as any} size="sm">
+                          <Badge variant={row.categoryVariant} size="sm">
                             {row.category}
                           </Badge>
                         </TableCell>
@@ -628,7 +657,7 @@ export default function PortfolioPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={row.statusVariant as any} size="sm">
+                          <Badge variant={row.statusVariant} size="sm">
                             {row.status}
                           </Badge>
                         </TableCell>
@@ -739,7 +768,7 @@ export default function PortfolioPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>

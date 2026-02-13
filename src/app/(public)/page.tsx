@@ -132,16 +132,16 @@ function FAQItem({
   onToggle: () => void;
 }) {
   return (
-    <div className="border-b border-zinc-800 last:border-b-0">
+    <div className="border-b border-zinc-800/40 last:border-b-0">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors hover:text-violet-400"
+        className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors hover:text-zinc-200"
         aria-expanded={isOpen}
       >
-        <span className="text-base font-medium text-zinc-50">{question}</span>
+        <span className="text-base font-normal text-zinc-200">{question}</span>
         <ChevronDown
-          className={`h-5 w-5 shrink-0 text-zinc-500 transition-transform duration-200 ${
+          className={`h-4 w-4 shrink-0 text-zinc-600 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -152,26 +152,10 @@ function FAQItem({
         }`}
       >
         <div className="overflow-hidden">
-          <p className="text-sm leading-relaxed text-zinc-400">{answer}</p>
+          <p className="text-sm font-light leading-relaxed text-zinc-500">{answer}</p>
         </div>
       </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Grain texture overlay (reused across sections)
-// ---------------------------------------------------------------------------
-
-function GrainOverlay() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 opacity-[0.03]"
-      style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-      }}
-    />
   );
 }
 
@@ -187,47 +171,39 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* Hero                                                              */}
       {/* ================================================================= */}
-      <section className="relative flex flex-col items-center justify-center overflow-hidden px-4 pb-20 pt-28 text-center sm:pb-28 sm:pt-36">
-        {/* Background effects */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-        >
-          <div className="absolute left-1/2 top-1/2 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-violet-600/20 via-fuchsia-500/10 to-transparent blur-3xl" />
-          <GrainOverlay />
-        </div>
-
-        <Badge variant="outline" size="md" className="mb-6">
+      <section className="relative flex flex-col items-center justify-center px-4 pb-24 pt-32 text-center sm:pb-32 sm:pt-40">
+        <p className="mb-6 text-xs font-light uppercase tracking-[0.2em] text-zinc-500">
           Private capital rounds on Base
-        </Badge>
+        </p>
 
-        <h1 className="max-w-4xl text-4xl font-bold leading-[1.1] tracking-tight text-zinc-50 sm:text-5xl lg:text-6xl">
+        <h1 className="text-hero max-w-4xl text-zinc-100">
           Early-stage investing for{" "}
-          <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-            experienced crypto investors
+          <span className="text-zinc-400">
+            experienced investors
           </span>
         </h1>
 
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 sm:text-xl">
+        <p className="mt-8 max-w-2xl text-lg font-light leading-relaxed text-zinc-500 sm:text-xl">
           Join private funding rounds alongside professional investing
           communities. Co-invest with vetted leads on identical terms, settled
           on-chain with USDC.
         </p>
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+        <div className="mt-12 flex flex-col gap-4 sm:flex-row">
           <Link href="/deals">
-            <Button size="lg" rightIcon={<ArrowRight className="h-4 w-4" />}>
+            <button className="inline-flex items-center gap-2 rounded-md bg-zinc-50 px-8 py-3.5 text-base font-medium text-zinc-900 hover:bg-zinc-200">
               Start Investing
-            </Button>
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </Link>
           <Link href="/apply">
-            <Button size="lg" variant="outline">
+            <button className="inline-flex items-center gap-2 rounded-md border border-zinc-700 px-8 py-3.5 text-base font-light text-zinc-300 hover:border-zinc-600 hover:text-zinc-100">
               Apply as a Lead
-            </Button>
+            </button>
           </Link>
         </div>
 
-        <p className="mt-6 text-xs text-zinc-500">
+        <p className="mt-8 text-xs font-light text-zinc-600">
           KYC required. Available to eligible investors in supported
           jurisdictions.
         </p>
@@ -236,14 +212,14 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* Stats Bar                                                         */}
       {/* ================================================================= */}
-      <section className="border-y border-zinc-800 bg-zinc-900/50">
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-4 py-10 sm:gap-8 lg:grid-cols-4">
+      <section className="border-y border-zinc-800/30">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-12 px-4 py-12 sm:gap-16 lg:justify-between">
           {STATS.map((stat) => (
             <div key={stat.label} className="flex flex-col items-center gap-1 text-center">
-              <span className="text-2xl font-bold tabular-nums text-zinc-50 sm:text-3xl">
+              <span className="font-serif text-3xl font-light tabular-nums text-zinc-100 sm:text-4xl">
                 {stat.value}
               </span>
-              <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <span className="text-xs font-light uppercase tracking-wider text-zinc-600">
                 {stat.label}
               </span>
             </div>
@@ -254,169 +230,136 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* Two Audience Segments                                             */}
       {/* ================================================================= */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10"
-        >
-          <GrainOverlay />
-        </div>
-
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:py-28">
+      <section>
+        <div className="mx-auto max-w-6xl px-4 py-24 sm:py-32">
           <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold text-zinc-50 sm:text-4xl">
+            <h2 className="text-section-heading text-zinc-100">
               Two sides. One platform.
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-zinc-400">
+            <p className="mx-auto mt-4 max-w-xl font-light text-zinc-500">
               Whether you are deploying capital or raising it, Exposure aligns
               incentives between investors and founders through trusted lead
               investors.
             </p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="grid gap-px overflow-hidden rounded-xl border border-zinc-800/40 bg-zinc-800/40 lg:grid-cols-2">
             {/* FOR INVESTORS */}
-            <Card className="relative overflow-hidden border-zinc-800 bg-zinc-900/80">
-              <div
-                aria-hidden="true"
-                className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-violet-600/10 blur-3xl"
-              />
-              <CardContent className="relative p-8">
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/15 text-violet-400">
-                    <TrendingUp className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <Badge variant="default" size="sm">
-                      For Investors
-                    </Badge>
-                  </div>
-                </div>
+            <div className="bg-zinc-950 p-10">
+              <div className="mb-6 flex items-center gap-3">
+                <TrendingUp className="h-5 w-5 text-zinc-500" />
+                <span className="text-xs font-light uppercase tracking-wider text-zinc-500">
+                  For Investors
+                </span>
+              </div>
 
-                <h3 className="text-2xl font-bold text-zinc-50">
-                  Private group investing
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Access early-stage rounds that were previously reserved for
-                  VCs and insiders. Invest alongside trusted leads on the exact
-                  same terms.
-                </p>
+              <h3 className="font-serif text-2xl font-light text-zinc-100">
+                Private group investing
+              </h3>
+              <p className="mt-3 text-sm font-light leading-relaxed text-zinc-500">
+                Access early-stage rounds that were previously reserved for
+                VCs and insiders. Invest alongside trusted leads on the exact
+                same terms.
+              </p>
 
-                <ul className="mt-6 flex flex-col gap-4">
-                  {[
-                    {
-                      icon: <Users className="h-4 w-4" />,
-                      text: "Join private groups led by VCs, syndicates, and community leaders",
-                    },
-                    {
-                      icon: <Handshake className="h-4 w-4" />,
-                      text: "Co-invest with group leads on identical deal terms",
-                    },
-                    {
-                      icon: <CircleDollarSign className="h-4 w-4" />,
-                      text: "USDC-based, settled on-chain via Base network",
-                    },
-                    {
-                      icon: <KeyRound className="h-4 w-4" />,
-                      text: "Non-custodial token claims — you hold your own keys",
-                    },
-                  ].map((item) => (
-                    <li
-                      key={item.text}
-                      className="flex items-start gap-3 text-sm text-zinc-300"
-                    >
-                      <span className="mt-0.5 shrink-0 text-violet-400">
-                        {item.icon}
-                      </span>
-                      {item.text}
-                    </li>
-                  ))}
-                </ul>
+              <ul className="mt-8 flex flex-col gap-4">
+                {[
+                  {
+                    icon: <Users className="h-4 w-4" />,
+                    text: "Join private groups led by VCs, syndicates, and community leaders",
+                  },
+                  {
+                    icon: <Handshake className="h-4 w-4" />,
+                    text: "Co-invest with group leads on identical deal terms",
+                  },
+                  {
+                    icon: <CircleDollarSign className="h-4 w-4" />,
+                    text: "USDC-based, settled on-chain via Base network",
+                  },
+                  {
+                    icon: <KeyRound className="h-4 w-4" />,
+                    text: "Non-custodial token claims — you hold your own keys",
+                  },
+                ].map((item) => (
+                  <li
+                    key={item.text}
+                    className="flex items-start gap-3 text-sm font-light text-zinc-400"
+                  >
+                    <span className="mt-0.5 shrink-0 text-zinc-600">
+                      {item.icon}
+                    </span>
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
 
-                <div className="mt-8">
-                  <Link href="/deals">
-                    <Button
-                      size="md"
-                      rightIcon={<ArrowRight className="h-4 w-4" />}
-                    >
-                      Browse Deals
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+              <div className="mt-10">
+                <Link href="/deals">
+                  <button className="inline-flex items-center gap-2 rounded-md border border-zinc-700 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100">
+                    Browse Deals
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </Link>
+              </div>
+            </div>
 
             {/* FOR FOUNDERS */}
-            <Card className="relative overflow-hidden border-zinc-800 bg-zinc-900/80">
-              <div
-                aria-hidden="true"
-                className="absolute -left-20 -top-20 h-60 w-60 rounded-full bg-fuchsia-600/10 blur-3xl"
-              />
-              <CardContent className="relative p-8">
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-600/15 text-fuchsia-400">
-                    <Briefcase className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <Badge
-                      variant="outline"
-                      size="sm"
-                      className="border-fuchsia-500/20 text-fuchsia-400"
-                    >
-                      For Founders
-                    </Badge>
-                  </div>
-                </div>
+            <div className="bg-zinc-950 p-10">
+              <div className="mb-6 flex items-center gap-3">
+                <Briefcase className="h-5 w-5 text-zinc-500" />
+                <span className="text-xs font-light uppercase tracking-wider text-zinc-500">
+                  For Founders
+                </span>
+              </div>
 
-                <h3 className="text-2xl font-bold text-zinc-50">
-                  Raise with us
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Get in front of thousands of verified investors through
-                  trusted lead investors who champion your project to their
-                  communities.
-                </p>
+              <h3 className="font-serif text-2xl font-light text-zinc-100">
+                Raise with us
+              </h3>
+              <p className="mt-3 text-sm font-light leading-relaxed text-zinc-500">
+                Get in front of thousands of verified investors through
+                trusted lead investors who champion your project to their
+                communities.
+              </p>
 
-                <ul className="mt-6 flex flex-col gap-4">
-                  {[
-                    {
-                      icon: <Target className="h-4 w-4" />,
-                      text: "Only verified leads can present your deal — quality over quantity",
-                    },
-                    {
-                      icon: <Scale className="h-4 w-4" />,
-                      text: "Founders don't choose who invests — leads bring their own network",
-                    },
-                    {
-                      icon: <BarChart3 className="h-4 w-4" />,
-                      text: "Leads earn carry on follower profits — aligned incentive structure",
-                    },
-                    {
-                      icon: <Megaphone className="h-4 w-4" />,
-                      text: "Built-in distribution to 8,400+ verified crypto investors",
-                    },
-                  ].map((item) => (
-                    <li
-                      key={item.text}
-                      className="flex items-start gap-3 text-sm text-zinc-300"
-                    >
-                      <span className="mt-0.5 shrink-0 text-fuchsia-400">
-                        {item.icon}
-                      </span>
-                      {item.text}
-                    </li>
-                  ))}
-                </ul>
+              <ul className="mt-8 flex flex-col gap-4">
+                {[
+                  {
+                    icon: <Target className="h-4 w-4" />,
+                    text: "Only verified leads can present your deal — quality over quantity",
+                  },
+                  {
+                    icon: <Scale className="h-4 w-4" />,
+                    text: "Founders don't choose who invests — leads bring their own network",
+                  },
+                  {
+                    icon: <BarChart3 className="h-4 w-4" />,
+                    text: "Leads earn carry on follower profits — aligned incentive structure",
+                  },
+                  {
+                    icon: <Megaphone className="h-4 w-4" />,
+                    text: "Built-in distribution to 8,400+ verified crypto investors",
+                  },
+                ].map((item) => (
+                  <li
+                    key={item.text}
+                    className="flex items-start gap-3 text-sm font-light text-zinc-400"
+                  >
+                    <span className="mt-0.5 shrink-0 text-zinc-600">
+                      {item.icon}
+                    </span>
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
 
-                <div className="mt-8">
-                  <Link href="/apply">
-                    <Button size="md" variant="outline">
-                      Apply to Raise
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+              <div className="mt-10">
+                <Link href="/apply">
+                  <button className="inline-flex items-center gap-2 rounded-md border border-zinc-700 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100">
+                    Apply to Raise
+                  </button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -424,69 +367,57 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* Trust & Safety                                                    */}
       {/* ================================================================= */}
-      <section className="border-y border-zinc-800 bg-zinc-900/30">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:py-28">
+      <section className="border-y border-zinc-800/30">
+        <div className="mx-auto max-w-6xl px-4 py-24 sm:py-32">
           <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold text-zinc-50 sm:text-4xl">
+            <h2 className="text-section-heading text-zinc-100">
               Built on trust, enforced by code
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-zinc-400">
+            <p className="mx-auto mt-4 max-w-xl font-light text-zinc-500">
               Every dollar invested on Exposure is protected by smart contract
               guarantees. Not promises — code.
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-px overflow-hidden rounded-xl border border-zinc-800/40 bg-zinc-800/40 sm:grid-cols-3">
             {/* Trust card 1 */}
-            <Card className="border-zinc-800 bg-zinc-900/60">
-              <CardContent className="p-6">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600/10 text-violet-400">
-                  <Shield className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-semibold text-zinc-50">
-                  Exposure holds your investment legally
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Your funds are held in a regulated legal structure operated by
-                  Exposure — not by the lead investor, not by the project.
-                  Institutional-grade custody for every participant.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-zinc-950 p-8">
+              <Shield className="mb-5 h-5 w-5 text-zinc-500" />
+              <h3 className="text-base font-medium text-zinc-200">
+                Exposure holds your investment legally
+              </h3>
+              <p className="mt-2 text-sm font-light leading-relaxed text-zinc-500">
+                Your funds are held in a regulated legal structure operated by
+                Exposure — not by the lead investor, not by the project.
+                Institutional-grade custody for every participant.
+              </p>
+            </div>
 
             {/* Trust card 2 */}
-            <Card className="border-zinc-800 bg-zinc-900/60">
-              <CardContent className="p-6">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600/10 text-violet-400">
-                  <Lock className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-semibold text-zinc-50">
-                  Leads have zero access to your USDC
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Smart contracts ensure that lead investors can never touch,
-                  redirect, or withdraw follower funds. The contract enforces
-                  separation at the protocol level.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-zinc-950 p-8">
+              <Lock className="mb-5 h-5 w-5 text-zinc-500" />
+              <h3 className="text-base font-medium text-zinc-200">
+                Leads have zero access to your USDC
+              </h3>
+              <p className="mt-2 text-sm font-light leading-relaxed text-zinc-500">
+                Smart contracts ensure that lead investors can never touch,
+                redirect, or withdraw follower funds. The contract enforces
+                separation at the protocol level.
+              </p>
+            </div>
 
             {/* Trust card 3 */}
-            <Card className="border-zinc-800 bg-zinc-900/60 sm:col-span-2 lg:col-span-1">
-              <CardContent className="p-6">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600/10 text-violet-400">
-                  <KeyRound className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-semibold text-zinc-50">
-                  You control when you sell
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Token claims are non-custodial. Once tokens are distributed to
-                  your wallet, you hold the keys. No lock-ups beyond the
-                  project's vesting schedule.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-zinc-950 p-8">
+              <KeyRound className="mb-5 h-5 w-5 text-zinc-500" />
+              <h3 className="text-base font-medium text-zinc-200">
+                You control when you sell
+              </h3>
+              <p className="mt-2 text-sm font-light leading-relaxed text-zinc-500">
+                Token claims are non-custodial. Once tokens are distributed to
+                your wallet, you hold the keys. No lock-ups beyond the
+                project's vesting schedule.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -494,44 +425,34 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* How It Works                                                      */}
       {/* ================================================================= */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10"
-        >
-          <GrainOverlay />
-        </div>
-
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:py-28">
+      <section>
+        <div className="mx-auto max-w-6xl px-4 py-24 sm:py-32">
           <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold text-zinc-50 sm:text-4xl">
+            <h2 className="text-section-heading text-zinc-100">
               How it works
             </h2>
-            <p className="mx-auto mt-3 max-w-lg text-zinc-400">
+            <p className="mx-auto mt-4 max-w-lg font-light text-zinc-500">
               From sign-up to your first investment in four steps. No wallet
               required to start.
             </p>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
             {HOW_IT_WORKS.map((step) => (
               <div
                 key={step.title}
-                className="flex flex-col items-center gap-4 text-center"
+                className="flex flex-col items-center gap-5 text-center"
               >
-                <div className="relative">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 text-violet-400">
-                    {step.icon}
-                  </div>
-                  <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
+                <div className="flex items-center gap-3">
+                  <span className="font-serif text-4xl font-light text-zinc-700">
                     {step.step}
                   </span>
                 </div>
 
-                <h3 className="text-lg font-semibold text-zinc-50">
+                <h3 className="text-base font-medium text-zinc-200">
                   {step.title}
                 </h3>
-                <p className="max-w-xs text-sm leading-relaxed text-zinc-400">
+                <p className="max-w-xs text-sm font-light leading-relaxed text-zinc-500">
                   {step.description}
                 </p>
               </div>
@@ -543,36 +464,33 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* Social Proof / Lead Investors                                     */}
       {/* ================================================================= */}
-      <section className="border-y border-zinc-800 bg-zinc-900/30">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:py-28">
+      <section className="border-y border-zinc-800/30">
+        <div className="mx-auto max-w-6xl px-4 py-24 sm:py-32">
           <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold text-zinc-50 sm:text-4xl">
+            <h2 className="text-section-heading text-zinc-100">
               Trusted by leads, backed by results
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-zinc-400">
+            <p className="mx-auto mt-4 max-w-xl font-light text-zinc-500">
               Our lead investors are VCs, syndicates, and community builders who
               have been vetted for track record, integrity, and alignment.
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-12 sm:grid-cols-3">
             {[
               {
-                icon: <BadgeCheck className="h-6 w-6" />,
                 stat: "120+",
                 label: "Verified Lead Investors",
                 description:
                   "Every lead is vetted before they can present deals on the platform.",
               },
               {
-                icon: <Globe className="h-6 w-6" />,
                 stat: "40+",
                 label: "Countries Represented",
                 description:
                   "A global network of investors and founders building the future of crypto.",
               },
               {
-                icon: <CheckCircle2 className="h-6 w-6" />,
                 stat: "94%",
                 label: "Deal Completion Rate",
                 description:
@@ -581,16 +499,15 @@ export default function LandingPage() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex flex-col items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-8 text-center"
+                className="flex flex-col items-center gap-2 text-center"
               >
-                <span className="text-violet-400">{item.icon}</span>
-                <span className="text-3xl font-bold text-zinc-50">
+                <span className="font-serif text-5xl font-light text-zinc-100">
                   {item.stat}
                 </span>
-                <span className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+                <span className="text-xs font-light uppercase tracking-wider text-zinc-600">
                   {item.label}
                 </span>
-                <p className="text-sm text-zinc-400">{item.description}</p>
+                <p className="mt-2 max-w-xs text-sm font-light text-zinc-500">{item.description}</p>
               </div>
             ))}
           </div>
@@ -600,25 +517,18 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FAQ                                                               */}
       {/* ================================================================= */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10"
-        >
-          <GrainOverlay />
-        </div>
-
-        <div className="mx-auto max-w-3xl px-4 py-20 sm:py-28">
+      <section>
+        <div className="mx-auto max-w-3xl px-4 py-24 sm:py-32">
           <div className="mb-12 text-center">
-            <h2 className="text-3xl font-bold text-zinc-50 sm:text-4xl">
+            <h2 className="text-section-heading text-zinc-100">
               Frequently asked questions
             </h2>
-            <p className="mt-3 text-zinc-400">
+            <p className="mt-4 font-light text-zinc-500">
               Security, compliance, and how Exposure protects your capital.
             </p>
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-6">
+          <div className="border-t border-zinc-800/40">
             {FAQ_ITEMS.map((item, i) => (
               <FAQItem
                 key={item.question}
@@ -635,41 +545,32 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* Bottom CTA                                                        */}
       {/* ================================================================= */}
-      <section className="border-t border-zinc-800">
-        <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-6 overflow-hidden px-4 py-24 text-center sm:py-32">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10"
-          >
-            <div className="absolute left-1/2 top-1/2 h-[400px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-violet-600/15 via-fuchsia-500/5 to-transparent blur-3xl" />
-          </div>
-
-          <h2 className="text-3xl font-bold text-zinc-50 sm:text-4xl">
+      <section className="border-t border-zinc-800/30">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 py-28 text-center sm:py-36">
+          <h2 className="text-section-heading text-zinc-100">
             Ready to invest alongside the best?
           </h2>
-          <p className="max-w-lg text-zinc-400">
+          <p className="max-w-lg font-light text-zinc-500">
             Join 8,400+ verified investors accessing private crypto rounds
             through trusted lead investors. On-chain, compliant, and
             transparent.
           </p>
 
-          <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row">
             <Link href="/deals">
-              <Button
-                size="lg"
-                rightIcon={<ArrowRight className="h-4 w-4" />}
-              >
+              <button className="inline-flex items-center gap-2 rounded-md bg-zinc-50 px-8 py-3.5 text-base font-medium text-zinc-900 hover:bg-zinc-200">
                 Start Investing
-              </Button>
+                <ArrowRight className="h-4 w-4" />
+              </button>
             </Link>
             <Link href="/apply">
-              <Button size="lg" variant="outline">
+              <button className="inline-flex items-center gap-2 rounded-md border border-zinc-700 px-8 py-3.5 text-base font-light text-zinc-300 hover:border-zinc-600 hover:text-zinc-100">
                 Apply as a Lead
-              </Button>
+              </button>
             </Link>
           </div>
 
-          <p className="mt-4 text-xs text-zinc-500">
+          <p className="mt-6 text-xs font-light text-zinc-600">
             Investments involve risk. Past performance is not indicative of
             future results.
           </p>

@@ -1,5 +1,19 @@
+import type { Metadata } from "next";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s — Exposure",
+    default: "Exposure — by Street",
+  },
+  description:
+    "Discover and invest in the next generation of crypto projects through trusted lead investors.",
+};
 
 // ---------------------------------------------------------------------------
 // Public layout — Header + content + Footer

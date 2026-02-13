@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   User,
   Wallet,
@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -30,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
+import { Select } from "@/components/ui/select";
 import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -45,7 +48,32 @@ import { cn } from "@/lib/utils/cn";
 import { formatAddress, formatDate } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data
+// Types
+// ---------------------------------------------------------------------------
+
+interface ApiWallet {
+  id: string;
+  address: string;
+  chain: "ETHEREUM" | "BASE" | "ARBITRUM";
+  isPrimary: boolean;
+  linkedAt: string;
+}
+
+interface NotificationPreferences {
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  dealAlerts: boolean;
+  vestingAlerts: boolean;
+  accountAlerts: boolean;
+  marketingEmails: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  digestMode: "immediate" | "daily" | "weekly";
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder Data (profile / sessions remain placeholder until their APIs)
 // ---------------------------------------------------------------------------
 
 const PROFILE = {
@@ -55,83 +83,7 @@ const PROFILE = {
   walletAddress: "0x7a3B1c2D8e5F6a9B0c1D2e3F4a5B6c7D8e9f4E",
 };
 
-interface LinkedWallet {
-  id: string;
-  chain: string;
-  chainColor: string;
-  address: string;
-  isPrimary: boolean;
-}
-
-const LINKED_WALLETS: LinkedWallet[] = [
-  {
-    id: "1",
-    chain: "Ethereum",
-    chainColor: "text-sky-400",
-    address: "0x7a3B1c2D8e5F6a9B0c1D2e3F4a5B6c7D8e9f4E",
-    isPrimary: true,
-  },
-  {
-    id: "2",
-    chain: "Arbitrum",
-    chainColor: "text-blue-400",
-    address: "0x9c0D1e2F3a4B5c6D7e8F9a0B1c2D3e4F5a6B7c8D",
-    isPrimary: false,
-  },
-  {
-    id: "3",
-    chain: "Solana",
-    chainColor: "text-violet-400",
-    address: "7K9pDQ...vRmNx",
-    isPrimary: false,
-  },
-];
-
-interface NotificationSetting {
-  id: string;
-  label: string;
-  description: string;
-  email: boolean;
-  inApp: boolean;
-  push: boolean;
-}
-
-const NOTIFICATION_SETTINGS: NotificationSetting[] = [
-  {
-    id: "deal_alerts",
-    label: "Deal Alerts",
-    description: "New deal listings, opening announcements, and closing reminders",
-    email: true,
-    inApp: true,
-    push: true,
-  },
-  {
-    id: "vesting_updates",
-    label: "Vesting Updates",
-    description: "Token unlock notifications and claim reminders",
-    email: true,
-    inApp: true,
-    push: false,
-  },
-  {
-    id: "account_activity",
-    label: "Account Activity",
-    description: "Contributions, stakes, claims, and security events",
-    email: true,
-    inApp: true,
-    push: true,
-  },
-  {
-    id: "marketing",
-    label: "Marketing",
-    description: "Product updates, newsletters, and promotional content",
-    email: false,
-    inApp: false,
-    push: false,
-  },
-];
-
-interface Session {
+interface SessionEntry {
   id: string;
   device: string;
   deviceIcon: "desktop" | "mobile";
@@ -142,7 +94,7 @@ interface Session {
   isCurrent: boolean;
 }
 
-const SESSIONS: Session[] = [
+const SESSIONS: SessionEntry[] = [
   {
     id: "1",
     device: "Windows PC",
@@ -178,29 +130,232 @@ const SESSIONS: Session[] = [
 const KYC_STATUS = "Approved" as "Approved" | "Pending" | "Not Started" | "Rejected";
 
 // ---------------------------------------------------------------------------
+// Chain display helpers
+// ---------------------------------------------------------------------------
+
+const CHAIN_LABELS: Record<string, string> = {
+  ETHEREUM: "Ethereum",
+  BASE: "Base",
+  ARBITRUM: "Arbitrum",
+};
+
+const CHAIN_COLORS: Record<string, string> = {
+  ETHEREUM: "text-sky-400",
+  BASE: "text-blue-400",
+  ARBITRUM: "text-orange-400",
+};
+
+// ---------------------------------------------------------------------------
+// Digest mode options
+// ---------------------------------------------------------------------------
+
+const DIGEST_OPTIONS = [
+  { value: "immediate", label: "Immediate -- send notifications in real time" },
+  { value: "daily", label: "Daily Digest -- one email per day" },
+  { value: "weekly", label: "Weekly Digest -- one email per week" },
+];
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
+  // Profile state
   const [displayName, setDisplayName] = useState(PROFILE.displayName);
   const [email, setEmail] = useState(PROFILE.email);
-  const [notifications, setNotifications] = useState(NOTIFICATION_SETTINGS);
-  const [quietHoursEnabled, setQuietHoursEnabled] = useState(true);
-  const [quietHoursStart, setQuietHoursStart] = useState("22:00");
-  const [quietHoursEnd, setQuietHoursEnd] = useState("08:00");
+
+  // Wallet state
+  const [wallets, setWallets] = useState<ApiWallet[]>([]);
+  const [walletsLoading, setWalletsLoading] = useState(true);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [unlinkingWalletId, setUnlinkingWalletId] = useState<string | null>(null);
+  const [linkingWallet, setLinkingWallet] = useState(false);
+
+  // Notification preferences state
+  const [preferences, setPreferences] = useState<NotificationPreferences>({
+    emailNotifications: true,
+    pushNotifications: true,
+    dealAlerts: true,
+    vestingAlerts: true,
+    accountAlerts: true,
+    marketingEmails: false,
+    quietHoursEnabled: false,
+    quietHoursStart: "22:00",
+    quietHoursEnd: "08:00",
+    digestMode: "immediate",
+  });
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  const [prefsSaving, setPrefsSaving] = useState(false);
+  const [prefsMessage, setPrefsMessage] = useState<string | null>(null);
+
+  // Export state
+  const [exporting, setExporting] = useState(false);
+
+  // Security state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  function updateNotification(
-    id: string,
-    channel: "email" | "inApp" | "push",
-    value: boolean
-  ) {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, [channel]: value } : n))
-    );
+  // -------------------------------------------------------------------------
+  // Fetch linked wallets
+  // -------------------------------------------------------------------------
+
+  const fetchWallets = useCallback(async () => {
+    try {
+      setWalletsLoading(true);
+      setWalletError(null);
+      const res = await fetch("/api/users/me/wallets");
+      const json = await res.json();
+      if (json.success) {
+        setWallets(json.data.wallets);
+      } else {
+        setWalletError(json.error?.message || "Failed to load wallets");
+      }
+    } catch {
+      setWalletError("Failed to load wallets");
+    } finally {
+      setWalletsLoading(false);
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // Fetch notification preferences
+  // -------------------------------------------------------------------------
+
+  const fetchPreferences = useCallback(async () => {
+    try {
+      setPrefsLoading(true);
+      const res = await fetch("/api/users/me/preferences");
+      const json = await res.json();
+      if (json.success) {
+        setPreferences(json.data.preferences);
+      }
+    } catch {
+      // Keep defaults on error
+    } finally {
+      setPrefsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWallets();
+    fetchPreferences();
+  }, [fetchWallets, fetchPreferences]);
+
+  // -------------------------------------------------------------------------
+  // Unlink wallet handler
+  // -------------------------------------------------------------------------
+
+  async function handleUnlinkWallet(walletId: string) {
+    try {
+      setUnlinkingWalletId(walletId);
+      setWalletError(null);
+      const res = await fetch("/api/users/me/wallets", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setWallets((prev) => prev.filter((w) => w.id !== walletId));
+      } else {
+        setWalletError(json.error?.message || "Failed to unlink wallet");
+      }
+    } catch {
+      setWalletError("Failed to unlink wallet");
+    } finally {
+      setUnlinkingWalletId(null);
+    }
   }
 
-  function kycBadgeVariant(status: string) {
+  // -------------------------------------------------------------------------
+  // Link wallet handler (triggers wallet signature flow)
+  // -------------------------------------------------------------------------
+
+  async function handleLinkWallet() {
+    // In a real implementation this would open a wallet connect modal,
+    // request a signature, then POST to /api/users/me/wallets.
+    // For now, we set a flag to indicate the flow is active.
+    setLinkingWallet(true);
+    setWalletError(null);
+
+    // Placeholder: show a message that the wallet connection modal should appear
+    setTimeout(() => {
+      setLinkingWallet(false);
+      setWalletError("Wallet connection UI not yet integrated. Use a web3 provider to sign and link.");
+    }, 1500);
+  }
+
+  // -------------------------------------------------------------------------
+  // Save notification preferences
+  // -------------------------------------------------------------------------
+
+  async function handleSavePreferences() {
+    try {
+      setPrefsSaving(true);
+      setPrefsMessage(null);
+      const res = await fetch("/api/users/me/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(preferences),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setPrefsMessage("Preferences saved successfully");
+        setTimeout(() => setPrefsMessage(null), 3000);
+      } else {
+        setPrefsMessage(json.error?.message || "Failed to save preferences");
+      }
+    } catch {
+      setPrefsMessage("Failed to save preferences");
+    } finally {
+      setPrefsSaving(false);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Export portfolio as CSV
+  // -------------------------------------------------------------------------
+
+  async function handleExportPortfolio() {
+    try {
+      setExporting(true);
+      const res = await fetch("/api/users/me/portfolio/export?format=csv");
+      if (!res.ok) {
+        throw new Error("Export failed");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const disposition = res.headers.get("Content-Disposition");
+      const filenameMatch = disposition?.match(/filename="(.+)"/);
+      link.download = filenameMatch?.[1] || `portfolio-export-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // Could show an error toast here
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Notification preference helpers
+  // -------------------------------------------------------------------------
+
+  function updatePreference<K extends keyof NotificationPreferences>(
+    key: K,
+    value: NotificationPreferences[K]
+  ) {
+    setPreferences((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // -------------------------------------------------------------------------
+  // KYC helpers
+  // -------------------------------------------------------------------------
+
+  function kycBadgeVariant(status: string): "default" | "success" | "warning" | "error" | "info" | "outline" {
     switch (status) {
       case "Approved":
         return "success";
@@ -225,6 +380,10 @@ export default function SettingsPage() {
         return <Shield className="h-5 w-5 text-zinc-400" />;
     }
   }
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -338,48 +497,101 @@ export default function SettingsPage() {
                   Manage your connected wallets across chains
                 </CardDescription>
               </div>
-              <Button size="sm" leftIcon={<Link2 className="h-4 w-4" />}>
-                Link New Wallet
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fetchWallets}
+                  disabled={walletsLoading}
+                >
+                  <RefreshCw className={cn("h-4 w-4", walletsLoading && "animate-spin")} />
+                </Button>
+                <Button
+                  size="sm"
+                  leftIcon={<Link2 className="h-4 w-4" />}
+                  onClick={handleLinkWallet}
+                  disabled={linkingWallet}
+                >
+                  {linkingWallet ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    "Link New Wallet"
+                  )}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {LINKED_WALLETS.map((wallet) => (
-                <div
-                  key={wallet.id}
-                  className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/50 p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-                      <Wallet className={cn("h-5 w-5", wallet.chainColor)} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" size="sm">
-                          {wallet.chain}
-                        </Badge>
-                        {wallet.isPrimary && (
-                          <Badge variant="success" size="sm">
-                            Primary
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="mt-1 font-mono text-sm text-zinc-300">
-                        {formatAddress(wallet.address, 8)}
-                      </p>
-                    </div>
-                  </div>
-                  {!wallet.isPrimary && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-zinc-400 hover:text-rose-400"
-                    >
-                      <Unlink className="h-4 w-4" />
-                      Unlink
-                    </Button>
-                  )}
+              {walletError && (
+                <Alert variant="error">
+                  {walletError}
+                </Alert>
+              )}
+
+              {walletsLoading && wallets.length === 0 ? (
+                <div className="flex items-center justify-center py-8 text-zinc-500">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Loading wallets...
                 </div>
-              ))}
+              ) : wallets.length === 0 ? (
+                <div className="py-8 text-center text-sm text-zinc-500">
+                  No wallets linked yet. Link a wallet to get started.
+                </div>
+              ) : (
+                wallets.map((wallet) => (
+                  <div
+                    key={wallet.id}
+                    className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/50 p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
+                        <Wallet
+                          className={cn(
+                            "h-5 w-5",
+                            CHAIN_COLORS[wallet.chain] || "text-zinc-400"
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" size="sm">
+                            {CHAIN_LABELS[wallet.chain] || wallet.chain}
+                          </Badge>
+                          {wallet.isPrimary && (
+                            <Badge variant="success" size="sm">
+                              Primary
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 font-mono text-sm text-zinc-300">
+                          {formatAddress(wallet.address, 8)}
+                        </p>
+                        <p className="text-xs text-zinc-600">
+                          Linked {formatDate(wallet.linkedAt)}
+                        </p>
+                      </div>
+                    </div>
+                    {!wallet.isPrimary && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-zinc-400 hover:text-rose-400"
+                        onClick={() => handleUnlinkWallet(wallet.id)}
+                        disabled={unlinkingWalletId === wallet.id}
+                      >
+                        {unlinkingWalletId === wallet.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Unlink className="h-4 w-4" />
+                        )}
+                        {unlinkingWalletId === wallet.id ? "Unlinking..." : "Unlink"}
+                      </Button>
+                    )}
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -396,101 +608,219 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Header row for channels */}
-              <div className="grid grid-cols-[1fr_80px_80px_80px] items-center gap-4">
-                <span />
-                <span className="text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  Email
-                </span>
-                <span className="text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  In-App
-                </span>
-                <span className="text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  Push
-                </span>
-              </div>
-
-              {notifications.map((setting) => (
-                <div
-                  key={setting.id}
-                  className="grid grid-cols-[1fr_80px_80px_80px] items-center gap-4 border-t border-zinc-800 pt-4"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">
-                      {setting.label}
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      {setting.description}
-                    </p>
-                  </div>
-                  <div className="flex justify-center">
-                    <Toggle
-                      checked={setting.email}
-                      onCheckedChange={(v) =>
-                        updateNotification(setting.id, "email", v)
-                      }
-                      size="sm"
-                    />
-                  </div>
-                  <div className="flex justify-center">
-                    <Toggle
-                      checked={setting.inApp}
-                      onCheckedChange={(v) =>
-                        updateNotification(setting.id, "inApp", v)
-                      }
-                      size="sm"
-                    />
-                  </div>
-                  <div className="flex justify-center">
-                    <Toggle
-                      checked={setting.push}
-                      onCheckedChange={(v) =>
-                        updateNotification(setting.id, "push", v)
-                      }
-                      size="sm"
-                    />
-                  </div>
+              {prefsLoading ? (
+                <div className="flex items-center justify-center py-8 text-zinc-500">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Loading preferences...
                 </div>
-              ))}
+              ) : (
+                <>
+                  {/* Global Channel Toggles */}
+                  <div className="space-y-4">
+                    <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                      Notification Channels
+                    </p>
+                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">
+                          Email Notifications
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          Receive notifications via email
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences.emailNotifications}
+                        onCheckedChange={(v) =>
+                          updatePreference("emailNotifications", v)
+                        }
+                        size="sm"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">
+                          Push Notifications
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          Receive browser push notifications
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences.pushNotifications}
+                        onCheckedChange={(v) =>
+                          updatePreference("pushNotifications", v)
+                        }
+                        size="sm"
+                      />
+                    </div>
+                  </div>
 
-              {/* Quiet Hours */}
-              <div className="border-t border-zinc-800 pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">
-                      Quiet Hours
+                  {/* Category Toggles */}
+                  <div className="space-y-4 border-t border-zinc-800 pt-6">
+                    <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                      Notification Categories
                     </p>
-                    <p className="text-xs text-zinc-500">
-                      Pause non-critical notifications during specified hours
-                    </p>
+
+                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">
+                          Deal Alerts
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          New deal listings, opening announcements, and closing
+                          reminders
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences.dealAlerts}
+                        onCheckedChange={(v) =>
+                          updatePreference("dealAlerts", v)
+                        }
+                        size="sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">
+                          Vesting Alerts
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          Token unlock notifications and claim reminders
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences.vestingAlerts}
+                        onCheckedChange={(v) =>
+                          updatePreference("vestingAlerts", v)
+                        }
+                        size="sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">
+                          Account Alerts
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          Contributions, stakes, claims, and security events
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences.accountAlerts}
+                        onCheckedChange={(v) =>
+                          updatePreference("accountAlerts", v)
+                        }
+                        size="sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">
+                          Marketing Emails
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          Product updates, newsletters, and promotional content
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences.marketingEmails}
+                        onCheckedChange={(v) =>
+                          updatePreference("marketingEmails", v)
+                        }
+                        size="sm"
+                      />
+                    </div>
                   </div>
-                  <Toggle
-                    checked={quietHoursEnabled}
-                    onCheckedChange={setQuietHoursEnabled}
-                    size="sm"
-                  />
-                </div>
-                {quietHoursEnabled && (
-                  <div className="mt-4 flex items-center gap-3">
-                    <Input
-                      type="time"
-                      value={quietHoursStart}
-                      onChange={(e) => setQuietHoursStart(e.target.value)}
-                      className="w-32"
-                    />
-                    <span className="text-sm text-zinc-500">to</span>
-                    <Input
-                      type="time"
-                      value={quietHoursEnd}
-                      onChange={(e) => setQuietHoursEnd(e.target.value)}
-                      className="w-32"
+
+                  {/* Digest Mode Selector */}
+                  <div className="border-t border-zinc-800 pt-6">
+                    <Select
+                      label="Digest Mode"
+                      value={preferences.digestMode}
+                      onChange={(e) =>
+                        updatePreference(
+                          "digestMode",
+                          e.target.value as "immediate" | "daily" | "weekly"
+                        )
+                      }
+                      options={DIGEST_OPTIONS}
+                      helperText="Control how frequently you receive notification emails"
                     />
                   </div>
-                )}
-              </div>
+
+                  {/* Quiet Hours */}
+                  <div className="border-t border-zinc-800 pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">
+                          Quiet Hours
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          Pause non-critical notifications during specified hours
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences.quietHoursEnabled}
+                        onCheckedChange={(v) =>
+                          updatePreference("quietHoursEnabled", v)
+                        }
+                        size="sm"
+                      />
+                    </div>
+                    {preferences.quietHoursEnabled && (
+                      <div className="mt-4 flex items-center gap-3">
+                        <Input
+                          type="time"
+                          value={preferences.quietHoursStart}
+                          onChange={(e) =>
+                            updatePreference("quietHoursStart", e.target.value)
+                          }
+                          className="w-32"
+                        />
+                        <span className="text-sm text-zinc-500">to</span>
+                        <Input
+                          type="time"
+                          value={preferences.quietHoursEnd}
+                          onChange={(e) =>
+                            updatePreference("quietHoursEnd", e.target.value)
+                          }
+                          className="w-32"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Save status message */}
+                  {prefsMessage && (
+                    <Alert
+                      variant={
+                        prefsMessage.includes("success") ? "success" : "error"
+                      }
+                    >
+                      {prefsMessage}
+                    </Alert>
+                  )}
+                </>
+              )}
             </CardContent>
             <CardFooter>
-              <Button>Save Preferences</Button>
+              <Button
+                onClick={handleSavePreferences}
+                disabled={prefsSaving || prefsLoading}
+              >
+                {prefsSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Preferences"
+                )}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -529,7 +859,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge
-                      variant={kycBadgeVariant(KYC_STATUS) as any}
+                      variant={kycBadgeVariant(KYC_STATUS)}
                       size="md"
                     >
                       {KYC_STATUS}
@@ -614,7 +944,35 @@ export default function SettingsPage() {
                 <CardTitle>Data & Account</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Export Data */}
+                {/* Export Portfolio CSV */}
+                <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-200">
+                      Export Portfolio
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Download your portfolio as a CSV file with all
+                      contributions, allocations, and PnL data
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={
+                      exporting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )
+                    }
+                    onClick={handleExportPortfolio}
+                    disabled={exporting}
+                  >
+                    {exporting ? "Exporting..." : "Export CSV"}
+                  </Button>
+                </div>
+
+                {/* Export All Data */}
                 <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
                   <div>
                     <p className="text-sm font-medium text-zinc-200">

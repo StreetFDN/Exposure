@@ -12,6 +12,7 @@ import {
   requireAuth,
   validateBody,
 } from "@/lib/utils/api";
+import { withRateLimit } from "@/lib/utils/rate-limit";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,11 @@ export async function POST(
 ) {
   try {
     const user = await requireAuth(request);
+
+    // Rate limit: 10 requests per minute per user
+    const rateLimited = withRateLimit(request, `contribute:${user.id}`, 10, 60_000);
+    if (rateLimited) return rateLimited;
+
     const { id: dealId } = await params;
     const body = await validateBody(request, contributeSchema);
 

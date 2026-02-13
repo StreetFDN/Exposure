@@ -5,6 +5,7 @@
 import { NextRequest } from "next/server";
 import crypto from "crypto";
 import { apiResponse, apiError, handleApiError } from "@/lib/utils/api";
+import { withRateLimit, getClientIp } from "@/lib/utils/rate-limit";
 
 // ---------------------------------------------------------------------------
 // In-memory nonce store with 5-minute expiry
@@ -61,6 +62,11 @@ export function consumeNonce(nonce: string): boolean {
 
 export async function GET(_request: NextRequest) {
   try {
+    // Rate limit: 20 requests per minute per IP
+    const ip = getClientIp(_request);
+    const rateLimited = withRateLimit(_request, `nonce:${ip}`, 20, 60_000);
+    if (rateLimited) return rateLimited;
+
     cleanupExpiredNonces();
 
     const nonce = crypto.randomBytes(16).toString("hex");

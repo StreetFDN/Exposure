@@ -144,11 +144,11 @@ const DEAL_STATUS_CONFIG: Record<
 
 const GROUP_STATUS_CONFIG: Record<
   string,
-  { label: string; variant: "default" | "success" | "warning" | "info" | "outline" }
+  { label: string; variant: "default" | "success" | "warning" | "error" | "info" | "outline" }
 > = {
   PENDING_APPROVAL: { label: "Pending", variant: "warning" },
   ACTIVE: { label: "Active", variant: "success" },
-  SUSPENDED: { label: "Suspended", variant: "error" as any },
+  SUSPENDED: { label: "Suspended", variant: "error" },
   CLOSED: { label: "Closed", variant: "outline" },
 };
 

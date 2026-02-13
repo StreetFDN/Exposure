@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   Upload,
@@ -1715,8 +1716,12 @@ function StepWallet({
 
 function StepAttestation({
   data,
+  redirectTarget,
+  onComplete,
 }: {
   data: OnboardingData;
+  redirectTarget?: string | null;
+  onComplete?: () => void;
 }) {
   const countryLabel =
     COUNTRY_OPTIONS.find((c) => c.value === data.country)?.label ??
@@ -1877,15 +1882,27 @@ function StepAttestation({
 
       {/* CTA */}
       <div className="mt-8 flex flex-col items-center gap-3">
-        <Link href="/deals" className="w-full sm:w-auto">
-          <Button
-            size="lg"
-            className="w-full sm:w-auto"
-            rightIcon={<ArrowRight className="h-4 w-4" />}
-          >
-            Start Exploring Deals
-          </Button>
-        </Link>
+        {redirectTarget ? (
+          <Link href={redirectTarget} className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              className="w-full sm:w-auto"
+              rightIcon={<ArrowRight className="h-4 w-4" />}
+            >
+              Continue to {redirectTarget.replace(/^\//, "").split("/")[0] || "Dashboard"}
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/deals" className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              className="w-full sm:w-auto"
+              rightIcon={<ArrowRight className="h-4 w-4" />}
+            >
+              Start Exploring Deals
+            </Button>
+          </Link>
+        )}
         <Link
           href="/dashboard"
           className="text-xs text-zinc-500 transition-colors hover:text-zinc-400"
@@ -1902,11 +1919,44 @@ function StepAttestation({
 // ---------------------------------------------------------------------------
 
 export default function OnboardingPage() {
+  // ---------------------------------------------------------------------------
+  // Read query params: ?step=N&redirect=/path
+  // ---------------------------------------------------------------------------
+  const [redirectTarget, setRedirectTarget] = React.useState<string | null>(null);
+  const [initialStepRead, setInitialStepRead] = React.useState(false);
+
   const [currentStep, setCurrentStep] = React.useState(0);
   const [completedSteps, setCompletedSteps] = React.useState<Set<number>>(
     new Set()
   );
   const [data, setData] = React.useState<OnboardingData>(INITIAL_DATA);
+
+  const router = useRouter();
+
+  // Read URL params on mount (client-only)
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const redirectParam = params.get("redirect");
+    const stepParam = params.get("step");
+
+    if (redirectParam) {
+      setRedirectTarget(redirectParam);
+    }
+    if (stepParam) {
+      const stepNum = parseInt(stepParam, 10);
+      if (!isNaN(stepNum) && stepNum >= 0 && stepNum < STEPS.length) {
+        setCurrentStep(stepNum);
+        // Mark previous steps as completed so the stepper looks right
+        const completed = new Set<number>();
+        for (let i = 0; i < stepNum; i++) {
+          completed.add(i);
+        }
+        setCompletedSteps(completed);
+      }
+    }
+    setInitialStepRead(true);
+  }, []);
 
   const updateData = (updates: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...updates }));
@@ -2014,6 +2064,18 @@ export default function OnboardingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
+      {/* Already verified link for returning users */}
+      <div className="mb-6 flex justify-end">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-violet-400"
+        >
+          <User className="h-4 w-4" />
+          Already verified? Sign in
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="mb-8 text-center">
         <Badge variant="default" size="sm">
@@ -2045,7 +2107,16 @@ export default function OnboardingPage() {
           {currentStep === 3 && (
             <StepWallet data={data} onUpdate={updateData} />
           )}
-          {currentStep === 4 && <StepAttestation data={data} />}
+          {currentStep === 4 && (
+            <StepAttestation
+              data={data}
+              redirectTarget={redirectTarget}
+              onComplete={() => {
+                const target = redirectTarget || "/dashboard";
+                router.push(target);
+              }}
+            />
+          )}
         </CardContent>
       </Card>
 

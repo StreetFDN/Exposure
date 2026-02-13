@@ -14,22 +14,21 @@ import {
   Shield,
   Download,
   Linkedin,
-  Lock,
   CheckCircle2,
-  Info,
-  Wallet,
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Countdown } from "@/components/ui/countdown";
 import { DealPhaseIndicator } from "@/components/deals/deal-phase-indicator";
 import { ContributionForm } from "@/components/deals/contribution-form";
+import { ParticipationFlow } from "@/components/deals/participation-flow";
 import { DealStats } from "@/components/deals/deal-stats";
-import { formatCurrency, formatLargeNumber, formatPercent } from "@/lib/utils/format";
+import { TokenomicsChart } from "@/components/charts/tokenomics-chart";
+import { VestingTimeline } from "@/components/charts/vesting-timeline";
+import { ContributionProgress } from "@/components/charts/contribution-progress";
+import { formatCurrency, formatLargeNumber } from "@/lib/utils/format";
 import type { Phase } from "@/components/deals/deal-phase-indicator";
 
 // ---------------------------------------------------------------------------
@@ -171,6 +170,18 @@ const PHASES: Phase[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Tokenomics data for chart
+// ---------------------------------------------------------------------------
+
+const TOKENOMICS_DATA = [
+  { name: "Public Sale", value: 20, color: "#71717a" },
+  { name: "Team", value: 30, color: "#52525b" },
+  { name: "Ecosystem", value: 15, color: "#3f3f46" },
+  { name: "Liquidity", value: 20, color: "#a1a1aa" },
+  { name: "Reserve", value: 15, color: "#d4d4d8" },
+];
+
+// ---------------------------------------------------------------------------
 // Status helpers
 // ---------------------------------------------------------------------------
 
@@ -180,12 +191,12 @@ const STATUS_CONFIG: Record<
 > = {
   DRAFT: { label: "Draft", variant: "outline" },
   UNDER_REVIEW: { label: "Under Review", variant: "outline" },
-  APPROVED: { label: "Upcoming", variant: "info" },
-  REGISTRATION_OPEN: { label: "Registration Open", variant: "default" },
-  GUARANTEED_ALLOCATION: { label: "Guaranteed", variant: "success" },
-  FCFS: { label: "FCFS", variant: "warning" },
+  APPROVED: { label: "Upcoming", variant: "outline" },
+  REGISTRATION_OPEN: { label: "Registration Open", variant: "outline" },
+  GUARANTEED_ALLOCATION: { label: "Guaranteed", variant: "outline" },
+  FCFS: { label: "FCFS", variant: "outline" },
   SETTLEMENT: { label: "Settlement", variant: "outline" },
-  DISTRIBUTING: { label: "Distributing", variant: "info" },
+  DISTRIBUTING: { label: "Distributing", variant: "outline" },
   COMPLETED: { label: "Completed", variant: "outline" },
   CANCELLED: { label: "Cancelled", variant: "outline" },
 };
@@ -213,8 +224,8 @@ const CHAIN_LABELS: Record<string, string> = {
 export default function DealDetailPage() {
   const deal = DEAL;
   const statusConfig = STATUS_CONFIG[deal.status];
-  const raiseProgress =
-    (parseFloat(deal.totalRaised) / parseFloat(deal.hardCap)) * 100;
+
+  const [showParticipation, setShowParticipation] = React.useState(false);
 
   const isContributionPhase =
     deal.status === "GUARANTEED_ALLOCATION" || deal.status === "FCFS";
@@ -232,7 +243,7 @@ export default function DealDetailPage() {
         {/* Back link */}
         <Link
           href="/deals"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-50"
+          className="mb-4 inline-flex items-center gap-1 text-sm font-light text-zinc-500 transition-colors hover:text-zinc-300"
         >
           <ArrowLeft className="h-4 w-4" />
           All Deals
@@ -240,27 +251,33 @@ export default function DealDetailPage() {
 
         {/* Badges */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
-          <Badge variant="outline">{CATEGORY_LABELS[deal.category]}</Badge>
-          <Badge variant="outline">{CHAIN_LABELS[deal.chain]}</Badge>
+          <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
+            {statusConfig.label}
+          </span>
+          <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
+            {CATEGORY_LABELS[deal.category]}
+          </span>
+          <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
+            {CHAIN_LABELS[deal.chain]}
+          </span>
           {deal.requiresKyc && (
-            <Badge variant="info" size="sm">
-              <Shield className="mr-1 h-3 w-3" />
+            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
+              <Shield className="h-3 w-3" />
               KYC Required
-            </Badge>
+            </span>
           )}
           {deal.minTierRequired && (
-            <Badge variant="warning" size="sm">
+            <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
               {deal.minTierRequired} Tier
-            </Badge>
+            </span>
           )}
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold text-zinc-50 sm:text-4xl">
+        <h1 className="font-serif text-3xl font-light text-zinc-100 sm:text-4xl">
           {deal.projectName}
         </h1>
-        <p className="mt-2 text-lg text-zinc-400">{deal.shortDescription}</p>
+        <p className="mt-2 text-lg font-light text-zinc-500">{deal.shortDescription}</p>
 
         {/* Project links */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -302,7 +319,7 @@ export default function DealDetailPage() {
                     return (
                       <h2
                         key={i}
-                        className="mb-3 mt-6 text-xl font-bold text-zinc-50"
+                        className="mb-3 mt-6 font-serif text-xl font-light text-zinc-100"
                       >
                         {line.replace("## ", "")}
                       </h2>
@@ -312,7 +329,7 @@ export default function DealDetailPage() {
                     return (
                       <h3
                         key={i}
-                        className="mb-2 mt-5 text-lg font-semibold text-zinc-200"
+                        className="mb-2 mt-5 text-lg font-medium text-zinc-200"
                       >
                         {line.replace("### ", "")}
                       </h3>
@@ -323,7 +340,7 @@ export default function DealDetailPage() {
                     if (match) {
                       return (
                         <div key={i} className="mb-2 flex gap-2">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" />
                           <p className="text-sm text-zinc-300">
                             <strong className="text-zinc-50">
                               {match[1]}
@@ -337,7 +354,7 @@ export default function DealDetailPage() {
                   if (line.startsWith("- ")) {
                     return (
                       <div key={i} className="mb-2 flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" />
                         <p className="text-sm text-zinc-300">
                           {line.replace("- ", "")}
                         </p>
@@ -390,81 +407,10 @@ export default function DealDetailPage() {
                   />
                 </div>
 
-                {/* Placeholder for tokenomics chart */}
-                <div className="flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 p-6">
-                  <div className="relative h-40 w-40">
-                    {/* Placeholder pie chart segments */}
-                    <svg
-                      viewBox="0 0 100 100"
-                      className="h-full w-full -rotate-90"
-                    >
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="#8b5cf6"
-                        strokeWidth="20"
-                        strokeDasharray="50.27 251.33"
-                        strokeDashoffset="0"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="#6366f1"
-                        strokeWidth="20"
-                        strokeDasharray="75.4 251.33"
-                        strokeDashoffset="-50.27"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="20"
-                        strokeDasharray="37.7 251.33"
-                        strokeDashoffset="-125.66"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="#22d3ee"
-                        strokeWidth="20"
-                        strokeDasharray="50.27 251.33"
-                        strokeDashoffset="-163.36"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="#a1a1aa"
-                        strokeWidth="20"
-                        strokeDasharray="37.7 251.33"
-                        strokeDashoffset="-213.63"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-medium text-zinc-400">
-                        Token Distribution
-                      </span>
-                    </div>
-                  </div>
+                {/* Tokenomics donut chart */}
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                  <TokenomicsChart data={TOKENOMICS_DATA} />
                 </div>
-              </div>
-
-              {/* Legend */}
-              <div className="mt-4 flex flex-wrap gap-4">
-                <ChartLegend color="bg-violet-500" label="Public Sale (20%)" />
-                <ChartLegend color="bg-indigo-500" label="Team (30%)" />
-                <ChartLegend color="bg-blue-500" label="Ecosystem (15%)" />
-                <ChartLegend color="bg-cyan-400" label="Liquidity (20%)" />
-                <ChartLegend color="bg-zinc-400" label="Reserve (15%)" />
               </div>
             </CardContent>
           </Card>
@@ -509,7 +455,7 @@ export default function DealDetailPage() {
                   </div>
                   <div className="flex h-3 overflow-hidden rounded-full bg-zinc-800">
                     <div
-                      className="bg-violet-500"
+                      className="bg-zinc-400"
                       style={{
                         width: `${parseFloat(deal.tgeUnlockPercent)}%`,
                       }}
@@ -520,9 +466,20 @@ export default function DealDetailPage() {
                         width: `${(deal.vestingCliffDays / deal.vestingDurationDays) * (100 - parseFloat(deal.tgeUnlockPercent))}%`,
                       }}
                     />
-                    <div className="flex-1 bg-gradient-to-r from-violet-600 to-violet-400" />
+                    <div className="flex-1 bg-zinc-500" />
                   </div>
                 </div>
+
+                {/* Vesting timeline chart */}
+                <VestingTimeline
+                  schedule={{
+                    tgeUnlock: parseFloat(deal.tgeUnlockPercent),
+                    cliffMonths: Math.round(deal.vestingCliffDays / 30),
+                    vestingMonths: Math.round(deal.vestingDurationDays / 30),
+                    totalAmount: parseFloat(deal.totalTokenSupply) * 0.2, // Public sale portion
+                    claimed: 0,
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -540,7 +497,7 @@ export default function DealDetailPage() {
                     className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3"
                   >
                     {/* Avatar placeholder */}
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-sm font-bold text-white">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-medium text-zinc-300">
                       {member.name
                         .split(" ")
                         .map((n) => n[0])
@@ -609,19 +566,12 @@ export default function DealDetailPage() {
                 <CardTitle>Raise Progress</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                {/* Progress bar */}
-                <div>
-                  <div className="mb-2 flex items-end justify-between">
-                    <span className="text-2xl font-bold text-zinc-50">
-                      {formatPercent(raiseProgress, 1)}
-                    </span>
-                    <span className="text-sm text-zinc-400">
-                      {formatCurrency(deal.totalRaised)} /{" "}
-                      {formatCurrency(deal.hardCap)}
-                    </span>
-                  </div>
-                  <Progress value={raiseProgress} color="default" />
-                </div>
+                {/* Contribution progress bar */}
+                <ContributionProgress
+                  raised={parseFloat(deal.totalRaised)}
+                  softCap={parseFloat(deal.softCap)}
+                  hardCap={parseFloat(deal.hardCap)}
+                />
 
                 {/* Contributors */}
                 <div className="flex items-center gap-2 text-sm text-zinc-400">
@@ -649,90 +599,124 @@ export default function DealDetailPage() {
             </Card>
 
             {/* Contribution / CTA Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {isContributionPhase
-                    ? "Contribute"
-                    : isRegistrationPhase
-                      ? "Register"
-                      : isUpcoming
-                        ? "Coming Soon"
-                        : "Deal Status"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isContributionPhase && (
-                  <ContributionForm
-                    minContribution={parseFloat(deal.minContribution)}
-                    maxContribution={parseFloat(deal.maxContribution)}
-                    walletBalance={24350.0}
-                    tokenPrice={parseFloat(deal.tokenPrice)}
-                    tokenSymbol={deal.distributionTokenSymbol}
-                    raiseTokenSymbol={deal.raiseTokenSymbol}
-                  />
-                )}
-
-                {isRegistrationPhase && (
-                  <div className="flex flex-col items-center gap-4 py-4 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-500/10">
-                      <Clock className="h-7 w-7 text-violet-400" />
-                    </div>
-                    <p className="text-sm text-zinc-400">
-                      Register your interest to receive a guaranteed allocation
-                      when contributions open.
-                    </p>
-                    <Button className="w-full" size="lg">
-                      Register Interest
-                    </Button>
-                  </div>
-                )}
-
-                {isUpcoming && (
-                  <div className="flex flex-col items-center gap-4 py-4 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/10">
-                      <Clock className="h-7 w-7 text-blue-400" />
-                    </div>
-                    <p className="text-sm text-zinc-400">
-                      This deal has not opened yet. Registration starts soon.
-                    </p>
-                    {deal.registrationOpenAt && (
-                      <Countdown
-                        targetDate={deal.registrationOpenAt}
-                        label="Opens in"
+            {showParticipation ? (
+              <ParticipationFlow
+                dealName={deal.projectName}
+                roundType="Public Round"
+                allocationMethod={deal.allocationMethod.replace("_", " ")}
+                tokenSymbol={deal.distributionTokenSymbol}
+                raiseTokenSymbol={deal.raiseTokenSymbol}
+                tokenPrice={parseFloat(deal.tokenPrice)}
+                minContribution={parseFloat(deal.minContribution)}
+                maxContribution={parseFloat(deal.maxContribution)}
+                walletBalance={24350.0}
+                guaranteedAllocation={5000}
+                userTier="Gold"
+                tierMultiplier="2x"
+                onClose={() => setShowParticipation(false)}
+              />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {isContributionPhase
+                      ? "Contribute"
+                      : isRegistrationPhase
+                        ? "Register"
+                        : isUpcoming
+                          ? "Coming Soon"
+                          : "Deal Status"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isContributionPhase && (
+                    <div className="flex flex-col gap-4">
+                      <ContributionForm
+                        minContribution={parseFloat(deal.minContribution)}
+                        maxContribution={parseFloat(deal.maxContribution)}
+                        walletBalance={24350.0}
+                        tokenPrice={parseFloat(deal.tokenPrice)}
+                        tokenSymbol={deal.distributionTokenSymbol}
+                        raiseTokenSymbol={deal.raiseTokenSymbol}
                       />
-                    )}
-                  </div>
-                )}
+                      <div className="border-t border-zinc-800 pt-4">
+                        <Button
+                          variant="secondary"
+                          size="lg"
+                          className="w-full"
+                          onClick={() => setShowParticipation(true)}
+                        >
+                          Full Participation Flow
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
-                {isCompleted && (
-                  <div className="flex flex-col items-center gap-4 py-4 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
-                      <CheckCircle2 className="h-7 w-7 text-emerald-400" />
-                    </div>
-                    <p className="text-sm font-medium text-zinc-300">
-                      This deal has ended
-                    </p>
-                    <div className="grid w-full grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs text-zinc-500">Raised</span>
-                        <span className="text-sm font-semibold text-zinc-50">
-                          {formatCurrency(deal.totalRaised)}
-                        </span>
+                  {isRegistrationPhase && (
+                    <div className="flex flex-col items-center gap-4 py-4 text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800">
+                        <Clock className="h-7 w-7 text-zinc-400" />
                       </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs text-zinc-500">
-                          Contributors
-                        </span>
-                        <span className="text-sm font-semibold text-zinc-50">
-                          {deal.contributorCount.toLocaleString()}
-                        </span>
+                      <p className="text-sm text-zinc-400">
+                        Register your interest to receive a guaranteed allocation
+                        when contributions open.
+                      </p>
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={() => setShowParticipation(true)}
+                      >
+                        Register Interest
+                      </Button>
+                    </div>
+                  )}
+
+                  {isUpcoming && (
+                    <div className="flex flex-col items-center gap-4 py-4 text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800">
+                        <Clock className="h-7 w-7 text-zinc-400" />
+                      </div>
+                      <p className="text-sm text-zinc-400">
+                        This deal has not opened yet. Registration starts soon.
+                      </p>
+                      {deal.registrationOpenAt && (
+                        <Countdown
+                          targetDate={deal.registrationOpenAt}
+                          label="Opens in"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {isCompleted && (
+                    <div className="flex flex-col items-center gap-4 py-4 text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800">
+                        <CheckCircle2 className="h-7 w-7 text-zinc-400" />
+                      </div>
+                      <p className="text-sm font-medium text-zinc-300">
+                        This deal has ended
+                      </p>
+                      <div className="grid w-full grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs text-zinc-500">Raised</span>
+                          <span className="text-sm font-semibold text-zinc-50">
+                            {formatCurrency(deal.totalRaised)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs text-zinc-500">
+                            Contributors
+                          </span>
+                          <span className="text-sm font-semibold text-zinc-50">
+                            {deal.contributorCount.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Deal Stats */}
             <DealStats
@@ -769,42 +753,15 @@ export default function DealDetailPage() {
                   />
                   <DetailRow
                     label="KYC Required"
-                    value={
-                      <Badge
-                        variant={deal.requiresKyc ? "info" : "outline"}
-                        size="sm"
-                      >
-                        {deal.requiresKyc ? "Yes" : "No"}
-                      </Badge>
-                    }
+                    value={deal.requiresKyc ? "Yes" : "No"}
                   />
                   <DetailRow
                     label="Min Tier"
-                    value={
-                      <Badge
-                        variant={
-                          deal.minTierRequired ? "warning" : "outline"
-                        }
-                        size="sm"
-                      >
-                        {deal.minTierRequired ?? "None"}
-                      </Badge>
-                    }
+                    value={deal.minTierRequired ?? "None"}
                   />
                   <DetailRow
                     label="Accreditation"
-                    value={
-                      <Badge
-                        variant={
-                          deal.requiresAccreditation ? "error" : "outline"
-                        }
-                        size="sm"
-                      >
-                        {deal.requiresAccreditation
-                          ? "Required"
-                          : "Not Required"}
-                      </Badge>
-                    }
+                    value={deal.requiresAccreditation ? "Required" : "Not Required"}
                   />
                 </div>
               </CardContent>
@@ -857,15 +814,6 @@ function TokenomicRow({
   );
 }
 
-function ChartLegend({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className={cn("h-3 w-3 rounded-sm", color)} />
-      <span className="text-xs text-zinc-400">{label}</span>
-    </div>
-  );
-}
-
 function VestingBlock({
   label,
   value,
@@ -882,15 +830,15 @@ function VestingBlock({
       className={cn(
         "flex flex-col items-center gap-1 rounded-lg border p-4 text-center",
         active
-          ? "border-violet-500/40 bg-violet-500/5"
+          ? "border-zinc-600 bg-zinc-900/50"
           : "border-zinc-800 bg-zinc-950"
       )}
     >
       <span className="text-xs text-zinc-500">{label}</span>
       <span
         className={cn(
-          "text-xl font-bold",
-          active ? "text-violet-400" : "text-zinc-50"
+          "font-serif text-xl font-light",
+          active ? "text-zinc-100" : "text-zinc-200"
         )}
       >
         {value}
@@ -920,7 +868,7 @@ function DocumentCard({
       rel="noopener noreferrer"
       className="flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900"
     >
-      <div className="flex items-center gap-2 text-violet-400">
+      <div className="flex items-center gap-2 text-zinc-400">
         {icon}
         <span className="text-sm font-medium">{title}</span>
       </div>

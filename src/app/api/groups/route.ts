@@ -12,6 +12,7 @@ import {
   requireAuth,
   validateBody,
   parsePagination,
+  setCacheHeaders,
 } from "@/lib/utils/api";
 import { prisma } from "@/lib/prisma";
 
@@ -108,13 +109,16 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit);
 
-    return apiResponse({
+    const response = apiResponse({
       groups,
       total,
       page,
       limit,
       totalPages,
     });
+
+    // Cache for 60s
+    return setCacheHeaders(response, 60);
   } catch (error) {
     return handleApiError(error);
   }

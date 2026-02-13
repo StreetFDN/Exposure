@@ -11,6 +11,7 @@ import {
   handleApiError,
   validateBody,
 } from "@/lib/utils/api";
+import { withRateLimit, getClientIp } from "@/lib/utils/rate-limit";
 import { prisma } from "@/lib/prisma";
 import {
   verifyTOTP,
@@ -38,6 +39,11 @@ const validateSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 requests per minute per IP
+    const ip = getClientIp(request);
+    const rateLimited = withRateLimit(request, `2fa-validate:${ip}`, 5, 60_000);
+    if (rateLimited) return rateLimited;
+
     // For login validation, the user may not have a full session yet,
     // but we still need some identifier. We check session first, then
     // fall back to a userId in the body for login flows.

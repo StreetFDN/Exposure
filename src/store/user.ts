@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { User, TierLevel } from "@prisma/client";
+import type { SessionUser } from "@/types/api";
+import { api } from "@/lib/api/client";
 
 // =============================================================================
 // State & Actions
@@ -10,10 +12,10 @@ import type { User, TierLevel } from "@prisma/client";
 
 interface UserState {
   /** The currently authenticated user, or null if not signed in. */
-  user: User | null;
+  user: User | SessionUser | null;
   /** True while the user profile is being fetched. */
   isLoading: boolean;
-  /** Convenience derived flag — true when `user` is non-null. */
+  /** Convenience derived flag -- true when `user` is non-null. */
   isAuthenticated: boolean;
   /** The user's current staking tier. */
   tier: TierLevel | null;
@@ -21,8 +23,14 @@ interface UserState {
   points: number;
 }
 
+/**
+ * The setUser action accepts either a full Prisma User or a lightweight
+ * SessionUser returned by the session endpoint.
+ */
+type SetUserPayload = User | SessionUser;
+
 interface UserActions {
-  setUser: (user: User) => void;
+  setUser: (user: SetUserPayload) => void;
   clearUser: () => void;
   updateTier: (tier: TierLevel) => void;
   /**
@@ -61,8 +69,8 @@ export const useUserStore = create<UserStore>()(
             user,
             isAuthenticated: true,
             isLoading: false,
-            tier: user.tierLevel ?? null,
-            points: user.loyaltyPoints ?? 0,
+            tier: (user.tierLevel as TierLevel) ?? null,
+            points: user.totalPoints ?? 0,
           },
           undefined,
           "user/setUser"
@@ -77,14 +85,14 @@ export const useUserStore = create<UserStore>()(
       fetchUser: async (walletAddress) => {
         set({ isLoading: true }, undefined, "user/fetchUser:start");
         try {
-          const res = await fetch(
-            `/api/users/${encodeURIComponent(walletAddress)}`
+          const res = await api.get<User>(
+            `/users/${encodeURIComponent(walletAddress)}`
           );
-          if (!res.ok) {
-            throw new Error(`Failed to fetch user: ${res.status}`);
+          const user = res.data;
+
+          if (!user) {
+            throw new Error("User not found");
           }
-          const json = await res.json();
-          const user: User = json.data;
 
           set(
             {
@@ -92,7 +100,7 @@ export const useUserStore = create<UserStore>()(
               isAuthenticated: true,
               isLoading: false,
               tier: user.tierLevel ?? null,
-              points: user.loyaltyPoints ?? 0,
+              points: user.totalPoints ?? 0,
             },
             undefined,
             "user/fetchUser:success"

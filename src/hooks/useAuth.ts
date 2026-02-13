@@ -1,9 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useAccount, useSignMessage, useDisconnect } from "wagmi";
 import { SiweMessage } from "siwe";
 import { useUserStore } from "@/store/user";
+import { api, ApiError } from "@/lib/api/client";
+import type { SessionUser } from "@/types/api";
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** How often to silently re-check the session (ms). */
+const SESSION_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 // =============================================================================
 // Types
@@ -18,8 +27,10 @@ interface UseAuthReturn {
   user: ReturnType<typeof useUserStore>["user"];
   /** Initiate Sign-In with Ethereum. */
   signIn: () => Promise<void>;
-  /** Sign out — clears session and disconnects wallet. */
+  /** Sign out -- clears session and disconnects wallet. */
   signOut: () => Promise<void>;
+  /** Manually refresh the session from the server. */
+  refresh: () => Promise<void>;
   /** Error from the most recent sign-in attempt, if any. */
   error: string | null;
 }
@@ -34,6 +45,9 @@ interface UseAuthReturn {
  * Uses Sign-In with Ethereum (EIP-4361 / SIWE) to authenticate the connected
  * wallet. After the user signs the SIWE message the signature is verified
  * server-side at `/api/auth/verify` which issues a session cookie.
+ *
+ * Automatically refreshes the session every 5 minutes while the user is
+ * authenticated and the tab is active.
  */
 export function useAuth(): UseAuthReturn {
   const { address, isConnected, chainId } = useAccount();
@@ -51,32 +65,67 @@ export function useAuth(): UseAuthReturn {
 
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Session fetch helper
+  // ---------------------------------------------------------------------------
+  const fetchSession = useCallback(async (): Promise<SessionUser | null> => {
+    try {
+      const res = await api.get<{ user: SessionUser | null }>("/auth/session");
+      return res.data?.user ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Refresh -- re-fetches the session and updates the store
+  // ---------------------------------------------------------------------------
+  const refresh = useCallback(async () => {
+    const sessionUser = await fetchSession();
+    if (sessionUser) {
+      setUser(sessionUser);
+    } else {
+      clearUser();
+    }
+  }, [fetchSession, setUser, clearUser]);
+
+  // ---------------------------------------------------------------------------
   // Auto-fetch user profile when wallet is connected and we have a session
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (isConnected && address && !user && !isUserLoading) {
       // Attempt to restore an existing session.
-      fetch("/api/auth/session")
-        .then((res) => {
-          if (res.ok) return res.json();
-          return null;
-        })
-        .then((json) => {
-          if (json?.data?.user) {
-            setUser(json.data.user);
-          }
-        })
-        .catch(() => {
-          // No session — user needs to sign in.
-        });
+      fetchSession().then((sessionUser) => {
+        if (sessionUser) {
+          setUser(sessionUser);
+        }
+      });
     }
-  }, [isConnected, address, user, isUserLoading, setUser]);
+  }, [isConnected, address, user, isUserLoading, setUser, fetchSession]);
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Periodic session refresh (every 5 minutes)
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshIntervalRef.current = setInterval(() => {
+        refresh();
+      }, SESSION_REFRESH_INTERVAL);
+    }
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [isAuthenticated, refresh]);
+
+  // ---------------------------------------------------------------------------
   // Sign In
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   const signIn = useCallback(async () => {
     if (!address || !chainId) {
       setError("Please connect your wallet first.");
@@ -88,9 +137,9 @@ export function useAuth(): UseAuthReturn {
 
     try {
       // 1. Get a nonce from the server
-      const nonceRes = await fetch("/api/auth/nonce");
-      if (!nonceRes.ok) throw new Error("Failed to fetch nonce");
-      const { nonce } = await nonceRes.json();
+      const nonceRes = await api.get<{ nonce: string }>("/auth/nonce");
+      const nonce = nonceRes.data?.nonce;
+      if (!nonce) throw new Error("Failed to fetch nonce");
 
       // 2. Construct SIWE message
       const message = new SiweMessage({
@@ -109,24 +158,17 @@ export function useAuth(): UseAuthReturn {
       const signature = await signMessageAsync({ message: messageString });
 
       // 4. Verify on the server
-      const verifyRes = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: messageString, signature }),
-      });
-
-      if (!verifyRes.ok) {
-        const body = await verifyRes.json().catch(() => null);
-        throw new Error(
-          body?.error?.message ?? `Verification failed (${verifyRes.status})`
-        );
-      }
+      await api.post("/auth/verify", { message: messageString, signature });
 
       // 5. Fetch the full user profile
       await fetchUser(address);
     } catch (err) {
       const msg =
-        err instanceof Error ? err.message : "Sign-in failed. Please try again.";
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Sign-in failed. Please try again.";
       setError(msg);
       console.error("[useAuth] signIn error:", err);
     } finally {
@@ -134,14 +176,14 @@ export function useAuth(): UseAuthReturn {
     }
   }, [address, chainId, signMessageAsync, fetchUser]);
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Sign Out
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   const signOut = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await api.post("/auth/logout");
     } catch {
-      // Best-effort — clear local state regardless.
+      // Best-effort -- clear local state regardless.
     }
     clearUser();
     disconnect();
@@ -153,6 +195,7 @@ export function useAuth(): UseAuthReturn {
     user,
     signIn,
     signOut,
+    refresh,
     error,
   };
 }

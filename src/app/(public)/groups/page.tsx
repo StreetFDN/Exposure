@@ -12,6 +12,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -202,19 +203,38 @@ const PLACEHOLDER_GROUPS: GroupCardData[] = [
 // Tier badge helpers
 // ---------------------------------------------------------------------------
 
-const TIER_COLORS: Record<string, "warning" | "default" | "info" | "success" | "error"> = {
+const TIER_COLORS: Record<string, "warning" | "default" | "info" | "success" | "error" | "outline"> = {
   BRONZE: "warning",
-  SILVER: "outline" as any,
+  SILVER: "outline",
   GOLD: "warning",
   PLATINUM: "info",
   DIAMOND: "success",
 };
 
 // ---------------------------------------------------------------------------
+// Helper: check if user has a session cookie (client-side)
+// ---------------------------------------------------------------------------
+
+function useHasSession(): boolean {
+  const [hasSession, setHasSession] = React.useState(false);
+
+  React.useEffect(() => {
+    const cookies = document.cookie.split(";").map((c) => c.trim());
+    const sessionCookie = cookies.find((c) =>
+      c.startsWith("exposure_session=")
+    );
+    setHasSession(!!sessionCookie);
+  }, []);
+
+  return hasSession;
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function GroupsPage() {
+  const isAuthenticated = useHasSession();
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("ALL");
   const [tierFilter, setTierFilter] = React.useState("ALL");
@@ -276,6 +296,30 @@ export default function GroupsPage() {
         </p>
       </div>
 
+      {/* Verification banner for non-authenticated users */}
+      {!isAuthenticated && (
+        <div className="mb-8 flex flex-col items-start gap-4 rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+              <Shield className="h-5 w-5 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-50">
+                Sign up and complete verification to join groups
+              </p>
+              <p className="text-xs text-zinc-400">
+                Browse groups freely. To apply and invest, complete KYC verification through our quick onboarding process.
+              </p>
+            </div>
+          </div>
+          <Link href="/onboarding" className="shrink-0">
+            <Button size="sm" rightIcon={<ArrowRight className="h-3.5 w-3.5" />}>
+              Get Verified
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* Filter bar */}
       <div className="mb-8 flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4 lg:flex-row lg:items-end">
         <div className="flex-1">
@@ -322,7 +366,7 @@ export default function GroupsPage() {
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {paginated.map((group) => (
-              <GroupCard key={group.id} group={group} />
+              <GroupCard key={group.id} group={group} isAuthenticated={isAuthenticated} />
             ))}
           </div>
 
@@ -399,7 +443,7 @@ export default function GroupsPage() {
 // GroupCard
 // ---------------------------------------------------------------------------
 
-function GroupCard({ group }: { group: GroupCardData }) {
+function GroupCard({ group, isAuthenticated = false }: { group: GroupCardData; isAuthenticated?: boolean }) {
   const isFull = group.memberCount >= group.maxMembers;
   const fillPercent = (group.memberCount / group.maxMembers) * 100;
 
@@ -486,15 +530,28 @@ function GroupCard({ group }: { group: GroupCardData }) {
 
         {/* CTA */}
         <div className="mt-auto">
-          <Link href={`/groups/${group.slug}`}>
-            <Button
-              className="w-full"
-              variant={isFull ? "outline" : "default"}
-              size="sm"
-            >
-              {isFull ? "View Group" : "Apply to Join"}
-            </Button>
-          </Link>
+          {!isAuthenticated ? (
+            <Link href="/onboarding">
+              <Button
+                className="w-full"
+                variant="outline"
+                size="sm"
+              >
+                <Shield className="mr-1.5 h-3.5 w-3.5" />
+                Verify to Join
+              </Button>
+            </Link>
+          ) : (
+            <Link href={`/groups/${group.slug}`}>
+              <Button
+                className="w-full"
+                variant={isFull ? "outline" : "default"}
+                size="sm"
+              >
+                {isFull ? "View Group" : "Apply to Join"}
+              </Button>
+            </Link>
+          )}
         </div>
       </CardContent>
     </Card>

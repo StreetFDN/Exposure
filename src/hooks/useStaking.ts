@@ -8,6 +8,7 @@ import {
   useWaitForTransactionReceipt,
   useChainId,
 } from "wagmi";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { parseUnits, maxUint256 } from "viem";
 import {
@@ -16,10 +17,25 @@ import {
   getContractAddresses,
 } from "@/lib/web3/contracts";
 import { getTierByStake } from "@/lib/constants/tiers";
+import { api, ApiError } from "@/lib/api/client";
 import type { StakingLockPeriod, TierLevel } from "@prisma/client";
+import type {
+  StakingData,
+  StakingTiersData,
+} from "@/types/api";
 
 // =============================================================================
-// Types
+// Query Keys
+// =============================================================================
+
+export const stakingKeys = {
+  all: ["staking"] as const,
+  data: () => [...stakingKeys.all, "data"] as const,
+  tiers: () => [...stakingKeys.all, "tiers"] as const,
+};
+
+// =============================================================================
+// On-Chain Types
 // =============================================================================
 
 interface StakeInfo {
@@ -55,14 +71,14 @@ interface UseStakingReturn {
 // =============================================================================
 
 const LOCK_PERIOD_MAP: Record<number, StakingLockPeriod> = {
-  0: "DAYS_30",
-  1: "DAYS_30",
-  2: "DAYS_90",
-  3: "DAYS_180",
+  0: "THIRTY_DAYS",
+  1: "THIRTY_DAYS",
+  2: "NINETY_DAYS",
+  3: "ONE_EIGHTY_DAYS",
 };
 
 // =============================================================================
-// Hook
+// On-Chain Staking Hook (unchanged behavior)
 // =============================================================================
 
 /**
@@ -246,4 +262,65 @@ export function useStaking(): UseStakingReturn {
     resetError,
     refetch: () => { refetch(); },
   };
+}
+
+// =============================================================================
+// API-backed Staking Hooks (server-side data)
+// =============================================================================
+
+/**
+ * Fetch the authenticated user's staking summary and positions from the API.
+ * Returns the aggregated staking data including tier, totals, and positions.
+ */
+export function useStakingData() {
+  return useQuery({
+    queryKey: stakingKeys.data(),
+    queryFn: async (): Promise<StakingData> => {
+      const res = await api.get<{ staking: StakingData }>("/staking");
+      if (!res.data?.staking) {
+        throw new ApiError("Failed to fetch staking data", 500);
+      }
+      return res.data.staking;
+    },
+    staleTime: 30_000, // 30 seconds
+  });
+}
+
+/**
+ * Fetch the public tier ladder configuration (no auth required).
+ */
+export function useTiers() {
+  return useQuery({
+    queryKey: stakingKeys.tiers(),
+    queryFn: async (): Promise<StakingTiersData> => {
+      const res = await api.get<StakingTiersData>("/staking/tiers");
+      if (!res.data) {
+        throw new ApiError("Failed to fetch tiers", 500);
+      }
+      return res.data;
+    },
+    staleTime: 5 * 60_000, // 5 minutes -- tier config rarely changes
+  });
+}
+
+/**
+ * Record a new staking position on the server after an on-chain stake tx.
+ */
+export function useRecordStake() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      amount: number;
+      lockPeriod: string;
+      txHash: string;
+      chain?: string;
+    }) => {
+      const res = await api.post("/staking", params);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stakingKeys.data() });
+    },
+  });
 }

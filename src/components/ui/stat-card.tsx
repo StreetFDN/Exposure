@@ -6,18 +6,20 @@ export interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Descriptive label (e.g. "Total Raised") */
   label: string;
   /** The primary metric value */
-  value: string | number;
+  value: string | number | React.ReactNode;
   /** Optional percentage or absolute change */
   change?: number;
   /** Whether `change` is a percentage */
   changeIsPercent?: boolean;
   /** Optional icon shown on the right */
   icon?: React.ReactNode;
+  /** Optional description text */
+  description?: string;
 }
 
 const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
   (
-    { className, label, value, change, changeIsPercent = true, icon, ...props },
+    { className, label, value, change, changeIsPercent = true, icon, description, ...props },
     ref
   ) => {
     const isPositive = change !== undefined && change >= 0;
@@ -27,44 +29,37 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
       <div
         ref={ref}
         className={cn(
-          "flex items-start justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-5",
+          "flex flex-col gap-1 rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-5",
           className
         )}
         {...props}
       >
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            {label}
-          </span>
-          <span className="text-2xl font-bold tabular-nums text-zinc-50">
-            {value}
-          </span>
-          {change !== undefined && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-0.5 text-xs font-medium",
-                isPositive && "text-emerald-400",
-                isNegative && "text-rose-400"
-              )}
-            >
-              {isPositive ? (
-                <ArrowUp className="h-3 w-3" aria-hidden="true" />
-              ) : (
-                <ArrowDown className="h-3 w-3" aria-hidden="true" />
-              )}
-              {Math.abs(change).toFixed(changeIsPercent ? 1 : 0)}
-              {changeIsPercent && "%"}
-            </span>
-          )}
-        </div>
-
-        {icon && (
+        <span className="text-xs font-light uppercase tracking-wider text-zinc-600">
+          {label}
+        </span>
+        <span className="font-serif text-2xl font-light tabular-nums text-zinc-100">
+          {value}
+        </span>
+        {change !== undefined && (
           <span
-            className="shrink-0 rounded-lg bg-zinc-800 p-2.5 text-zinc-400"
-            aria-hidden="true"
+            className={cn(
+              "inline-flex items-center gap-0.5 text-xs font-light",
+              isPositive && "text-emerald-700",
+              isNegative && "text-rose-700"
+            )}
+            style={{ opacity: 0.7 }}
           >
-            {icon}
+            {isPositive ? (
+              <ArrowUp className="h-3 w-3" aria-hidden="true" />
+            ) : (
+              <ArrowDown className="h-3 w-3" aria-hidden="true" />
+            )}
+            {Math.abs(change).toFixed(changeIsPercent ? 1 : 0)}
+            {changeIsPercent && "%"}
           </span>
+        )}
+        {description && (
+          <span className="text-xs font-light text-zinc-500">{description}</span>
         )}
       </div>
     );
