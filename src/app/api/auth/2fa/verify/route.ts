@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const { code } = await validateBody(request, verifySchema);
 
     // Retrieve the pending secret from the setup step
-    const pending = getPendingSecret(sessionUser.id);
+    const pending = await getPendingSecret(sessionUser.id);
 
     if (!pending) {
       return apiError(
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Clean up the pending secret
-    consumePendingSecret(sessionUser.id);
+    await consumePendingSecret(sessionUser.id);
 
     // Log the action in audit trail
     await prisma.auditLog.create({

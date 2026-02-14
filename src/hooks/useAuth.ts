@@ -6,6 +6,7 @@ import { SiweMessage } from "siwe";
 import { useUserStore } from "@/store/user";
 import { api, ApiError } from "@/lib/api/client";
 import type { SessionUser } from "@/types/api";
+import type { User as PrismaUser } from "@prisma/client";
 
 // =============================================================================
 // Constants
@@ -24,7 +25,7 @@ interface UseAuthReturn {
   /** True while sign-in, verification, or profile fetch is in progress. */
   isLoading: boolean;
   /** The currently authenticated user, or null. */
-  user: ReturnType<typeof useUserStore>["user"];
+  user: PrismaUser | SessionUser | null;
   /** Initiate Sign-In with Ethereum. */
   signIn: () => Promise<void>;
   /** Sign out -- clears session and disconnects wallet. */

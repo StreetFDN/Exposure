@@ -1,6 +1,20 @@
-import { describe, it, expect } from "vitest";
-import { GET } from "../nonce/route";
+import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
+
+// Mock prisma before importing the route
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    platformConfig: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({ key: "nonce:test", value: "{}" }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      delete: vi.fn().mockResolvedValue({}),
+    },
+  },
+}));
+
+// Import after mock is set up
+const { GET } = await import("../nonce/route");
 
 function makeRequest() {
   return new NextRequest("http://localhost:3000/api/auth/nonce");

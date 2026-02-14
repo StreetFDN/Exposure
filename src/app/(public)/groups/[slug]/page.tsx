@@ -2,278 +2,364 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Users,
-  TrendingUp,
-  DollarSign,
-  BarChart3,
-  Crown,
   Shield,
-  CheckCircle2,
-  Clock,
   FileText,
-  ExternalLink,
-  Lock,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Avatar } from "@/components/ui/avatar";
-import { formatCurrency, formatLargeNumber, formatPercent } from "@/lib/utils/format";
+import { formatCurrency, formatLargeNumber } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Placeholder Data — Apex Capital group
+// Types for the API response
 // ---------------------------------------------------------------------------
 
-const GROUP = {
-  id: "1",
-  name: "Apex Capital",
-  slug: "apex-capital",
-  description: `Apex Capital is a premier crypto venture syndicate focused on seed and Series A investments in DeFi infrastructure, cross-chain protocols, and next-generation financial primitives.
+interface GroupMemberUser {
+  id: string;
+  walletAddress: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
 
-Founded by Marcus Reynolds, former partner at a top-tier crypto VC fund, Apex Capital brings institutional-grade due diligence to the syndicate model. Our investment thesis centers on protocols building critical infrastructure for the on-chain economy.
+interface GroupMember {
+  id: string;
+  groupId: string;
+  userId: string;
+  role: string;
+  status: string;
+  joinedAt: string | null;
+  user: GroupMemberUser;
+}
 
-### Investment Philosophy
+interface GroupDealAllocation {
+  id: string;
+  allocatedAmount: string | number;
+  filledAmount: string | number;
+  presentedAt: string | null;
+  deal: {
+    id: string;
+    title: string;
+    slug: string;
+    status: string;
+    category: string;
+    tokenPrice: string;
+    totalRaise: string;
+    totalRaised: string;
+    hardCap: string;
+    featuredImageUrl: string | null;
+  };
+}
 
-We look for teams building category-defining protocols with strong technical moats, clear token utility, and sustainable value accrual. Our typical check size ranges from $500K to $5M, with follow-on capacity for breakout performers.
-
-### Track Record
-
-Since inception, Apex Capital has deployed over $28.5M across 14 deals, with a realized portfolio average return of 4.2x. Our top-performing investment returned 18x at peak, and we maintain an 85% win rate across our portfolio.
-
-### Member Benefits
-
-- Exclusive access to pre-seed and seed deals not available on public launchpads
-- Detailed investment memos and due diligence reports for every deal
-- Monthly portfolio reviews and market outlook calls
-- Direct access to the lead investor for Q&A on active deals
-- Pro-rata co-investment rights on all group allocations`,
-  leadId: "lead-1",
-  leadName: "Marcus Reynolds",
-  leadWallet: "0x7a3B1c2D8e5F6a9B0c1D2e3F4a5B6c7D8e9f4E",
-  leadDisplayName: "Marcus Reynolds",
-  leadAvatarUrl: null,
-  leadTrackRecord: {
-    totalDeals: 14,
-    avgReturn: "4.2x",
-    winRate: 85,
-    totalDeployed: "28500000",
-  },
-  avatarUrl: null,
-  bannerUrl: null,
-  isPublic: true,
-  status: "ACTIVE" as const,
-  maxMembers: 100,
-  memberCount: 72,
-  dealCount: 14,
-  totalRaised: "28500000",
-  minTierRequired: "GOLD" as const,
-  requiresApplication: true,
-  carryPercent: "20",
-  createdAt: new Date(Date.now() - 180 * 86400000).toISOString(),
-};
-
-const ACTIVE_DEALS = [
-  {
-    id: "d1",
-    name: "AetherFi Public Round",
-    slug: "aetherfi-public-round",
-    status: "GUARANTEED_ALLOCATION",
-    category: "DEFI",
-    allocatedAmount: "500000",
-    filledAmount: "380000",
-    tokenPrice: "0.045",
-    presentedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-  },
-  {
-    id: "d2",
-    name: "Nexus AI Community Round",
-    slug: "nexus-ai-community",
-    status: "REGISTRATION_OPEN",
-    category: "AI",
-    allocatedAmount: "750000",
-    filledAmount: "120000",
-    tokenPrice: "0.12",
-    presentedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-  },
-  {
-    id: "d3",
-    name: "LayerBridge Strategic Sale",
-    slug: "layerbridge-strategic",
-    status: "FCFS",
-    category: "INFRASTRUCTURE",
-    allocatedAmount: "1000000",
-    filledAmount: "920000",
-    tokenPrice: "0.28",
-    presentedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-  },
-];
-
-const PAST_DEALS = [
-  { name: "SynapseDAO Genesis", invested: "400000", returnMultiple: "3.8x", status: "Distributed" },
-  { name: "Chrono Social Seed", invested: "250000", returnMultiple: "2.1x", status: "Distributed" },
-  { name: "Voxelheim Pre-Seed", invested: "600000", returnMultiple: "6.5x", status: "Vesting" },
-  { name: "ZKBridge Series A", invested: "1200000", returnMultiple: "1.4x", status: "Vesting" },
-  { name: "Photon Chain Seed", invested: "350000", returnMultiple: "18.2x", status: "Distributed" },
-];
-
-const MEMBERS_PREVIEW = [
-  { id: "m1", name: "Marcus Reynolds", role: "LEAD", wallet: "0x7a3B...9f4E" },
-  { id: "m2", name: "Elena V.", role: "CO_LEAD", wallet: "0x4c2D...8bA1" },
-  { id: "m3", name: "David C.", role: "MEMBER", wallet: "0x9f1E...3cD7" },
-  { id: "m4", name: "Sophie N.", role: "MEMBER", wallet: "0x2bA8...6eF3" },
-  { id: "m5", name: "Alex T.", role: "MEMBER", wallet: "0x5dC9...2aB4" },
-  { id: "m6", name: "James W.", role: "MEMBER", wallet: "0x8eF2...1cA5" },
-];
+interface GroupDetailData {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  leadId: string;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  isPublic: boolean;
+  status: string;
+  maxMembers: number;
+  minTierRequired: string | null;
+  requiresApplication: boolean;
+  carryPercent: string;
+  totalRaised: string;
+  dealCount: number;
+  memberCount: number;
+  createdAt: string;
+  lead: {
+    id: string;
+    walletAddress: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+  members: GroupMember[];
+  dealAllocations: GroupDealAllocation[];
+}
 
 // ---------------------------------------------------------------------------
-// Status helpers
+// Role labels
 // ---------------------------------------------------------------------------
 
-const DEAL_STATUS_CONFIG: Record<
-  string,
-  { label: string; variant: "default" | "success" | "warning" | "info" | "outline" }
-> = {
-  REGISTRATION_OPEN: { label: "Registration", variant: "default" },
-  GUARANTEED_ALLOCATION: { label: "Active", variant: "success" },
-  FCFS: { label: "FCFS", variant: "warning" },
-  COMPLETED: { label: "Completed", variant: "outline" },
+const ROLE_LABELS: Record<string, string> = {
+  LEAD: "Lead",
+  CO_LEAD: "Co-Lead",
+  MEMBER: "Member",
 };
 
-const GROUP_STATUS_CONFIG: Record<
-  string,
-  { label: string; variant: "default" | "success" | "warning" | "error" | "info" | "outline" }
-> = {
-  PENDING_APPROVAL: { label: "Pending", variant: "warning" },
-  ACTIVE: { label: "Active", variant: "success" },
-  SUSPENDED: { label: "Suspended", variant: "error" },
-  CLOSED: { label: "Closed", variant: "outline" },
-};
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
 
-const ROLE_BADGE: Record<string, { label: string; variant: "default" | "warning" | "outline" }> = {
-  LEAD: { label: "Lead", variant: "warning" },
-  CO_LEAD: { label: "Co-Lead", variant: "default" },
-  MEMBER: { label: "Member", variant: "outline" },
-};
+function GroupDetailSkeleton() {
+  return (
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-6xl px-6 pt-16 pb-24 animate-pulse">
+        <div className="mb-12 h-4 w-24 bg-zinc-200" />
+        <div className="mb-16">
+          <div className="mb-3 h-3 w-20 bg-zinc-200" />
+          <div className="mb-4 h-10 w-64 bg-zinc-200" />
+          <div className="h-5 w-80 bg-zinc-200" />
+        </div>
+        <div className="mb-16 grid grid-cols-2 gap-px border border-zinc-200 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="border border-zinc-200 p-5">
+              <div className="mb-2 h-2.5 w-12 bg-zinc-200" />
+              <div className="h-6 w-16 bg-zinc-200" />
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col gap-16 lg:flex-row">
+          <div className="flex flex-1 flex-col gap-12 lg:max-w-[58%]">
+            <div className="border border-zinc-200 p-8">
+              <div className="mb-6 h-5 w-24 bg-zinc-200" />
+              <div className="space-y-3">
+                <div className="h-4 w-full bg-zinc-200" />
+                <div className="h-4 w-5/6 bg-zinc-200" />
+                <div className="h-4 w-4/6 bg-zinc-200" />
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-10 lg:w-[38%]">
+            <div className="border border-zinc-200 p-8">
+              <div className="mb-6 h-5 w-32 bg-zinc-200" />
+              <div className="h-10 w-full bg-zinc-200" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
 
 export default function GroupDetailPage() {
-  const group = GROUP;
-  const statusConfig = GROUP_STATUS_CONFIG[group.status];
+  const params = useParams();
+  const slug = params.slug as string;
+
+  const [group, setGroup] = React.useState<GroupDetailData | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [joinLoading, setJoinLoading] = React.useState(false);
+  const [joinMessage, setJoinMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    async function fetchGroup() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`/api/groups/${slug}`);
+
+        if (res.status === 404) {
+          setError("NOT_FOUND");
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch group (${res.status})`);
+        }
+
+        const json = await res.json();
+
+        if (!json.success) {
+          throw new Error(json.error || "Failed to fetch group");
+        }
+
+        setGroup(json.data);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (slug) fetchGroup();
+  }, [slug]);
+
+  async function handleJoinGroup() {
+    if (!group) return;
+    setJoinLoading(true);
+    setJoinMessage(null);
+
+    try {
+      const res = await fetch(`/api/groups/${group.slug}/join`, {
+        method: "POST",
+      });
+
+      const json = await res.json();
+
+      if (json.success) {
+        setJoinMessage("Application submitted successfully!");
+        const refreshRes = await fetch(`/api/groups/${slug}`);
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.success) {
+          setGroup(refreshJson.data);
+        }
+      } else {
+        setJoinMessage(json.error || "Failed to join group");
+      }
+    } catch {
+      setJoinMessage("Failed to join. Please sign in first.");
+    } finally {
+      setJoinLoading(false);
+    }
+  }
+
+  if (isLoading) {
+    return <GroupDetailSkeleton />;
+  }
+
+  if (error === "NOT_FOUND") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
+        <Users className="mb-8 h-10 w-10 text-zinc-300" />
+        <h1 className="font-serif text-3xl font-light text-zinc-800">
+          Group not found
+        </h1>
+        <p className="mt-3 max-w-sm font-sans text-sm font-normal text-zinc-500">
+          The group you are looking for does not exist or has been removed.
+        </p>
+        <Link href="/groups" className="mt-10 inline-block">
+          <Button variant="outline" size="sm">
+            Back to Groups
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (error || !group) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
+        <h1 className="font-serif text-3xl font-light text-zinc-800">
+          Something went wrong
+        </h1>
+        <p className="mt-3 max-w-sm font-sans text-sm font-normal text-zinc-500">
+          {error || "Failed to load group data."}
+        </p>
+        <Link href="/groups" className="mt-10 inline-block">
+          <Button variant="outline" size="sm">
+            Back to Groups
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   const fillPercent = (group.memberCount / group.maxMembers) * 100;
+  const leadName = group.lead?.displayName || "Anonymous";
+  const leadWallet = group.lead?.walletAddress || "";
+
+  const approvedMembers = group.members.filter((m) => m.status === "APPROVED");
+  const membersPreview = approvedMembers.slice(0, 8);
+
+  const activeDeals = group.dealAllocations.filter((da) =>
+    ["REGISTRATION_OPEN", "GUARANTEED_ALLOCATION", "FCFS"].includes(
+      da.deal.status
+    )
+  );
+  const pastDeals = group.dealAllocations.filter((da) =>
+    ["COMPLETED", "DISTRIBUTING", "SETTLEMENT"].includes(da.deal.status)
+  );
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      {/* Back link */}
-      <Link
-        href="/groups"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-50"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        All Groups
-      </Link>
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-6xl px-6 pt-16 pb-24">
+        {/* ================================================================= */}
+        {/* Back link                                                         */}
+        {/* ================================================================= */}
+        <Link
+          href="/groups"
+          className="mb-12 inline-flex items-center gap-2 font-sans text-xs font-normal uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-600"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          All Groups
+        </Link>
 
-      {/* ================================================================= */}
-      {/* Header Section                                                    */}
-      {/* ================================================================= */}
-      <div className="mb-8 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-        {/* Banner */}
-        <div className="relative h-32 bg-gradient-to-br from-violet-600/40 via-fuchsia-600/20 to-zinc-900 sm:h-40">
-          <div className="absolute -bottom-8 left-6">
-            <Avatar
-              alt={group.name}
-              src={group.avatarUrl}
-              size="xl"
-              ring
-            />
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="px-6 pb-6 pt-12">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-zinc-50 sm:text-3xl">
-                  {group.name}
-                </h1>
-                <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
-              </div>
-              <p className="text-sm text-zinc-400">
-                Led by{" "}
-                <span className="font-medium text-zinc-300">{group.leadName}</span>
-                <span className="ml-1 text-zinc-600">
-                  {group.leadWallet.slice(0, 6)}...{group.leadWallet.slice(-4)}
+        {/* ================================================================= */}
+        {/* Hero section                                                      */}
+        {/* ================================================================= */}
+        <div className="mb-16">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <span className="border border-zinc-200 px-2.5 py-0.5 text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+              {group.status}
+            </span>
+            {group.minTierRequired && (
+              <>
+                <span className="text-zinc-300">/</span>
+                <span className="flex items-center gap-1 text-xs font-normal text-zinc-500">
+                  <Shield className="h-3 w-3" />
+                  {group.minTierRequired}+
                 </span>
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {group.minTierRequired && (
-                <Badge variant="warning" size="sm">
-                  <Shield className="mr-1 h-3 w-3" />
-                  {group.minTierRequired}+ Required
-                </Badge>
-              )}
-              <Badge variant="outline" size="sm">
-                {group.carryPercent}% Carry
-              </Badge>
-            </div>
+              </>
+            )}
+            <span className="text-zinc-300">/</span>
+            <span className="text-xs font-normal text-zinc-500">
+              {group.carryPercent}% carry
+            </span>
           </div>
+
+          <h1 className="font-serif text-4xl font-light tracking-tight text-zinc-900 sm:text-5xl">
+            {group.name}
+          </h1>
+
+          <p className="mt-4 font-sans text-base font-normal text-zinc-500">
+            Led by{" "}
+            <span className="text-zinc-600">{leadName}</span>
+            {leadWallet && (
+              <span className="ml-2 text-zinc-400">
+                {leadWallet.slice(0, 6)}...{leadWallet.slice(-4)}
+              </span>
+            )}
+          </p>
+
+          <div className="mt-12 h-px w-full bg-zinc-200" />
         </div>
-      </div>
 
-      {/* ================================================================= */}
-      {/* Stats Row                                                         */}
-      {/* ================================================================= */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatBox
-          icon={<Users className="h-5 w-5 text-violet-400" />}
-          label="Members"
-          value={`${group.memberCount}/${group.maxMembers}`}
-        />
-        <StatBox
-          icon={<TrendingUp className="h-5 w-5 text-emerald-400" />}
-          label="Deals"
-          value={String(group.dealCount)}
-        />
-        <StatBox
-          icon={<DollarSign className="h-5 w-5 text-amber-400" />}
-          label="Total Raised"
-          value={`$${formatLargeNumber(group.totalRaised)}`}
-        />
-        <StatBox
-          icon={<BarChart3 className="h-5 w-5 text-sky-400" />}
-          label="Avg Return"
-          value={group.leadTrackRecord.avgReturn}
-        />
-      </div>
+        {/* ================================================================= */}
+        {/* Stats row                                                         */}
+        {/* ================================================================= */}
+        <div className="mb-16 grid grid-cols-2 gap-px border border-zinc-200 sm:grid-cols-4">
+          <StatCell
+            label="Members"
+            value={`${group.memberCount}/${group.maxMembers}`}
+          />
+          <StatCell label="Deals" value={String(group.dealCount)} />
+          <StatCell
+            label="Total Raised"
+            value={`$${formatLargeNumber(group.totalRaised)}`}
+          />
+          <StatCell
+            label="Allocations"
+            value={String(group.dealAllocations.length)}
+          />
+        </div>
 
-      {/* ================================================================= */}
-      {/* Two-column layout                                                 */}
-      {/* ================================================================= */}
-      <div className="flex flex-col gap-8 lg:flex-row">
-        {/* =============================================================== */}
-        {/* Left Column (60%)                                               */}
-        {/* =============================================================== */}
-        <div className="flex flex-1 flex-col gap-8 lg:max-w-[60%]">
-          {/* About */}
-          <Card>
-            <CardHeader>
-              <CardTitle>About</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-invert prose-sm max-w-none">
+        {/* ================================================================= */}
+        {/* Two-column layout                                                 */}
+        {/* ================================================================= */}
+        <div className="flex flex-col gap-16 lg:flex-row">
+          {/* Left Column */}
+          <div className="flex flex-1 flex-col gap-16 lg:max-w-[58%]">
+            {/* About */}
+            <section>
+              <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">
+                About
+              </h2>
+              <div className="max-w-none">
                 {group.description.split("\n").map((line, i) => {
                   if (line.startsWith("### ")) {
                     return (
                       <h3
                         key={i}
-                        className="mb-2 mt-5 text-lg font-semibold text-zinc-200"
+                        className="mb-3 mt-8 font-sans text-base font-medium text-zinc-700"
                       >
                         {line.replace("### ", "")}
                       </h3>
@@ -281,315 +367,373 @@ export default function GroupDetailPage() {
                   }
                   if (line.startsWith("- ")) {
                     return (
-                      <div key={i} className="mb-2 flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
-                        <p className="text-sm text-zinc-300">
+                      <div key={i} className="mb-3 flex gap-3">
+                        <span className="mt-2 h-1 w-1 shrink-0 bg-zinc-400" />
+                        <p className="font-sans text-sm font-normal leading-relaxed text-zinc-500">
                           {line.replace("- ", "")}
                         </p>
                       </div>
                     );
                   }
                   if (line.trim() === "") {
-                    return <div key={i} className="h-2" />;
+                    return <div key={i} className="h-3" />;
                   }
                   return (
                     <p
                       key={i}
-                      className="mb-2 text-sm leading-relaxed text-zinc-300"
+                      className="mb-3 font-sans text-sm font-normal leading-relaxed text-zinc-500"
                     >
                       {line}
                     </p>
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </section>
 
-          {/* Active Deals */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Deals</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {ACTIVE_DEALS.map((deal) => {
-                const progress =
-                  (parseFloat(deal.filledAmount) / parseFloat(deal.allocatedAmount)) * 100;
-                const statusConf = DEAL_STATUS_CONFIG[deal.status] || {
-                  label: deal.status,
-                  variant: "outline" as const,
-                };
+            {/* Active Deals */}
+            {activeDeals.length > 0 && (
+              <section>
+                <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">
+                  Active Deals
+                </h2>
+                <div className="flex flex-col gap-px border border-zinc-200">
+                  {activeDeals.map((da) => {
+                    const allocated = Number(da.allocatedAmount) || 0;
+                    const filled = Number(da.filledAmount) || 0;
+                    const progress =
+                      allocated > 0 ? (filled / allocated) * 100 : 0;
 
-                return (
-                  <div
-                    key={deal.id}
-                    className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <div>
-                        <Link
-                          href={`/deals/${deal.id}`}
-                          className="text-sm font-medium text-zinc-50 transition-colors hover:text-violet-400"
-                        >
-                          {deal.name}
-                        </Link>
-                        <p className="text-xs text-zinc-500">{deal.category}</p>
-                      </div>
-                      <Badge variant={statusConf.variant} size="sm">
-                        {statusConf.label}
-                      </Badge>
-                    </div>
-                    <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
-                      <div>
-                        <p className="text-xs text-zinc-500">Allocation</p>
-                        <p className="font-medium text-zinc-200">
-                          {formatCurrency(deal.allocatedAmount)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-zinc-500">Filled</p>
-                        <p className="font-medium text-zinc-200">
-                          {formatCurrency(deal.filledAmount)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-zinc-500">Token Price</p>
-                        <p className="font-medium text-zinc-200">
-                          {formatCurrency(deal.tokenPrice)}
-                        </p>
-                      </div>
-                    </div>
-                    <Progress
-                      value={progress}
-                      label="Fill Progress"
-                      showPercentage
-                      color={progress > 80 ? "warning" : "default"}
-                    />
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-
-          {/* Past Deals */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Past Deals</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-800 text-left">
-                      <th className="pb-3 pr-4 font-medium text-zinc-500">Deal</th>
-                      <th className="pb-3 pr-4 font-medium text-zinc-500">Invested</th>
-                      <th className="pb-3 pr-4 font-medium text-zinc-500">Return</th>
-                      <th className="pb-3 font-medium text-zinc-500">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {PAST_DEALS.map((deal) => (
-                      <tr key={deal.name} className="border-b border-zinc-800/50 last:border-0">
-                        <td className="py-3 pr-4 font-medium text-zinc-200">
-                          {deal.name}
-                        </td>
-                        <td className="py-3 pr-4 text-zinc-400">
-                          {formatCurrency(deal.invested)}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className="font-medium text-emerald-400">
-                            {deal.returnMultiple}
+                    return (
+                      <div
+                        key={da.id}
+                        className="border-b border-zinc-200 p-8 last:border-0"
+                      >
+                        <div className="mb-4 flex items-center justify-between">
+                          <div>
+                            <Link
+                              href={`/deals/${da.deal.slug}`}
+                              className="font-sans text-sm font-medium text-zinc-800 transition-colors hover:text-zinc-900"
+                            >
+                              {da.deal.title}
+                            </Link>
+                            <p className="mt-1 text-xs font-normal uppercase tracking-widest text-zinc-400">
+                              {da.deal.category}
+                            </p>
+                          </div>
+                          <span className="border border-zinc-200 px-2.5 py-1 text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+                            {da.deal.status === "REGISTRATION_OPEN"
+                              ? "Registration"
+                              : da.deal.status === "GUARANTEED_ALLOCATION"
+                                ? "Active"
+                                : da.deal.status === "FCFS"
+                                  ? "FCFS"
+                                  : da.deal.status}
                           </span>
-                        </td>
-                        <td className="py-3">
-                          <Badge
-                            variant={deal.status === "Distributed" ? "success" : "info"}
-                            size="sm"
-                          >
-                            {deal.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
 
-              {/* Performance summary */}
-              <div className="mt-4 flex flex-wrap gap-4 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Avg Return</p>
-                  <p className="text-lg font-bold text-emerald-400">4.2x</p>
+                        <div className="mb-4 grid grid-cols-3 gap-6">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                              Allocation
+                            </span>
+                            <span className="font-serif text-sm font-normal text-zinc-700">
+                              {formatCurrency(allocated)}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                              Filled
+                            </span>
+                            <span className="font-serif text-sm font-normal text-zinc-700">
+                              {formatCurrency(filled)}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                              Token Price
+                            </span>
+                            <span className="font-serif text-sm font-normal text-zinc-700">
+                              {formatCurrency(da.deal.tokenPrice)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="h-1 w-full bg-zinc-200">
+                          <div
+                            className="h-full bg-zinc-500 transition-all"
+                            style={{
+                              width: `${Math.min(progress, 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="mt-2 text-right text-[10px] font-normal text-zinc-400">
+                          {progress.toFixed(0)}% filled
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Win Rate</p>
-                  <p className="text-lg font-bold text-zinc-50">85%</p>
+              </section>
+            )}
+
+            {/* Past Deals */}
+            {pastDeals.length > 0 && (
+              <section>
+                <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">
+                  Past Deals
+                </h2>
+                <div className="border border-zinc-200">
+                  <div className="grid grid-cols-4 gap-4 border-b border-zinc-200 px-8 py-4">
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Deal
+                    </span>
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Allocated
+                    </span>
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Filled
+                    </span>
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Status
+                    </span>
+                  </div>
+                  {pastDeals.map((da) => (
+                    <div
+                      key={da.id}
+                      className="grid grid-cols-4 gap-4 border-b border-zinc-200 px-8 py-4 last:border-0"
+                    >
+                      <Link
+                        href={`/deals/${da.deal.slug}`}
+                        className="font-sans text-sm font-normal text-zinc-700 transition-colors hover:text-zinc-900"
+                      >
+                        {da.deal.title}
+                      </Link>
+                      <span className="font-sans text-sm font-normal text-zinc-500">
+                        {formatCurrency(Number(da.allocatedAmount))}
+                      </span>
+                      <span className="font-sans text-sm font-normal text-zinc-500">
+                        {formatCurrency(Number(da.filledAmount))}
+                      </span>
+                      <span className="text-xs font-normal text-zinc-500">
+                        {da.deal.status === "COMPLETED"
+                          ? "Completed"
+                          : da.deal.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Best Return</p>
-                  <p className="text-lg font-bold text-violet-400">18.2x</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Total Deployed</p>
-                  <p className="text-lg font-bold text-zinc-50">
-                    ${formatLargeNumber(GROUP.leadTrackRecord.totalDeployed)}
+              </section>
+            )}
+
+            {/* No deals */}
+            {activeDeals.length === 0 && pastDeals.length === 0 && (
+              <section>
+                <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">
+                  Deals
+                </h2>
+                <div className="flex flex-col items-center justify-center border border-dashed border-zinc-200 px-8 py-16 text-center">
+                  <FileText className="mb-4 h-6 w-6 text-zinc-300" />
+                  <p className="font-sans text-sm font-normal text-zinc-500">
+                    No deals presented to this group yet.
                   </p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </section>
+            )}
+          </div>
 
-        {/* =============================================================== */}
-        {/* Right Column (40%, sticky)                                      */}
-        {/* =============================================================== */}
-        <div className="flex flex-col gap-6 lg:w-[40%]">
-          <div className="flex flex-col gap-6 lg:sticky lg:top-8">
-            {/* Join This Group */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Join This Group</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Requirements */}
-                <div className="space-y-3">
-                  <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                    Requirements
-                  </p>
+          {/* Right Column (sidebar) */}
+          <div className="flex flex-col gap-10 lg:w-[38%]">
+            <div className="flex flex-col gap-10 lg:sticky lg:top-8">
+              {/* Join This Group */}
+              <div className="border border-zinc-200 p-8">
+                <h3 className="mb-6 text-xs font-normal uppercase tracking-widest text-zinc-500">
+                  Join This Group
+                </h3>
+
+                <div className="mb-6 flex flex-col gap-0">
                   <RequirementRow
-                    icon={<Shield className="h-4 w-4" />}
                     label="Minimum Tier"
                     value={group.minTierRequired || "None"}
-                    met={true}
                   />
                   <RequirementRow
-                    icon={<CheckCircle2 className="h-4 w-4" />}
                     label="KYC Verification"
                     value="Required"
-                    met={false}
                   />
                   <RequirementRow
-                    icon={<FileText className="h-4 w-4" />}
                     label="Application"
-                    value={group.requiresApplication ? "Required" : "Open Entry"}
-                    met={true}
+                    value={
+                      group.requiresApplication ? "Required" : "Open Entry"
+                    }
                   />
                   <RequirementRow
-                    icon={<Users className="h-4 w-4" />}
                     label="Capacity"
                     value={`${group.maxMembers - group.memberCount} spots left`}
-                    met={group.memberCount < group.maxMembers}
                   />
                 </div>
 
-                {/* Capacity bar */}
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-xs text-zinc-500">
+                <div className="mb-6">
+                  <div className="mb-2 flex items-center justify-between text-[10px] font-normal uppercase tracking-widest text-zinc-400">
                     <span>{group.memberCount} members</span>
                     <span>{group.maxMembers} max</span>
                   </div>
-                  <Progress value={fillPercent} color="default" />
+                  <div className="h-1 w-full bg-zinc-200">
+                    <div
+                      className="h-full bg-zinc-500 transition-all"
+                      style={{
+                        width: `${Math.min(fillPercent, 100)}%`,
+                      }}
+                    />
+                  </div>
                 </div>
 
-                {/* CTA */}
-                <Button className="w-full" size="lg">
-                  {group.requiresApplication ? "Apply to Join" : "Request to Join"}
-                </Button>
+                {joinMessage && (
+                  <p className="mb-6 text-center font-sans text-sm font-normal text-zinc-500">
+                    {joinMessage}
+                  </p>
+                )}
 
-                <p className="text-center text-xs text-zinc-600">
+                <button
+                  className="w-full bg-violet-500 py-3 font-sans text-sm font-normal text-white transition-colors hover:bg-violet-400 disabled:opacity-50"
+                  onClick={handleJoinGroup}
+                  disabled={
+                    joinLoading || group.memberCount >= group.maxMembers
+                  }
+                >
+                  {joinLoading
+                    ? "Submitting..."
+                    : group.memberCount >= group.maxMembers
+                      ? "Group Full"
+                      : group.requiresApplication
+                        ? "Apply to Join"
+                        : "Request to Join"}
+                </button>
+
+                <p className="mt-4 text-center text-[10px] font-normal text-zinc-400">
                   {group.carryPercent}% carry fee applies to follower profits
                 </p>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Lead Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Lead Investor</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Avatar
-                    alt={group.leadName}
-                    src={group.leadAvatarUrl}
-                    size="lg"
-                  />
+              {/* Lead Info */}
+              <div className="border border-zinc-200 p-8">
+                <h3 className="mb-6 text-xs font-normal uppercase tracking-widest text-zinc-500">
+                  Lead Investor
+                </h3>
+
+                <div className="mb-6 flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-zinc-200 font-sans text-sm font-normal text-zinc-500">
+                    {leadName
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </div>
                   <div>
-                    <p className="font-medium text-zinc-50">{group.leadName}</p>
-                    <p className="text-xs text-zinc-500">
-                      {group.leadWallet.slice(0, 6)}...{group.leadWallet.slice(-4)}
+                    <p className="font-sans text-sm font-medium text-zinc-800">
+                      {leadName}
                     </p>
+                    {leadWallet && (
+                      <p className="text-xs font-normal text-zinc-400">
+                        {leadWallet.slice(0, 6)}...{leadWallet.slice(-4)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Deals Led</p>
-                    <p className="text-lg font-bold text-zinc-50">
-                      {group.leadTrackRecord.totalDeals}
-                    </p>
+                <div className="grid grid-cols-2 gap-px border border-zinc-200">
+                  <div className="flex flex-col items-center border border-zinc-200 p-4">
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Deals Led
+                    </span>
+                    <span className="mt-1 font-serif text-lg font-light text-zinc-800">
+                      {group.dealCount}
+                    </span>
                   </div>
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Avg Return</p>
-                    <p className="text-lg font-bold text-emerald-400">
-                      {group.leadTrackRecord.avgReturn}
-                    </p>
+                  <div className="flex flex-col items-center border border-zinc-200 p-4">
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Total Raised
+                    </span>
+                    <span className="mt-1 font-serif text-lg font-light text-zinc-800">
+                      ${formatLargeNumber(group.totalRaised)}
+                    </span>
                   </div>
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Win Rate</p>
-                    <p className="text-lg font-bold text-zinc-50">
-                      {group.leadTrackRecord.winRate}%
-                    </p>
+                  <div className="flex flex-col items-center border border-zinc-200 p-4">
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Members
+                    </span>
+                    <span className="mt-1 font-serif text-lg font-light text-zinc-800">
+                      {group.memberCount}
+                    </span>
                   </div>
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Deployed</p>
-                    <p className="text-lg font-bold text-zinc-50">
-                      ${formatLargeNumber(group.leadTrackRecord.totalDeployed)}
-                    </p>
+                  <div className="flex flex-col items-center border border-zinc-200 p-4">
+                    <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                      Carry
+                    </span>
+                    <span className="mt-1 font-serif text-lg font-light text-zinc-800">
+                      {group.carryPercent}%
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Members Preview */}
-            <Card>
-              <CardHeader className="flex-row items-center justify-between">
-                <CardTitle>Members</CardTitle>
-                <Badge variant="outline" size="sm">
-                  {group.memberCount} total
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {MEMBERS_PREVIEW.map((member) => {
-                  const roleBadge = ROLE_BADGE[member.role] || {
-                    label: member.role,
-                    variant: "outline" as const,
-                  };
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-zinc-800/40"
-                    >
-                      <Avatar
-                        alt={member.name}
-                        size="sm"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-zinc-200">
-                          {member.name}
-                        </p>
-                        <p className="text-xs text-zinc-600">{member.wallet}</p>
+              {/* Members Preview */}
+              <div className="border border-zinc-200 p-8">
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+                    Members
+                  </h3>
+                  <span className="font-sans text-xs font-normal text-zinc-400">
+                    {group.memberCount} total
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-0">
+                  {membersPreview.map((member) => {
+                    const memberName =
+                      member.user.displayName || "Anonymous";
+                    const memberWallet = member.user.walletAddress
+                      ? `${member.user.walletAddress.slice(0, 6)}...${member.user.walletAddress.slice(-4)}`
+                      : "";
+
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-4 border-b border-zinc-200 py-4 last:border-0"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-zinc-200 font-sans text-[10px] font-normal text-zinc-500">
+                          {memberName
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-sans text-sm font-normal text-zinc-700">
+                            {memberName}
+                          </p>
+                          <p className="text-[10px] font-normal text-zinc-400">
+                            {memberWallet}
+                          </p>
+                        </div>
+                        <span className="border border-zinc-200 px-2 py-0.5 text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+                          {ROLE_LABELS[member.role] || member.role}
+                        </span>
                       </div>
-                      <Badge variant={roleBadge.variant} size="sm">
-                        {roleBadge.label}
-                      </Badge>
-                    </div>
-                  );
-                })}
-                <p className="pt-2 text-center text-xs text-zinc-600">
-                  and {group.memberCount - MEMBERS_PREVIEW.length} more members
-                </p>
-              </CardContent>
-            </Card>
+                    );
+                  })}
+                </div>
+
+                {approvedMembers.length > membersPreview.length && (
+                  <p className="mt-4 text-center text-[10px] font-normal text-zinc-400">
+                    and {approvedMembers.length - membersPreview.length} more
+                    members
+                  </p>
+                )}
+
+                {approvedMembers.length === 0 && (
+                  <p className="py-6 text-center text-xs font-normal text-zinc-400">
+                    No approved members yet
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -601,46 +745,32 @@ export default function GroupDetailPage() {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function StatBox({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function StatCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs text-zinc-500">{label}</p>
-        <p className="text-lg font-bold text-zinc-50">{value}</p>
-      </div>
+    <div className="flex flex-col gap-1.5 border border-zinc-200 p-5">
+      <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+        {label}
+      </span>
+      <span className="font-serif text-lg font-light text-zinc-800">
+        {value}
+      </span>
     </div>
   );
 }
 
 function RequirementRow({
-  icon,
   label,
   value,
-  met,
 }: {
-  icon: React.ReactNode;
   label: string;
   value: string;
-  met: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2 text-sm text-zinc-400">
-        <span className={met ? "text-emerald-400" : "text-zinc-600"}>{icon}</span>
+    <div className="flex items-center justify-between border-b border-zinc-200 py-4 last:border-0">
+      <span className="font-sans text-sm font-normal text-zinc-500">
         {label}
-      </div>
-      <span className={`text-sm font-medium ${met ? "text-zinc-200" : "text-zinc-500"}`}>
+      </span>
+      <span className="font-sans text-sm font-medium text-zinc-800">
         {value}
       </span>
     </div>

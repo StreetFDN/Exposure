@@ -21,11 +21,11 @@ export interface DealStatsData {
   tokenPrice: string;
   totalRaise: string;
   hardCap: string;
-  fdv: string | null;
+  fdv?: string | null;
   tgeUnlockPercent: string;
   vestingDurationDays: number;
   allocationMethod: string;
-  minTierRequired: string | null;
+  minTierRequired?: string | null;
 }
 
 export interface DealStatsProps {
@@ -95,20 +95,20 @@ export function DealStats({ stats, className }: DealStatsProps) {
   return (
     <div
       className={cn(
-        "grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800",
+        "grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200",
         className
       )}
     >
       {items.map((item) => (
         <div
           key={item.label}
-          className="flex flex-col gap-1 bg-zinc-900 p-3"
+          className="flex flex-col gap-1 bg-white p-3"
         >
           <div className="flex items-center gap-1.5 text-zinc-500">
             {item.icon}
             <span className="text-xs">{item.label}</span>
           </div>
-          <span className="text-sm font-semibold text-zinc-50">
+          <span className="text-sm font-semibold text-zinc-900">
             {item.value}
           </span>
         </div>

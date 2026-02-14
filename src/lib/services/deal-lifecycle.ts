@@ -3,6 +3,7 @@
 // Manages deal phase transitions, status updates, and lifecycle events.
 // =============================================================================
 
+import { Prisma } from "@prisma/client";
 import type { Deal, DealStatus, DealPhase } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -96,7 +97,7 @@ async function logAuditEvent(
       action,
       resourceType,
       resourceId,
-      metadata: metadata ?? undefined,
+      metadata: (metadata as Prisma.InputJsonValue) ?? undefined,
     },
   });
 }

@@ -233,8 +233,8 @@ function DataTableInner<T>(
                 "inline-flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                 page <= 1
-                  ? "cursor-not-allowed text-zinc-700"
-                  : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+                  ? "cursor-not-allowed text-zinc-300"
+                  : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
               )}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -245,7 +245,7 @@ function DataTableInner<T>(
               p === "ellipsis" ? (
                 <span
                   key={`ellipsis-${i}`}
-                  className="inline-flex h-8 w-8 items-center justify-center text-xs text-zinc-600"
+                  className="inline-flex h-8 w-8 items-center justify-center text-xs text-zinc-400"
                 >
                   ...
                 </span>
@@ -261,7 +261,7 @@ function DataTableInner<T>(
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                     p === page
                       ? "bg-violet-600 text-white"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+                      : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
                   )}
                 >
                   {p}
@@ -279,8 +279,8 @@ function DataTableInner<T>(
                 "inline-flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                 page >= totalPages
-                  ? "cursor-not-allowed text-zinc-700"
-                  : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+                  ? "cursor-not-allowed text-zinc-300"
+                  : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
               )}
             >
               <ChevronRight className="h-4 w-4" />

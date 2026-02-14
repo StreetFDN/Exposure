@@ -1,446 +1,434 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import {
-  DollarSign,
-  TrendingUp,
-  Users,
-  ShieldCheck,
-  Wallet,
-  FileText,
-  AlertTriangle,
-  Clock,
-  Activity,
-  Server,
-  Database,
-  Layers,
-  ChevronRight,
-} from "lucide-react";
-import { cn } from "@/lib/utils/cn";
-import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { formatCurrency, formatDate, formatLargeNumber } from "@/lib/utils/format";
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { formatCurrency, formatLargeNumber } from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
-/*  Placeholder data                                                          */
+/*  Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-const stats = [
-  {
-    label: "Total Raised",
-    value: "$48.2M",
-    description: "+12.3% from last month",
-    icon: <DollarSign className="h-5 w-5" />,
-  },
-  {
-    label: "Active Raises",
-    value: "12",
-    description: "3 launching this week",
-    icon: <TrendingUp className="h-5 w-5" />,
-  },
-  {
-    label: "Total Users",
-    value: "18,439",
-    description: "+842 this month",
-    icon: <Users className="h-5 w-5" />,
-  },
-  {
-    label: "KYC Completion Rate",
-    value: "73.2%",
-    description: "Target: 80%",
-    icon: <ShieldCheck className="h-5 w-5" />,
-  },
-  {
-    label: "Platform Revenue",
-    value: "$1.93M",
-    description: "+8.7% from last month",
-    icon: <Wallet className="h-5 w-5" />,
-  },
-  {
-    label: "Pending Applications",
-    value: "24",
-    description: "6 high priority",
-    icon: <FileText className="h-5 w-5" />,
-  },
-];
+interface DashboardStats {
+  totalRaised: string;
+  totalRaisedFormatted: string;
+  activeRaises: number;
+  completedRaises: number;
+  totalDeals: number;
+  totalUsers: number;
+  totalContributors: number;
+  kycCompletionRate: number;
+  pendingApplications: number;
+  usersByTier: Record<string, number>;
+  usersByKycStatus: Record<string, number>;
+  activeStakers: number;
+  totalStaked: string;
+  totalStakedFormatted: string;
+  unresolvedFlags: number;
+  highSeverityFlags: number;
+  recentDeals: {
+    id: string;
+    title: string;
+    status: string;
+    totalRaised: string;
+    hardCap: string;
+    contributorCount: number;
+    percentRaised: number;
+  }[];
+  dailyVolumeUsd: { date: string; volume: string }[];
+  recentActivity: { type: string; message: string; timestamp: string }[];
+}
 
-const recentDeals = [
-  {
-    name: "Nexus Protocol",
-    status: "Live",
-    statusVariant: "success" as const,
-    raised: 2_450_000,
-    target: 3_000_000,
-    contributors: 1_284,
-    date: "2026-02-10",
-  },
-  {
-    name: "AetherFi",
-    status: "Registration",
-    statusVariant: "info" as const,
-    raised: 0,
-    target: 5_000_000,
-    contributors: 0,
-    date: "2026-02-09",
-  },
-  {
-    name: "Onchain Labs",
-    status: "Completed",
-    statusVariant: "default" as const,
-    raised: 1_800_000,
-    target: 1_800_000,
-    contributors: 943,
-    date: "2026-02-07",
-  },
-  {
-    name: "ZeroLayer",
-    status: "Live",
-    statusVariant: "success" as const,
-    raised: 890_000,
-    target: 2_000_000,
-    contributors: 512,
-    date: "2026-02-06",
-  },
-  {
-    name: "MetaVault",
-    status: "Paused",
-    statusVariant: "warning" as const,
-    raised: 340_000,
-    target: 1_500_000,
-    contributors: 187,
-    date: "2026-02-04",
-  },
-];
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
 
-const actionItems = [
-  {
-    label: "Pending KYC Reviews",
-    count: 47,
-    severity: "warning" as const,
-    href: "/admin/compliance",
-    icon: <ShieldCheck className="h-4 w-4" />,
-  },
-  {
-    label: "Flagged Transactions",
-    count: 8,
-    severity: "error" as const,
-    href: "/admin/compliance",
-    icon: <AlertTriangle className="h-4 w-4" />,
-  },
-  {
-    label: "Pending Applications",
-    count: 24,
-    severity: "info" as const,
-    href: "/admin/applications",
-    icon: <FileText className="h-4 w-4" />,
-  },
-  {
-    label: "Expiring Deals",
-    count: 3,
-    severity: "warning" as const,
-    href: "/admin/deals",
-    icon: <Clock className="h-4 w-4" />,
-  },
-];
-
-const systemHealth = {
-  api: "operational" as const,
-  rpc: [
-    { chain: "Ethereum", status: "operational" as const },
-    { chain: "Arbitrum", status: "operational" as const },
-    { chain: "Base", status: "degraded" as const },
-    { chain: "Polygon", status: "operational" as const },
-  ],
-  indexerLag: 3,
-  queueDepth: 142,
+const statusLabel: Record<string, string> = {
+  DRAFT: "Draft",
+  UNDER_REVIEW: "Under Review",
+  APPROVED: "Approved",
+  REGISTRATION_OPEN: "Registration",
+  GUARANTEED_ALLOCATION: "Guaranteed",
+  FCFS: "FCFS",
+  SETTLEMENT: "Settlement",
+  DISTRIBUTING: "Distributing",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Helpers                                                                   */
+/*  Chart tooltip                                                              */
 /* -------------------------------------------------------------------------- */
 
-function StatusDot({ status }: { status: "operational" | "degraded" | "down" }) {
+function ChartTooltipContent({ active, payload, label }: any) {
+  if (!active || !payload || !payload.length) return null;
   return (
-    <span
-      className={cn(
-        "inline-block h-2 w-2 rounded-full",
-        status === "operational" && "bg-emerald-400",
-        status === "degraded" && "bg-amber-400",
-        status === "down" && "bg-rose-400"
-      )}
-    />
+    <div className="border border-zinc-200 bg-white px-3 py-2">
+      <p className="text-xs font-normal text-zinc-500">{label}</p>
+      {payload.map((entry: any, idx: number) => (
+        <p key={idx} className="text-sm font-normal text-zinc-700">
+          {typeof entry.value === "number" && entry.value > 100
+            ? formatCurrency(entry.value)
+            : entry.value?.toLocaleString()}
+        </p>
+      ))}
+    </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Page                                                                      */
+/*  Loading skeleton                                                           */
+/* -------------------------------------------------------------------------- */
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-10">
+      <div>
+        <div className="h-8 w-40 animate-pulse bg-zinc-200" />
+        <div className="mt-3 h-4 w-64 animate-pulse bg-zinc-200" />
+      </div>
+      <div className="grid grid-cols-1 gap-px bg-zinc-200 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-32 animate-pulse bg-white" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="h-[340px] animate-pulse bg-zinc-200" />
+        <div className="h-[340px] animate-pulse bg-zinc-200" />
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Page                                                                       */
 /* -------------------------------------------------------------------------- */
 
 export default function AdminDashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/admin/stats");
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error?.message || "Failed to load dashboard data");
+        }
+        setStats(json.data.stats);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchStats();
+  }, []);
+
+  if (loading) return <DashboardSkeleton />;
+
+  if (error || !stats) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-24">
+        <p className="font-serif text-lg font-normal text-zinc-500">
+          Unable to load dashboard
+        </p>
+        <p className="text-sm font-normal text-zinc-400">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="border border-zinc-200 px-4 py-2 text-sm font-normal text-zinc-500 transition-colors hover:text-zinc-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const volumeChartData = stats.dailyVolumeUsd.map((d) => ({
+    date: new Date(d.date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+    volume: parseFloat(d.volume),
+  }));
+
+  const tierChartData = Object.entries(stats.usersByTier).map(
+    ([tier, count]) => ({ tier, users: count })
+  );
+
+  const kpis = [
+    {
+      label: "Total Raised",
+      value: stats.totalRaisedFormatted,
+      sub: `${stats.completedRaises} completed`,
+    },
+    {
+      label: "Active Deals",
+      value: stats.activeRaises.toString(),
+      sub: `${stats.totalDeals} total`,
+    },
+    {
+      label: "Total Users",
+      value: formatLargeNumber(stats.totalUsers),
+      sub: `${stats.totalContributors} contributors`,
+    },
+    {
+      label: "Pending KYC",
+      value: (stats.usersByKycStatus.PENDING ?? 0).toString(),
+      sub: `${stats.kycCompletionRate}% completion`,
+    },
+  ];
+
+  const actions = [
+    {
+      label: "Pending KYC Reviews",
+      count: stats.usersByKycStatus.PENDING ?? 0,
+      href: "/admin/compliance",
+    },
+    {
+      label: "Unresolved Flags",
+      count: stats.unresolvedFlags,
+      href: "/admin/compliance",
+    },
+    {
+      label: "Pending Applications",
+      count: stats.pendingApplications,
+      href: "/admin/applications",
+    },
+    {
+      label: "High Severity Flags",
+      count: stats.highSeverityFlags,
+      href: "/admin/compliance",
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-zinc-50">Dashboard</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h1 className="font-serif text-2xl font-light text-zinc-900">
+          Dashboard
+        </h1>
+        <p className="mt-1 text-sm font-normal text-zinc-500">
           Platform overview and key metrics
         </p>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {stats.map((s) => (
-          <StatCard
-            key={s.label}
-            label={s.label}
-            value={s.value}
-            description={s.description}
-            icon={s.icon}
-          />
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 gap-px border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-4">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="bg-white p-6">
+            <p className="text-xs uppercase tracking-widest text-zinc-500">
+              {kpi.label}
+            </p>
+            <p className="mt-2 font-serif text-3xl font-light text-zinc-900">
+              {kpi.value}
+            </p>
+            <p className="mt-1 text-sm font-normal text-zinc-500">{kpi.sub}</p>
+          </div>
         ))}
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Raise Volume Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-[300px] items-center justify-center rounded-lg bg-violet-500/5 border border-violet-500/10">
-              <div className="flex flex-col items-center gap-2 text-zinc-500">
-                <TrendingUp className="h-8 w-8 text-violet-500/40" />
-                <span className="text-sm font-medium">Line Chart — Recharts Integration Pending</span>
-                <span className="text-xs text-zinc-600">Monthly raise volume in USD</span>
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div>
+          <h2 className="mb-4 text-xs uppercase tracking-widest text-zinc-500">
+            Raise Volume
+          </h2>
+          <div className="border border-zinc-200 p-6">
+            {volumeChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={volumeChartData}>
+                  <XAxis
+                    dataKey="date"
+                    stroke="transparent"
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="transparent"
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `$${formatLargeNumber(v)}`}
+                  />
+                  <Tooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="volume" fill="#8b5cf6" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[280px] items-center justify-center">
+                <p className="text-sm font-normal text-zinc-400">
+                  No volume data available
+                </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>User Growth</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-[300px] items-center justify-center rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-              <div className="flex flex-col items-center gap-2 text-zinc-500">
-                <Users className="h-8 w-8 text-emerald-500/40" />
-                <span className="text-sm font-medium">Line Chart — Recharts Integration Pending</span>
-                <span className="text-xs text-zinc-600">Cumulative users + KYC completions</span>
+        <div>
+          <h2 className="mb-4 text-xs uppercase tracking-widest text-zinc-500">
+            User Distribution by Tier
+          </h2>
+          <div className="border border-zinc-200 p-6">
+            {tierChartData.some((d) => d.users > 0) ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={tierChartData}>
+                  <XAxis
+                    dataKey="tier"
+                    stroke="transparent"
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="transparent"
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="users" fill="#a1a1aa" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[280px] items-center justify-center">
+                <p className="text-sm font-normal text-zinc-400">
+                  No tier data available
+                </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Two-column section: Recent Deals + Action Required */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Recent Deals */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Recent Deals</CardTitle>
-              <Link
-                href="/admin/deals"
-                className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
-              >
-                View all
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Deal</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Raised / Target</TableHead>
-                  <TableHead>Contributors</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentDeals.map((deal) => {
-                  const pct =
-                    deal.target > 0
-                      ? Math.round((deal.raised / deal.target) * 100)
-                      : 0;
-                  return (
-                    <TableRow key={deal.name}>
-                      <TableCell className="font-medium text-zinc-50">
-                        {deal.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={deal.statusVariant}>{deal.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs text-zinc-400">
-                            {formatCurrency(deal.raised)} / {formatCurrency(deal.target)}
-                          </span>
-                          <Progress value={pct} className="w-24" />
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatLargeNumber(deal.contributors)}</TableCell>
-                      <TableCell className="text-zinc-500">
-                        {formatDate(deal.date)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Action Required */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Action Required</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-3">
-              {actionItems.map((item) => (
-                <Link key={item.label} href={item.href}>
-                  <div className="group flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 p-4 transition-colors hover:bg-zinc-800/60">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-9 w-9 items-center justify-center rounded-lg",
-                          item.severity === "error" && "bg-rose-500/10 text-rose-400",
-                          item.severity === "warning" && "bg-amber-500/10 text-amber-400",
-                          item.severity === "info" && "bg-sky-500/10 text-sky-400"
-                        )}
+      {/* Recent Deals + Action Required */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xs uppercase tracking-widest text-zinc-500">
+              Recent Deals
+            </h2>
+            <Link
+              href="/admin/deals"
+              className="text-xs font-normal text-zinc-500 transition-colors hover:text-zinc-600"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="border border-zinc-200">
+            {stats.recentDeals.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-200">
+                    <th className="px-4 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">
+                      Deal
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-normal uppercase tracking-widest text-zinc-500">
+                      Raised
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-normal uppercase tracking-widest text-zinc-500">
+                      Target
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.recentDeals.map((deal) => {
+                    const raised = parseFloat(deal.totalRaised);
+                    const cap = parseFloat(deal.hardCap);
+                    return (
+                      <tr
+                        key={deal.id}
+                        className="border-b border-zinc-200 last:border-b-0 transition-colors hover:bg-zinc-50"
                       >
-                        {item.icon}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-zinc-300">
-                          {item.label}
-                        </p>
-                        <p
-                          className={cn(
-                            "text-lg font-bold",
-                            item.severity === "error" && "text-rose-400",
-                            item.severity === "warning" && "text-amber-400",
-                            item.severity === "info" && "text-sky-400"
-                          )}
-                        >
-                          {item.count}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-600 transition-colors group-hover:text-zinc-400" />
+                        <td className="px-4 py-4 text-sm font-normal text-zinc-700">
+                          {deal.title}
+                        </td>
+                        <td className="px-4 py-4 text-xs font-normal text-zinc-500">
+                          {statusLabel[deal.status] ?? deal.status}
+                        </td>
+                        <td className="px-4 py-4 text-right font-mono text-sm text-zinc-600">
+                          {formatCurrency(raised)}
+                        </td>
+                        <td className="px-4 py-4 text-right font-mono text-sm text-zinc-500">
+                          {formatCurrency(cap)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className="flex h-32 items-center justify-center">
+                <p className="text-sm font-normal text-zinc-400">No deals yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-4 text-xs uppercase tracking-widest text-zinc-500">
+            Action Required
+          </h2>
+          <div className="flex flex-col gap-px border border-zinc-200 bg-zinc-200">
+            {actions.map((item) => (
+              <Link key={item.label} href={item.href}>
+                <div className="flex items-center justify-between bg-white px-4 py-4 transition-colors hover:bg-zinc-50">
+                  <span className="text-sm font-normal text-zinc-500">
+                    {item.label}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif text-xl text-zinc-700">
+                      {item.count}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
                   </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* System Health */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-zinc-400" />
-            <CardTitle>System Health</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {/* API Status */}
-            <div className="flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
-              <div className="flex items-center gap-2">
-                <Server className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-300">API Status</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusDot status={systemHealth.api} />
-                <span className="text-sm capitalize text-zinc-400">
-                  {systemHealth.api}
-                </span>
+      <div>
+        <h2 className="mb-4 text-xs uppercase tracking-widest text-zinc-500">
+          System Health
+        </h2>
+        <div className="grid grid-cols-1 gap-px border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "API Status", value: "Operational" },
+            { label: "Ethereum RPC", value: "Operational" },
+            { label: "Arbitrum RPC", value: "Operational" },
+            { label: "Base RPC", value: "Operational" },
+          ].map((h) => (
+            <div key={h.label} className="flex items-center gap-3 bg-white px-4 py-4">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <div>
+                <p className="text-xs uppercase tracking-widest text-zinc-500">
+                  {h.label}
+                </p>
+                <p className="text-sm font-normal text-zinc-600">{h.value}</p>
               </div>
             </div>
-
-            {/* RPC Status */}
-            <div className="flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-300">RPC Nodes</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {systemHealth.rpc.map((node) => (
-                  <div key={node.chain} className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-500">{node.chain}</span>
-                    <div className="flex items-center gap-1.5">
-                      <StatusDot status={node.status} />
-                      <span className="text-xs capitalize text-zinc-400">
-                        {node.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Indexer Lag */}
-            <div className="flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-300">Indexer Lag</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusDot
-                  status={
-                    systemHealth.indexerLag <= 5
-                      ? "operational"
-                      : systemHealth.indexerLag <= 20
-                        ? "degraded"
-                        : "down"
-                  }
-                />
-                <span className="text-sm text-zinc-400">
-                  {systemHealth.indexerLag} blocks behind
-                </span>
-              </div>
-            </div>
-
-            {/* Queue Depth */}
-            <div className="flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-300">Queue Depth</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusDot
-                  status={
-                    systemHealth.queueDepth < 500
-                      ? "operational"
-                      : systemHealth.queueDepth < 2000
-                        ? "degraded"
-                        : "down"
-                  }
-                />
-                <span className="text-sm text-zinc-400">
-                  {formatLargeNumber(systemHealth.queueDepth)} jobs pending
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

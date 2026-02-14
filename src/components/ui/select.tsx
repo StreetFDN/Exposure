@@ -45,7 +45,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={id} className="text-sm font-medium text-zinc-300">
+          <label htmlFor={id} className="text-sm font-medium text-zinc-700">
             {label}
           </label>
         )}
@@ -61,11 +61,11 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 .join(" ") || undefined
             }
             className={cn(
-              "h-10 w-full appearance-none rounded-lg border bg-zinc-900 px-3 pr-10 text-sm text-zinc-50",
+              "h-10 w-full appearance-none rounded-lg border bg-white px-3 pr-10 text-sm text-zinc-900",
               "outline-none transition-colors duration-150",
               error
                 ? "border-rose-500 focus:ring-2 focus:ring-rose-500/30"
-                : "border-zinc-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30",
+                : "border-zinc-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30",
               disabled && "cursor-not-allowed opacity-50",
               className
             )}
@@ -92,7 +92,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           />
         </div>
         {error && (
-          <p id={errorId} className="text-xs text-rose-400" role="alert">
+          <p id={errorId} className="text-xs text-rose-500" role="alert">
             {error}
           </p>
         )}

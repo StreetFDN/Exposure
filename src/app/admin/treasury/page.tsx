@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Wallet,
   ArrowRightLeft,
@@ -12,528 +12,418 @@ import {
   TrendingUp,
   DollarSign,
   Lock,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { CopyButton } from "@/components/ui/copy-button";
-import { Progress } from "@/components/ui/progress";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-import { formatCurrency, formatAddress, formatDate, formatToken } from "@/lib/utils/format";
+  formatCurrency,
+  formatAddress,
+  formatDate,
+  formatToken,
+} from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
-/*  Placeholder data                                                          */
+/*  Types (matching API response shape)                                       */
 /* -------------------------------------------------------------------------- */
 
-const treasuryTotal = {
-  usd: 12_847_320,
-  breakdown: [
-    { token: "USDC", amount: 8_420_000, usd: 8_420_000 },
-    { token: "USDT", amount: 2_150_000, usd: 2_150_000 },
-    { token: "ETH", amount: 842.5, usd: 1_877_320 },
-    { token: "EXPO", amount: 5_000_000, usd: 400_000 },
-  ],
+interface TreasuryData {
+  totalConfirmedUsd: string;
+  totalConfirmedFormatted: string;
+  totalPendingUsd: string;
+  totalRefundedUsd: string;
+  netTreasuryUsd: string;
+  balancesByChain: {
+    chain: string;
+    totalConfirmedUsd: string;
+  }[];
+  recentMovements: {
+    id: string;
+    type: string;
+    amount: string;
+    amountUsd: string | null;
+    currency: string;
+    chain: string;
+    txHash: string;
+    status: string;
+    timestamp: string;
+  }[];
+  pendingDisbursements: {
+    id: string;
+    dealId: string;
+    dealTitle: string;
+    amount: string;
+    chain: string;
+    projectWalletAddress: string | null;
+    scheduledAt: string | null;
+    status: string;
+  }[];
+  revenue: {
+    monthlyFees: { month: string; amount: string }[];
+    feeRate: string;
+    performanceFee: string;
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                   */
+/* -------------------------------------------------------------------------- */
+
+const chainColor: Record<string, string> = {
+  ETHEREUM: "bg-violet-500",
+  ARBITRUM: "bg-sky-500",
+  BASE: "bg-emerald-500",
+  POLYGON: "bg-amber-500",
 };
 
-const chainBalances = [
-  {
-    chain: "Ethereum",
-    color: "violet",
-    balances: [
-      { token: "ETH", amount: 512.3, usd: 1_142_428 },
-      { token: "USDC", amount: 5_200_000, usd: 5_200_000 },
-      { token: "EXPO", amount: 3_000_000, usd: 240_000 },
-    ],
-  },
-  {
-    chain: "Arbitrum",
-    color: "sky",
-    balances: [
-      { token: "ETH", amount: 180.2, usd: 401_846 },
-      { token: "USDC", amount: 1_800_000, usd: 1_800_000 },
-      { token: "EXPO", amount: 1_200_000, usd: 96_000 },
-    ],
-  },
-  {
-    chain: "Base",
-    color: "emerald",
-    balances: [
-      { token: "ETH", amount: 95.0, usd: 211_850 },
-      { token: "USDC", amount: 920_000, usd: 920_000 },
-      { token: "EXPO", amount: 500_000, usd: 40_000 },
-    ],
-  },
-  {
-    chain: "Polygon",
-    color: "amber",
-    balances: [
-      { token: "ETH", amount: 55.0, usd: 121_196 },
-      { token: "USDC", amount: 500_000, usd: 500_000 },
-      { token: "EXPO", amount: 300_000, usd: 24_000 },
-    ],
-  },
-];
-
-const fundFlows = [
-  {
-    id: "ff-1",
-    date: "2026-02-12T10:30:00Z",
-    type: "Fee Collection" as const,
-    deal: "Nexus Protocol",
-    amount: 73_500,
-    from: "0x7a2F...9F0A",
-    to: "0xFee1...C0ll",
-    txHash: "0xabc123...def456",
-    status: "Confirmed",
-  },
-  {
-    id: "ff-2",
-    date: "2026-02-11T16:00:00Z",
-    type: "Disbursement" as const,
-    deal: "Onchain Labs",
-    amount: 1_764_000,
-    from: "0xEscr...0w01",
-    to: "0x0nCh...L4bs",
-    txHash: "0xdef789...abc012",
-    status: "Confirmed",
-  },
-  {
-    id: "ff-3",
-    date: "2026-02-10T14:00:00Z",
-    type: "Refund" as const,
-    deal: "Solace Protocol",
-    amount: 118_800,
-    from: "0xEscr...0w02",
-    to: "Multiple (89 addresses)",
-    txHash: "0x123abc...456def",
-    status: "Processing",
-  },
-  {
-    id: "ff-4",
-    date: "2026-02-09T09:00:00Z",
-    type: "Fee Collection" as const,
-    deal: "Prism Finance",
-    amount: 96_000,
-    from: "0x8f4a...d2c9",
-    to: "0xFee1...C0ll",
-    txHash: "0x456def...789abc",
-    status: "Confirmed",
-  },
-  {
-    id: "ff-5",
-    date: "2026-02-08T11:30:00Z",
-    type: "Fee Collection" as const,
-    deal: "ZeroLayer",
-    amount: 26_700,
-    from: "0xd9c3...b7a2",
-    to: "0xFee1...C0ll",
-    txHash: "0x789abc...012def",
-    status: "Confirmed",
-  },
-  {
-    id: "ff-6",
-    date: "2026-02-07T15:00:00Z",
-    type: "Disbursement" as const,
-    deal: "Quantum Bridge",
-    amount: 5_880_000,
-    from: "0xEscr...0w03",
-    to: "0xQu4n...Br1d",
-    txHash: "0x012def...345abc",
-    status: "Confirmed",
-  },
-];
-
-const pendingDisbursements = [
-  {
-    id: "pd-1",
-    deal: "Nexus Protocol",
-    amount: 2_352_500,
-    multisigSigned: 2,
-    multisigRequired: 3,
-    releaseDate: "2026-02-28",
-    status: "Awaiting Signatures",
-  },
-  {
-    id: "pd-2",
-    deal: "ZeroLayer",
-    amount: 871_200,
-    multisigSigned: 1,
-    multisigRequired: 3,
-    releaseDate: "2026-03-15",
-    status: "Awaiting Signatures",
-  },
-  {
-    id: "pd-3",
-    deal: "Prism Finance",
-    amount: 3_136_000,
-    multisigSigned: 0,
-    multisigRequired: 3,
-    releaseDate: "2026-03-01",
-    status: "Pending",
-  },
-];
-
-const activeEscrows = [
-  {
-    id: "esc-1",
-    deal: "Nexus Protocol",
-    escrowedAmount: 2_450_000,
-    releaseConditions: "Contribution period ends + 48h settlement",
-    status: "Active",
-  },
-  {
-    id: "esc-2",
-    deal: "ZeroLayer",
-    escrowedAmount: 890_000,
-    releaseConditions: "Hard cap reached or contribution close",
-    status: "Active",
-  },
-  {
-    id: "esc-3",
-    deal: "Prism Finance",
-    escrowedAmount: 3_200_000,
-    releaseConditions: "Contribution period ends + 48h settlement",
-    status: "Active",
-  },
-  {
-    id: "esc-4",
-    deal: "MetaVault",
-    escrowedAmount: 340_000,
-    releaseConditions: "Deal paused — compliance hold",
-    status: "Frozen",
-  },
-  {
-    id: "esc-5",
-    deal: "Solace Protocol",
-    escrowedAmount: 1_200,
-    releaseConditions: "Refund processing — cancelled deal",
-    status: "Releasing",
-  },
-];
-
-const typeVariant: Record<string, "success" | "info" | "warning"> = {
-  "Fee Collection": "success",
-  Disbursement: "info",
-  Refund: "warning",
+const txTypeColor: Record<string, string> = {
+  CONTRIBUTION: "text-emerald-600",
+  CLAIM: "text-sky-600",
+  REFUND: "text-amber-600",
+  STAKE: "text-zinc-500",
+  UNSTAKE: "text-zinc-500",
 };
 
-const escrowStatusVariant: Record<string, "success" | "warning" | "error" | "info"> = {
-  Active: "success",
-  Frozen: "error",
-  Releasing: "info",
-};
+/* -------------------------------------------------------------------------- */
+/*  Loading skeleton                                                          */
+/* -------------------------------------------------------------------------- */
+
+function TreasurySkeleton() {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="grid grid-cols-4 gap-px bg-zinc-200">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white p-6">
+            <div className="h-2.5 w-20 animate-pulse rounded bg-zinc-200" />
+            <div className="mt-3 h-7 w-32 animate-pulse rounded bg-zinc-200" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-px bg-zinc-200">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white p-5">
+            <div className="h-2.5 w-16 animate-pulse rounded bg-zinc-200" />
+            <div className="mt-2 h-5 w-24 animate-pulse rounded bg-zinc-200" />
+            <div className="mt-3 h-1 w-full animate-pulse rounded bg-zinc-200" />
+          </div>
+        ))}
+      </div>
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="border border-zinc-200">
+          {Array.from({ length: 4 }).map((_, j) => (
+            <div key={j} className="flex items-center gap-6 border-b border-zinc-200 px-5 py-4">
+              <div className="h-3 w-20 animate-pulse rounded bg-zinc-200" />
+              <div className="h-3 w-16 animate-pulse rounded bg-zinc-200" />
+              <div className="h-3 w-14 animate-pulse rounded bg-zinc-200" />
+              <div className="h-3 w-20 animate-pulse rounded bg-zinc-200" />
+              <div className="h-3 w-24 animate-pulse rounded bg-zinc-200" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                      */
 /* -------------------------------------------------------------------------- */
 
 export default function TreasuryManagementPage() {
+  const [treasury, setTreasury] = useState<TreasuryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTreasury = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/treasury");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message || "Failed to fetch treasury data");
+      setTreasury(json.data.treasury);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch treasury data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchTreasury(); }, [fetchTreasury]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-8">
+        <div>
+          <h1 className="font-serif text-2xl font-light text-zinc-900">Treasury</h1>
+          <p className="mt-1 text-sm font-normal text-zinc-500">Platform treasury management and fund flows</p>
+        </div>
+        <TreasurySkeleton />
+      </div>
+    );
+  }
+
+  if (error || !treasury) {
+    return (
+      <div className="flex flex-col gap-8">
+        <div>
+          <h1 className="font-serif text-2xl font-light text-zinc-900">Treasury</h1>
+          <p className="mt-1 text-sm font-normal text-zinc-500">Platform treasury management and fund flows</p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-32 text-center">
+          <Wallet className="mb-6 h-8 w-8 text-zinc-400" />
+          <h2 className="font-serif text-2xl font-light text-zinc-800">Unable to load treasury</h2>
+          <p className="mt-3 max-w-sm text-sm font-normal leading-relaxed text-zinc-500">{error || "Treasury data could not be retrieved. Please check your connection and try again."}</p>
+          <button onClick={fetchTreasury} className="mt-8 border border-zinc-300 px-6 py-2.5 text-sm font-normal text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-800">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
+  const netTreasury = Number(treasury.netTreasuryUsd);
+  const totalConfirmed = Number(treasury.totalConfirmedUsd);
+  const totalPending = Number(treasury.totalPendingUsd);
+  const totalRefunded = Number(treasury.totalRefundedUsd);
+
   return (
     <div className="flex flex-col gap-8">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-zinc-50">Treasury</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Platform treasury management and fund flows
-        </p>
+        <h1 className="font-serif text-2xl font-light text-zinc-900">Treasury</h1>
+        <p className="mt-1 text-sm font-normal text-zinc-500">Platform treasury management and fund flows</p>
       </div>
 
-      {/* Total Treasury */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-violet-400" />
-            <CardTitle>Total Platform Treasury</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6">
-            <p className="text-4xl font-bold tabular-nums text-zinc-50">
-              {formatCurrency(treasuryTotal.usd)}
-            </p>
-            <p className="mt-1 text-sm text-zinc-400">
-              Across all chains and tokens
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {treasuryTotal.breakdown.map((b) => (
-              <div
-                key={b.token}
-                className="rounded-lg border border-zinc-800 bg-zinc-800/30 p-4"
-              >
-                <p className="text-sm font-medium text-zinc-300">{b.token}</p>
-                <p className="text-lg font-bold text-zinc-50">
-                  {formatToken(b.amount, 2, b.token)}
-                </p>
-                <p className="text-xs text-zinc-500">
-                  {formatCurrency(b.usd)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Total Treasury hero */}
+      <div className="border border-zinc-200 p-8">
+        <div className="flex items-center gap-2 text-zinc-500">
+          <Wallet className="h-4 w-4" />
+          <span className="text-xs uppercase tracking-widest">Net Platform Treasury</span>
+        </div>
+        <p className="mt-3 font-serif text-4xl font-light tabular-nums text-zinc-900">{formatCurrency(netTreasury)}</p>
+        <p className="mt-2 text-sm font-normal text-zinc-500">Confirmed minus refunded across all chains</p>
+      </div>
+
+      {/* Key metrics */}
+      <div className="grid grid-cols-4 gap-px bg-zinc-200">
+        <div className="bg-white p-5">
+          <p className="text-xs uppercase tracking-widest text-zinc-500">Confirmed</p>
+          <p className="mt-2 font-serif text-2xl font-light tabular-nums text-zinc-800">{formatCurrency(totalConfirmed)}</p>
+          <p className="mt-1 text-xs font-normal text-zinc-400">Total confirmed contributions</p>
+        </div>
+        <div className="bg-white p-5">
+          <p className="text-xs uppercase tracking-widest text-zinc-500">Pending</p>
+          <p className="mt-2 font-serif text-2xl font-light tabular-nums text-amber-600">{formatCurrency(totalPending)}</p>
+          <p className="mt-1 text-xs font-normal text-zinc-400">Awaiting confirmation</p>
+        </div>
+        <div className="bg-white p-5">
+          <p className="text-xs uppercase tracking-widest text-zinc-500">Refunded</p>
+          <p className="mt-2 font-serif text-2xl font-light tabular-nums text-zinc-500">{formatCurrency(totalRefunded)}</p>
+          <p className="mt-1 text-xs font-normal text-zinc-400">Total refunds processed</p>
+        </div>
+        <div className="bg-white p-5">
+          <p className="text-xs uppercase tracking-widest text-zinc-500">Fee Rate</p>
+          <p className="mt-2 font-serif text-2xl font-light text-emerald-600">{treasury.revenue.feeRate}</p>
+          <p className="mt-1 text-xs font-normal text-zinc-400">{treasury.revenue.performanceFee}</p>
+        </div>
+      </div>
 
       {/* Chain balances */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {chainBalances.map((chain) => {
-          const totalUsd = chain.balances.reduce((acc, b) => acc + b.usd, 0);
-          return (
-            <Card key={chain.chain}>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-zinc-400" />
-                  <CardTitle className="text-base">{chain.chain}</CardTitle>
-                </div>
-                <CardDescription>{formatCurrency(totalUsd)}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-3">
-                  {chain.balances.map((b) => (
-                    <div
-                      key={b.token}
-                      className="flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-zinc-300">
-                          {b.token}
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          {formatCurrency(b.usd)}
-                        </p>
-                      </div>
-                      <p className="text-sm tabular-nums text-zinc-200">
-                        {formatToken(b.amount, b.token === "ETH" ? 2 : 0)}
-                      </p>
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <Layers className="h-4 w-4 text-zinc-500" />
+          <h2 className="text-xs uppercase tracking-widest text-zinc-500">Balances by Chain</h2>
+        </div>
+        {treasury.balancesByChain.length > 0 ? (
+          <div className="grid grid-cols-4 gap-px bg-zinc-200">
+            {treasury.balancesByChain.map((chain) => {
+              const chainUsd = Number(chain.totalConfirmedUsd);
+              const pct = totalConfirmed > 0 ? (chainUsd / totalConfirmed) * 100 : 0;
+              return (
+                <div key={chain.chain} className="bg-white p-5">
+                  <p className="text-xs uppercase tracking-widest text-zinc-500">{chain.chain}</p>
+                  <p className="mt-2 font-mono text-lg font-normal text-zinc-700">{formatCurrency(chainUsd)}</p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="h-1 flex-1 bg-zinc-200">
+                      <div className={cn("h-full transition-all", chainColor[chain.chain] || "bg-zinc-500")} style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
-                  ))}
+                    <span className="text-xs tabular-nums text-zinc-400">{pct.toFixed(1)}%</span>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 border border-zinc-200 py-12 text-zinc-500">
+            <Layers className="h-6 w-6" />
+            <p className="text-sm font-normal">No chain balance data available</p>
+          </div>
+        )}
       </div>
 
       {/* Fund Flows */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <ArrowRightLeft className="h-5 w-5 text-zinc-400" />
-            <CardTitle>Fund Flows</CardTitle>
-          </div>
-          <CardDescription>Recent fund movements across the platform</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border border-zinc-800">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Deal</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Tx Hash</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fundFlows.map((flow) => (
-                  <TableRow key={flow.id}>
-                    <TableCell className="whitespace-nowrap text-zinc-400">
-                      {formatDate(flow.date)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={typeVariant[flow.type]}>{flow.type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-zinc-200">{flow.deal}</TableCell>
-                    <TableCell className="font-medium text-zinc-50">
-                      {formatCurrency(flow.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-xs text-zinc-500">
-                        {flow.from}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-xs text-zinc-500">
-                        {flow.to}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono text-xs text-violet-400">
-                          {flow.txHash}
-                        </span>
-                        <ExternalLink className="h-3 w-3 text-zinc-600" />
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <ArrowRightLeft className="h-4 w-4 text-zinc-500" />
+          <h2 className="text-xs uppercase tracking-widest text-zinc-500">Fund Flows</h2>
+          <span className="text-xs font-normal text-zinc-400">Recent movements across the platform</span>
+        </div>
+        <div className="border border-zinc-200">
+          {treasury.recentMovements.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-zinc-500">
+              <Inbox className="h-6 w-6" />
+              <p className="font-serif text-lg font-normal text-zinc-500">No recent fund movements</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zinc-200">
+                  {["Date", "Type", "Chain", "Amount", "Currency", "Tx Hash", "Status"].map((h) => (
+                    <th key={h} className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {treasury.recentMovements.map((movement) => (
+                  <tr key={movement.id} className="border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+                    <td className="whitespace-nowrap px-5 py-4 text-sm font-normal text-zinc-500">{formatDate(movement.timestamp)}</td>
+                    <td className="px-5 py-4"><span className={cn("text-xs uppercase tracking-wider", txTypeColor[movement.type] || "text-zinc-500")}>{movement.type}</span></td>
+                    <td className="px-5 py-4 text-sm font-normal text-zinc-600">{movement.chain}</td>
+                    <td className="px-5 py-4 font-mono text-sm text-zinc-800">{movement.amountUsd ? formatCurrency(movement.amountUsd) : formatToken(Number(movement.amount), 4, movement.currency)}</td>
+                    <td className="px-5 py-4 text-sm font-normal text-zinc-500">{movement.currency}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs text-violet-600">{formatAddress(movement.txHash)}</span>
+                        <ExternalLink className="h-3 w-3 text-zinc-300" />
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          flow.status === "Confirmed"
-                            ? "success"
-                            : flow.status === "Processing"
-                              ? "warning"
-                              : "outline"
-                        }
-                      >
-                        {flow.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={cn("text-sm font-normal", movement.status === "CONFIRMED" || movement.status === "confirmed" ? "text-emerald-600" : movement.status === "PENDING" || movement.status === "pending" ? "text-amber-600" : "text-zinc-500")}>{movement.status}</span>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
 
       {/* Pending Disbursements */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-zinc-400" />
-            <CardTitle>Pending Disbursements</CardTitle>
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <Clock className="h-4 w-4 text-zinc-500" />
+          <h2 className="text-xs uppercase tracking-widest text-zinc-500">Pending Disbursements</h2>
+          <span className="text-xs font-normal text-zinc-400">Deals awaiting fund release to project wallets</span>
+        </div>
+        {treasury.pendingDisbursements.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 border border-zinc-200 py-16 text-zinc-500">
+            <CheckCircle2 className="h-6 w-6" />
+            <p className="font-serif text-lg font-normal text-zinc-500">No pending disbursements</p>
+            <p className="text-sm font-normal">All funds have been distributed</p>
           </div>
-          <CardDescription>
-            Deals awaiting fund release to project wallets
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            {pendingDisbursements.map((pd) => (
-              <div
-                key={pd.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/30 p-5"
-              >
+        ) : (
+          <div className="flex flex-col gap-px bg-zinc-200">
+            {treasury.pendingDisbursements.map((pd) => (
+              <div key={pd.id} className="flex items-center justify-between bg-white px-5 py-5">
                 <div className="flex flex-col gap-1">
-                  <h4 className="font-semibold text-zinc-50">{pd.deal}</h4>
-                  <p className="text-sm text-zinc-400">
-                    Release date: {formatDate(pd.releaseDate)}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  <p className="text-lg font-bold text-zinc-50">
-                    {formatCurrency(pd.amount)}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-zinc-500" />
-                      <span className="text-sm text-zinc-400">
-                        Multisig:{" "}
-                        <span
-                          className={cn(
-                            "font-semibold",
-                            pd.multisigSigned >= pd.multisigRequired
-                              ? "text-emerald-400"
-                              : "text-amber-400"
-                          )}
-                        >
-                          {pd.multisigSigned}/{pd.multisigRequired}
-                        </span>{" "}
-                        signed
-                      </span>
-                    </div>
-                    <Badge
-                      variant={
-                        pd.status === "Pending"
-                          ? "outline"
-                          : pd.status === "Awaiting Signatures"
-                            ? "warning"
-                            : "success"
-                      }
-                    >
-                      {pd.status}
-                    </Badge>
-                    <Button size="sm" variant="secondary">
-                      Sign
-                    </Button>
+                  <h4 className="text-sm font-normal text-zinc-800">{pd.dealTitle}</h4>
+                  <div className="flex items-center gap-3 text-zinc-500">
+                    <span className="text-xs font-normal">{pd.chain}</span>
+                    {pd.scheduledAt && <span className="text-xs font-normal">Release: {formatDate(pd.scheduledAt)}</span>}
+                    {pd.projectWalletAddress && <span className="font-mono text-xs">To: {formatAddress(pd.projectWalletAddress)}</span>}
                   </div>
+                </div>
+                <div className="flex items-center gap-5">
+                  <p className="font-serif text-xl font-normal tabular-nums text-zinc-800">{formatCurrency(pd.amount)}</p>
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <Shield className="h-3.5 w-3.5" />
+                    <span className="text-xs font-normal">Multisig: <span className="text-amber-600">0/3</span> signed</span>
+                  </div>
+                  <span className="text-xs uppercase tracking-widest text-amber-600">{pd.status}</span>
+                  <button className="border border-zinc-200 px-4 py-2 text-sm font-normal text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-800">Sign</button>
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
-      {/* Revenue Breakdown Chart */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-zinc-400" />
-            <CardTitle>Revenue Breakdown</CardTitle>
+      {/* Revenue Breakdown */}
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-zinc-500" />
+          <h2 className="text-xs uppercase tracking-widest text-zinc-500">Revenue Breakdown</h2>
+          <span className="text-xs font-normal text-zinc-400">Platform fees and revenue over time</span>
+        </div>
+        {treasury.revenue.monthlyFees.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 border border-zinc-200 py-16 text-zinc-500">
+            <DollarSign className="h-6 w-6" />
+            <p className="font-serif text-lg font-normal text-zinc-500">No revenue data yet</p>
+            <p className="text-sm font-normal">Revenue will appear as contributions are confirmed</p>
           </div>
-          <CardDescription>Platform fees and revenue over time</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex h-[300px] items-center justify-center rounded-lg border border-emerald-500/10 bg-emerald-500/5">
-            <div className="flex flex-col items-center gap-2 text-zinc-500">
-              <DollarSign className="h-8 w-8 text-emerald-500/40" />
-              <span className="text-sm font-medium">
-                Revenue Chart — Recharts Integration Pending
-              </span>
-              <span className="text-xs text-zinc-600">
-                Fees by deal, monthly revenue breakdown
-              </span>
-            </div>
+        ) : (
+          <div className="border border-zinc-200">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zinc-200">
+                  <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Month</th>
+                  <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Contributions</th>
+                  <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Estimated Fee ({treasury.revenue.feeRate})</th>
+                </tr>
+              </thead>
+              <tbody>
+                {treasury.revenue.monthlyFees.map((mf) => {
+                  const amount = Number(mf.amount);
+                  const feeEstimate = amount * 0.025;
+                  return (
+                    <tr key={mf.month} className="border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+                      <td className="px-5 py-4 text-sm font-normal text-zinc-700">{mf.month}</td>
+                      <td className="px-5 py-4 font-mono text-sm text-zinc-800">{formatCurrency(amount)}</td>
+                      <td className="px-5 py-4 font-mono text-sm text-emerald-600">{formatCurrency(feeEstimate)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
       {/* Escrow Overview */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Lock className="h-5 w-5 text-zinc-400" />
-            <CardTitle>Escrow Overview</CardTitle>
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <Lock className="h-4 w-4 text-zinc-500" />
+          <h2 className="text-xs uppercase tracking-widest text-zinc-500">Escrow Overview</h2>
+          <span className="text-xs font-normal text-zinc-400">Active escrow accounts and their status</span>
+        </div>
+        {treasury.pendingDisbursements.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 border border-zinc-200 py-16 text-zinc-500">
+            <Lock className="h-6 w-6" />
+            <p className="font-serif text-lg font-normal text-zinc-500">No active escrows</p>
+            <p className="text-sm font-normal">Escrow data will appear for deals in distribution phase</p>
           </div>
-          <CardDescription>Active escrow accounts and their status</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border border-zinc-800">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Deal</TableHead>
-                  <TableHead>Escrowed Amount</TableHead>
-                  <TableHead>Release Conditions</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeEscrows.map((esc) => (
-                  <TableRow key={esc.id}>
-                    <TableCell className="font-medium text-zinc-50">
-                      {esc.deal}
-                    </TableCell>
-                    <TableCell className="font-semibold text-zinc-200">
-                      {formatCurrency(esc.escrowedAmount)}
-                    </TableCell>
-                    <TableCell className="max-w-xs text-zinc-400">
-                      {esc.releaseConditions}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={escrowStatusVariant[esc.status]}>
-                        {esc.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+        ) : (
+          <div className="border border-zinc-200">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zinc-200">
+                  <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Deal</th>
+                  <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Escrowed Amount</th>
+                  <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Release Conditions</th>
+                  <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {treasury.pendingDisbursements.map((pd) => (
+                  <tr key={`esc-${pd.id}`} className="border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+                    <td className="px-5 py-4 text-sm font-normal text-zinc-800">{pd.dealTitle}</td>
+                    <td className="px-5 py-4 font-mono text-sm text-zinc-700">{formatCurrency(pd.amount)}</td>
+                    <td className="max-w-xs px-5 py-4 text-sm font-normal text-zinc-500">{pd.scheduledAt ? `Scheduled release: ${formatDate(pd.scheduledAt)}` : "Awaiting distribution schedule"}</td>
+                    <td className="px-5 py-4"><span className="text-xs uppercase tracking-widest text-emerald-600">Active</span></td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

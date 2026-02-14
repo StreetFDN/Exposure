@@ -44,13 +44,13 @@ export function ContributionProgress({
       <div className="flex items-end justify-between">
         <div>
           <span className="text-xs text-zinc-500">Total Raised</span>
-          <p className="font-serif text-xl font-light text-zinc-100">
+          <p className="font-serif text-xl font-light text-zinc-900">
             {formatCurrency(raised, currency)}
           </p>
         </div>
         <div className="text-right">
           <span className="text-xs text-zinc-500">Hard Cap</span>
-          <p className="text-sm font-medium text-zinc-300">
+          <p className="text-sm font-medium text-zinc-700">
             {formatCurrency(hardCap, currency)}
           </p>
         </div>
@@ -58,7 +58,7 @@ export function ContributionProgress({
 
       {/* Progress bar */}
       <div className="relative">
-        <div className="h-3 overflow-hidden rounded-full bg-zinc-800">
+        <div className="h-3 overflow-hidden rounded-full bg-zinc-200">
           <div
             className="h-full rounded-full bg-zinc-400 transition-all duration-1000 ease-out"
             style={{ width: animated ? `${raisedPct}%` : "0%" }}
@@ -76,14 +76,14 @@ export function ContributionProgress({
 
       {/* Percentage + soft cap label */}
       <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-zinc-300">
+        <span className="font-medium text-zinc-700">
           {raisedPct.toFixed(1)}% raised
         </span>
         <div className="flex items-center gap-2">
           <span
             className={cn(
               "text-xs",
-              softCapMet ? "text-emerald-400" : "text-zinc-500"
+              softCapMet ? "text-emerald-600" : "text-zinc-500"
             )}
           >
             Soft cap: {formatCurrency(softCap, currency)}

@@ -5,15 +5,15 @@
    ------------------------------------------------------------------------- */
 
 :root {
-  --color-primary: #8b5cf6;       /* violet-500 */
-  --color-primary-hover: #7c3aed; /* violet-600 */
-  --color-surface: #18181b;       /* zinc-900   */
-  --color-surface-elevated: #27272a; /* zinc-800 */
-  --color-border: #3f3f46;        /* zinc-700   */
-  --color-border-subtle: #27272a; /* zinc-800   */
-  --color-text: #fafafa;          /* zinc-50    */
-  --color-text-muted: #a1a1aa;    /* zinc-400   */
-  --color-bg: #09090b;            /* zinc-950   */
+  --color-primary: #7c3aed;       /* violet-600 — slightly darker for light bg */
+  --color-primary-hover: #6d28d9; /* violet-700 */
+  --color-surface: #ffffff;        /* white */
+  --color-surface-elevated: #f4f4f5; /* zinc-100 */
+  --color-border: #e4e4e7;        /* zinc-200 */
+  --color-border-subtle: #f4f4f5; /* zinc-100 */
+  --color-text: #18181b;          /* zinc-900 */
+  --color-text-muted: #71717a;    /* zinc-500 */
+  --color-bg: #ffffff;            /* white */
 }
 
 /* -------------------------------------------------------------------------
@@ -40,8 +40,8 @@
 
 html {
   scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
 }
 
 body {
@@ -72,7 +72,7 @@ body {
 }
 
 /* -------------------------------------------------------------------------
-   Custom scrollbar — dark theme
+   Custom scrollbar — light theme
    ------------------------------------------------------------------------- */
 
 ::-webkit-scrollbar {
@@ -85,20 +85,20 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #3f3f46; /* zinc-700 */
+  background-color: #d4d4d8; /* zinc-300 */
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #52525b; /* zinc-600 */
+  background-color: #a1a1aa; /* zinc-400 */
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3f3f46 transparent;
+  scrollbar-color: #d4d4d8 transparent;
 }
 
 /* -------------------------------------------------------------------------
@@ -106,8 +106,8 @@ body {
    ------------------------------------------------------------------------- */
 
 ::selection {
-  background-color: #3f3f4680;
-  color: #fafafa;
+  background-color: #c4b5fd80; /* violet-300 with alpha */
+  color: #18181b;
 }
 
 /* -------------------------------------------------------------------------
@@ -124,7 +124,7 @@ body {
 }
 
 /* -------------------------------------------------------------------------
-   Street Design System
+   Street Design System — Typography
    ------------------------------------------------------------------------- */
 
 .text-hero {
@@ -151,15 +151,52 @@ body {
   line-height: 1.1;
 }
 
-/* Animated border wrapper — now a simple subtle border */
+/* -------------------------------------------------------------------------
+   Card and surface utilities
+   ------------------------------------------------------------------------- */
+
+/* Animated border wrapper — light theme */
 .street-animated-border-wrapper {
-  background: #27272a;
+  background: #f4f4f5; /* zinc-100 */
 }
 .street-animated-border-wrapper:hover {
-  background: #3f3f46;
+  background: #e4e4e7; /* zinc-200 */
 }
 
-/* Shimmer animation */
+/* Glass morphism utilities — light theme */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(228, 228, 231, 0.5);
+}
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* Premium button style — light theme */
+.btn-premium {
+  background: #18181b;
+  color: #fafafa;
+  border: 1px solid #27272a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.btn-premium:hover {
+  background: #27272a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Horizontal rule accent — thin violet line */
+.accent-line {
+  width: 40px;
+  height: 1px;
+  background: #7c3aed;
+}
+
+/* -------------------------------------------------------------------------
+   Shimmer and scroll animations
+   ------------------------------------------------------------------------- */
+
 @keyframes single-shimmer {
   0% { background-position: -200% 0; }
   28.57% { background-position: 200% 0; }
@@ -186,25 +223,139 @@ body {
   will-change: transform;
 }
 
-/* Glass morphism utilities — institutional / restrained */
-.glass-card {
-  background: rgba(24, 24, 27, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(63, 63, 70, 0.3);
+/* -------------------------------------------------------------------------
+   Scroll-triggered animations
+   ------------------------------------------------------------------------- */
+
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.glass-card:hover {
-  background: rgba(24, 24, 27, 0.5);
+.fade-in-up.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-/* Premium button style — institutional flat */
-.btn-premium {
-  background: #18181b;
-  color: #fafafa;
-  border: 1px solid #27272a;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+.fade-in {
+  opacity: 0;
+  transition: opacity 0.6s ease;
 }
-.btn-premium:hover {
-  background: #27272a;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+.fade-in.visible {
+  opacity: 1;
+}
+
+.slide-in-left {
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.slide-in-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.slide-in-right {
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.slide-in-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* -------------------------------------------------------------------------
+   Stagger children animations
+   ------------------------------------------------------------------------- */
+
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.stagger-children.visible > *:nth-child(1) { transition-delay: 0ms; opacity: 1; transform: translateY(0); }
+.stagger-children.visible > *:nth-child(2) { transition-delay: 80ms; opacity: 1; transform: translateY(0); }
+.stagger-children.visible > *:nth-child(3) { transition-delay: 160ms; opacity: 1; transform: translateY(0); }
+.stagger-children.visible > *:nth-child(4) { transition-delay: 240ms; opacity: 1; transform: translateY(0); }
+.stagger-children.visible > *:nth-child(5) { transition-delay: 320ms; opacity: 1; transform: translateY(0); }
+.stagger-children.visible > *:nth-child(6) { transition-delay: 400ms; opacity: 1; transform: translateY(0); }
+
+/* -------------------------------------------------------------------------
+   Skeleton loading animation — light theme
+   ------------------------------------------------------------------------- */
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+.skeleton {
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: linear-gradient(90deg, #e4e4e7 0%, #f4f4f5 50%, #e4e4e7 100%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+}
+
+/* -------------------------------------------------------------------------
+   Counter animation for numbers
+   ------------------------------------------------------------------------- */
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-count {
+  animation: count-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* -------------------------------------------------------------------------
+   Page transition
+   ------------------------------------------------------------------------- */
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-enter 0.4s ease forwards;
+}
+
+/* -------------------------------------------------------------------------
+   Toast slide-in animation
+   ------------------------------------------------------------------------- */
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-toast-in {
+  animation: toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* -------------------------------------------------------------------------
+   Loading pulse for brand text
+   ------------------------------------------------------------------------- */
+
+@keyframes brand-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.animate-brand-pulse {
+  animation: brand-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* -------------------------------------------------------------------------
+   Loading bar crawl
+   ------------------------------------------------------------------------- */
+
+@keyframes loading-crawl {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(200%); }
+}
+.animate-loading-crawl {
+  animation: loading-crawl 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

@@ -4,24 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import {
   Search,
-  SlidersHorizontal,
-  Users,
-  TrendingUp,
-  DollarSign,
-  Crown,
-  Shield,
   ChevronLeft,
   ChevronRight,
+  Shield,
   ArrowRight,
+  Users,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Avatar } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { formatLargeNumber } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
@@ -53,16 +42,14 @@ const CATEGORY_OPTIONS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Placeholder groups
+// Types for the API response
 // ---------------------------------------------------------------------------
 
-interface GroupCardData {
+interface GroupData {
   id: string;
   name: string;
   slug: string;
   description: string;
-  leadName: string;
-  leadWallet: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
   memberCount: number;
@@ -71,145 +58,18 @@ interface GroupCardData {
   totalRaised: string;
   minTierRequired: string | null;
   carryPercent: string;
-  status: "ACTIVE" | "PENDING_APPROVAL" | "CLOSED";
+  status: string;
   isPublic: boolean;
-  category: string;
+  lead: {
+    id: string;
+    walletAddress: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+  _count: {
+    members: number;
+  };
 }
-
-const PLACEHOLDER_GROUPS: GroupCardData[] = [
-  {
-    id: "1",
-    name: "Apex Capital",
-    slug: "apex-capital",
-    description:
-      "Premier crypto VC syndicate focused on seed and Series A investments in DeFi infrastructure. Led by former a16z partner with $500M+ deployed across 40+ portfolio companies.",
-    leadName: "Marcus Reynolds",
-    leadWallet: "0x7a3B...9f4E",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 72,
-    maxMembers: 100,
-    dealCount: 14,
-    totalRaised: "28500000",
-    minTierRequired: "GOLD",
-    carryPercent: "20",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "VC",
-  },
-  {
-    id: "2",
-    name: "DeFi Collective",
-    slug: "defi-collective",
-    description:
-      "Community-driven investment group specializing in DeFi protocols, liquid staking, and yield infrastructure. Rigorous due diligence with 3x average return on investments.",
-    leadName: "Elena Vasquez",
-    leadWallet: "0x4c2D...8bA1",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 156,
-    maxMembers: 200,
-    dealCount: 22,
-    totalRaised: "15200000",
-    minTierRequired: "SILVER",
-    carryPercent: "15",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "DEFI",
-  },
-  {
-    id: "3",
-    name: "Neural Ventures",
-    slug: "neural-ventures",
-    description:
-      "AI and machine learning focused investment syndicate. Backing the convergence of AI and blockchain with investments in decentralized compute, inference networks, and AI agents.",
-    leadName: "David Chen",
-    leadWallet: "0x9f1E...3cD7",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 45,
-    maxMembers: 50,
-    dealCount: 8,
-    totalRaised: "12800000",
-    minTierRequired: "PLATINUM",
-    carryPercent: "25",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "AI",
-  },
-  {
-    id: "4",
-    name: "GameFi Alliance",
-    slug: "gamefi-alliance",
-    description:
-      "Gaming and metaverse investment group backed by industry veterans from EA, Riot, and Epic Games. Focus on fully on-chain games with sustainable token economies.",
-    leadName: "Sophie Nakamura",
-    leadWallet: "0x2bA8...6eF3",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 89,
-    maxMembers: 150,
-    dealCount: 11,
-    totalRaised: "8900000",
-    minTierRequired: null,
-    carryPercent: "18",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "GAMING",
-  },
-  {
-    id: "5",
-    name: "Infra Maxi Club",
-    slug: "infra-maxi-club",
-    description:
-      "Infrastructure-focused syndicate investing in L1s, L2s, bridges, oracles, and developer tooling. Long-term thesis-driven approach with 2-4 year investment horizons.",
-    leadName: "Alex Thompson",
-    leadWallet: "0x5dC9...2aB4",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 100,
-    maxMembers: 100,
-    dealCount: 19,
-    totalRaised: "42000000",
-    minTierRequired: "GOLD",
-    carryPercent: "20",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "INFRA",
-  },
-  {
-    id: "6",
-    name: "Stealth Syndicate",
-    slug: "stealth-syndicate",
-    description:
-      "Invite-only syndicate for accredited investors. Access to pre-seed deals, OTC opportunities, and exclusive token allocations not available on any launchpad.",
-    leadName: "James Whitfield",
-    leadWallet: "0x8eF2...1cA5",
-    avatarUrl: null,
-    bannerUrl: null,
-    memberCount: 28,
-    maxMembers: 30,
-    dealCount: 6,
-    totalRaised: "55000000",
-    minTierRequired: "DIAMOND",
-    carryPercent: "30",
-    status: "ACTIVE",
-    isPublic: true,
-    category: "VC",
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Tier badge helpers
-// ---------------------------------------------------------------------------
-
-const TIER_COLORS: Record<string, "warning" | "default" | "info" | "success" | "error" | "outline"> = {
-  BRONZE: "warning",
-  SILVER: "outline",
-  GOLD: "warning",
-  PLATINUM: "info",
-  DIAMOND: "success",
-};
 
 // ---------------------------------------------------------------------------
 // Helper: check if user has a session cookie (client-side)
@@ -230,6 +90,30 @@ function useHasSession(): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+
+function GroupCardSkeleton() {
+  return (
+    <div className="border border-zinc-200 p-8 animate-pulse">
+      <div className="mb-6">
+        <div className="mb-2 h-5 w-36 bg-zinc-200" />
+        <div className="h-3 w-48 bg-zinc-200" />
+      </div>
+      <div className="mb-6 h-4 w-full bg-zinc-200" />
+      <div className="mb-6 grid grid-cols-2 gap-4">
+        <div className="h-4 w-20 bg-zinc-200" />
+        <div className="h-4 w-20 bg-zinc-200" />
+        <div className="h-4 w-20 bg-zinc-200" />
+        <div className="h-4 w-20 bg-zinc-200" />
+      </div>
+      <div className="mb-6 h-1 w-full bg-zinc-200" />
+      <div className="h-10 w-full bg-zinc-200" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -243,145 +127,273 @@ export default function GroupsPage() {
 
   const perPage = 6;
 
-  // Filter
-  const filtered = React.useMemo(() => {
-    let result = [...PLACEHOLDER_GROUPS];
+  const [groups, setGroups] = React.useState<GroupData[]>([]);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (g) =>
-          g.name.toLowerCase().includes(q) ||
-          g.description.toLowerCase().includes(q) ||
-          g.leadName.toLowerCase().includes(q)
-      );
+  // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = React.useState(search);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch groups from API
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchGroups() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams();
+        params.set("page", String(currentPage));
+        params.set("limit", String(perPage));
+
+        if (statusFilter === "OPEN" || statusFilter === "FULL") {
+          params.set("status", "ACTIVE");
+        }
+
+        if (debouncedSearch) {
+          params.set("search", debouncedSearch);
+        }
+
+        params.set("isPublic", "true");
+
+        const res = await fetch(`/api/groups?${params.toString()}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch groups (${res.status})`);
+        }
+
+        const json = await res.json();
+
+        if (!json.success) {
+          throw new Error(json.error || "Failed to fetch groups");
+        }
+
+        let apiGroups: GroupData[] = json.data.groups;
+
+        if (statusFilter === "OPEN") {
+          apiGroups = apiGroups.filter((g) => g.memberCount < g.maxMembers);
+        } else if (statusFilter === "FULL") {
+          apiGroups = apiGroups.filter((g) => g.memberCount >= g.maxMembers);
+        }
+
+        if (tierFilter !== "ALL") {
+          const tierOrder = [
+            "BRONZE",
+            "SILVER",
+            "GOLD",
+            "PLATINUM",
+            "DIAMOND",
+          ];
+          const minIdx = tierOrder.indexOf(tierFilter);
+          apiGroups = apiGroups.filter((g) => {
+            if (!g.minTierRequired) return true;
+            return tierOrder.indexOf(g.minTierRequired) >= minIdx;
+          });
+        }
+
+        setGroups(apiGroups);
+        setTotalPages(json.data.totalPages || 1);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setError((err as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    if (statusFilter === "OPEN") {
-      result = result.filter((g) => g.memberCount < g.maxMembers);
-    } else if (statusFilter === "FULL") {
-      result = result.filter((g) => g.memberCount >= g.maxMembers);
-    }
-
-    if (tierFilter !== "ALL") {
-      const tierOrder = ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND"];
-      const minIdx = tierOrder.indexOf(tierFilter);
-      result = result.filter((g) => {
-        if (!g.minTierRequired) return true;
-        return tierOrder.indexOf(g.minTierRequired) >= minIdx;
-      });
-    }
-
-    if (categoryFilter !== "ALL") {
-      result = result.filter((g) => g.category === categoryFilter);
-    }
-
-    return result;
-  }, [search, statusFilter, tierFilter, categoryFilter]);
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paginated = filtered.slice(
-    (currentPage - 1) * perPage,
-    currentPage * perPage
-  );
+    fetchGroups();
+    return () => controller.abort();
+  }, [
+    currentPage,
+    statusFilter,
+    tierFilter,
+    categoryFilter,
+    debouncedSearch,
+  ]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-zinc-50">Investment Groups</h1>
-        <p className="mt-2 text-zinc-400">
-          Join private groups led by verified VCs and syndicates
+    <div className="min-h-screen bg-white">
+      {/* ----------------------------------------------------------------- */}
+      {/* Page header                                                       */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="mx-auto max-w-6xl px-6 pt-20 pb-12">
+        <h1 className="font-serif text-5xl font-light tracking-tight text-zinc-900">
+          Investment Groups
+        </h1>
+        <p className="mt-3 max-w-lg font-sans text-base font-normal leading-relaxed text-zinc-500">
+          Join private groups led by verified VCs and syndicates. Pool capital,
+          access exclusive deal flow.
         </p>
+
+        <div className="mt-8 h-px w-full bg-zinc-200" />
       </div>
 
-      {/* Verification banner for non-authenticated users */}
+      {/* ----------------------------------------------------------------- */}
+      {/* Verification banner                                                */}
+      {/* ----------------------------------------------------------------- */}
       {!isAuthenticated && (
-        <div className="mb-8 flex flex-col items-start gap-4 rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/5 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
-              <Shield className="h-5 w-5 text-violet-400" />
+        <div className="mx-auto max-w-6xl px-6 pb-10">
+          <div className="flex flex-col items-start gap-6 border border-zinc-200 p-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <Shield className="h-4 w-4 shrink-0 text-zinc-500" />
+              <div>
+                <p className="text-sm font-medium text-zinc-700">
+                  Sign up and complete verification to join groups
+                </p>
+                <p className="mt-0.5 text-xs font-normal text-zinc-500">
+                  Browse groups freely. To apply and invest, complete KYC
+                  verification through our quick onboarding process.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-zinc-50">
-                Sign up and complete verification to join groups
-              </p>
-              <p className="text-xs text-zinc-400">
-                Browse groups freely. To apply and invest, complete KYC verification through our quick onboarding process.
-              </p>
-            </div>
+            <Link href="/onboarding" className="shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
+              >
+                Get Verified
+              </Button>
+            </Link>
           </div>
-          <Link href="/onboarding" className="shrink-0">
-            <Button size="sm" rightIcon={<ArrowRight className="h-3.5 w-3.5" />}>
-              Get Verified
-            </Button>
-          </Link>
         </div>
       )}
 
-      {/* Filter bar */}
-      <div className="mb-8 flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4 lg:flex-row lg:items-end">
-        <div className="flex-1">
-          <Input
-            placeholder="Search groups or leads..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-            leftAddon={<Search className="h-4 w-4" />}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3 lg:flex">
-          <Select
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-          <Select
-            options={TIER_OPTIONS}
-            value={tierFilter}
-            onChange={(e) => {
-              setTierFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-          <Select
-            options={CATEGORY_OPTIONS}
-            value={categoryFilter}
-            onChange={(e) => {
-              setCategoryFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
+      {/* ----------------------------------------------------------------- */}
+      {/* Filter bar                                                         */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="mx-auto max-w-6xl px-6 pb-12">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search groups or leads..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-10 w-full border border-zinc-200 bg-transparent pl-10 pr-4 font-sans text-sm font-normal text-zinc-900 placeholder:text-zinc-400 outline-none transition-colors focus:border-zinc-300"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-10 border border-zinc-200 bg-white px-3 pr-8 font-sans text-xs font-normal text-zinc-500 outline-none transition-colors hover:border-zinc-300 focus:border-zinc-300"
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={tierFilter}
+              onChange={(e) => {
+                setTierFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-10 border border-zinc-200 bg-white px-3 pr-8 font-sans text-xs font-normal text-zinc-500 outline-none transition-colors hover:border-zinc-300 focus:border-zinc-300"
+            >
+              {TIER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-10 border border-zinc-200 bg-white px-3 pr-8 font-sans text-xs font-normal text-zinc-500 outline-none transition-colors hover:border-zinc-300 focus:border-zinc-300"
+            >
+              {CATEGORY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Results */}
-      {paginated.length > 0 ? (
-        <>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {paginated.map((group) => (
-              <GroupCard key={group.id} group={group} isAuthenticated={isAuthenticated} />
+      {/* ----------------------------------------------------------------- */}
+      {/* Error state                                                        */}
+      {/* ----------------------------------------------------------------- */}
+      {error && (
+        <div className="mx-auto max-w-6xl px-6 pb-12">
+          <div className="border border-zinc-200 p-8">
+            <p className="font-sans text-sm font-normal text-zinc-500">
+              {error}
+            </p>
+            <button
+              onClick={() => setCurrentPage(currentPage)}
+              className="mt-3 font-sans text-xs font-normal text-zinc-500 underline underline-offset-4 transition-colors hover:text-zinc-600"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Loading skeletons                                                  */}
+      {/* ----------------------------------------------------------------- */}
+      {isLoading && (
+        <div className="mx-auto max-w-6xl px-6 pb-16">
+          <div className="grid gap-px border border-zinc-200 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: perPage }).map((_, i) => (
+              <GroupCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Group cards grid                                                   */}
+      {/* ----------------------------------------------------------------- */}
+      {!isLoading && !error && groups.length > 0 && (
+        <div className="mx-auto max-w-6xl px-6 pb-16">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3">
+            {groups.map((group) => (
+              <GroupCardInline
+                key={group.id}
+                group={group}
+                isAuthenticated={isAuthenticated}
+              />
             ))}
           </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-10 flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+            <div className="mt-16 flex items-center justify-center gap-3">
+              <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => p - 1)}
-                leftIcon={<ChevronLeft className="h-4 w-4" />}
+                className="flex h-10 items-center gap-2 border border-zinc-200 px-4 font-sans text-xs font-normal text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-700 disabled:opacity-30 disabled:hover:border-zinc-200"
               >
+                <ChevronLeft className="h-3.5 w-3.5" />
                 Previous
-              </Button>
+              </button>
 
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(
@@ -389,10 +401,10 @@ export default function GroupsPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                      className={`flex h-10 w-10 items-center justify-center font-sans text-xs font-normal transition-colors ${
                         page === currentPage
-                          ? "bg-violet-600 text-white"
-                          : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+                          ? "border border-zinc-900 text-zinc-900"
+                          : "text-zinc-400 hover:text-zinc-600"
                       }`}
                     >
                       {page}
@@ -401,27 +413,34 @@ export default function GroupsPage() {
                 )}
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => p + 1)}
-                rightIcon={<ChevronRight className="h-4 w-4" />}
+                className="flex h-10 items-center gap-2 border border-zinc-200 px-4 font-sans text-xs font-normal text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-700 disabled:opacity-30 disabled:hover:border-zinc-200"
               >
                 Next
-              </Button>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
-        </>
-      ) : (
-        <EmptyState
-          icon={<SlidersHorizontal className="h-6 w-6" />}
-          title="No groups found"
-          description="Try adjusting your filters or search query to find what you're looking for."
-          action={
-            <Button
-              variant="outline"
-              size="sm"
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Empty state                                                        */}
+      {/* ----------------------------------------------------------------- */}
+      {!isLoading && !error && groups.length === 0 && (
+        <div className="mx-auto max-w-6xl px-6 pb-24">
+          <div className="flex flex-col items-center justify-center border border-dashed border-zinc-200 px-8 py-24 text-center">
+            <Users className="mb-6 h-8 w-8 text-zinc-300" />
+            <h3 className="font-serif text-xl font-light text-zinc-600">
+              No groups found
+            </h3>
+            <p className="mt-2 max-w-xs font-sans text-sm font-normal text-zinc-500">
+              Try adjusting your filters or search query to find what you are
+              looking for.
+            </p>
+            <button
               onClick={() => {
                 setSearch("");
                 setStatusFilter("ALL");
@@ -429,131 +448,140 @@ export default function GroupsPage() {
                 setCategoryFilter("ALL");
                 setCurrentPage(1);
               }}
+              className="mt-8 border border-zinc-200 px-6 py-2.5 font-sans text-xs font-normal text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-700"
             >
               Clear Filters
-            </Button>
-          }
-        />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// GroupCard
+// Inline Group Card
 // ---------------------------------------------------------------------------
 
-function GroupCard({ group, isAuthenticated = false }: { group: GroupCardData; isAuthenticated?: boolean }) {
+function GroupCardInline({
+  group,
+  isAuthenticated,
+}: {
+  group: GroupData;
+  isAuthenticated: boolean;
+}) {
   const isFull = group.memberCount >= group.maxMembers;
   const fillPercent = (group.memberCount / group.maxMembers) * 100;
+  const leadName = group.lead?.displayName || "Anonymous";
+  const leadWallet = group.lead?.walletAddress
+    ? `${group.lead.walletAddress.slice(0, 6)}...${group.lead.walletAddress.slice(-4)}`
+    : "";
 
   return (
-    <Card className="flex flex-col overflow-hidden transition-colors hover:border-zinc-700">
-      {/* Banner */}
-      <div className="relative h-24 bg-gradient-to-br from-violet-600/30 to-fuchsia-600/20">
-        {/* Avatar overlapping banner */}
-        <div className="absolute -bottom-5 left-4">
-          <Avatar
-            alt={group.name}
-            src={group.avatarUrl}
-            size="lg"
-            ring
+    <div className="group flex flex-col border border-zinc-200 p-8 transition-colors duration-200 hover:border-zinc-300">
+      {/* Name + Lead */}
+      <div className="mb-4">
+        <h3 className="font-sans text-base font-medium text-zinc-800">
+          {group.name}
+        </h3>
+        <p className="mt-1 text-xs font-normal text-zinc-500">
+          Led by{" "}
+          <span className="text-zinc-500">{leadName}</span>
+          {leadWallet && (
+            <span className="ml-1 text-zinc-400">{leadWallet}</span>
+          )}
+        </p>
+      </div>
+
+      {/* Description */}
+      <p className="mb-6 line-clamp-2 font-sans text-sm font-normal leading-relaxed text-zinc-500">
+        {group.description}
+      </p>
+
+      {/* Stats grid */}
+      <div className="mb-6 grid grid-cols-2 gap-4 border-t border-zinc-200 pt-6">
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+            Members
+          </span>
+          <span className="font-serif text-sm font-normal text-zinc-700">
+            {group.memberCount}
+            <span className="text-zinc-400">/{group.maxMembers}</span>
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+            Deals
+          </span>
+          <span className="font-serif text-sm font-normal text-zinc-700">
+            {group.dealCount}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+            Raised
+          </span>
+          <span className="font-serif text-sm font-normal text-zinc-700">
+            ${formatLargeNumber(group.totalRaised)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+            Carry
+          </span>
+          <span className="font-serif text-sm font-normal text-zinc-700">
+            {group.carryPercent}%
+          </span>
+        </div>
+      </div>
+
+      {/* Badges row */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        {group.minTierRequired && (
+          <span className="border border-zinc-200 px-2.5 py-1 text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+            {group.minTierRequired}+
+          </span>
+        )}
+        {isFull && (
+          <span className="border border-zinc-200 px-2.5 py-1 text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+            Full
+          </span>
+        )}
+      </div>
+
+      {/* Capacity bar */}
+      <div className="mb-6">
+        <div className="h-1 w-full bg-zinc-200">
+          <div
+            className="h-full bg-zinc-400 transition-all"
+            style={{ width: `${Math.min(fillPercent, 100)}%` }}
           />
         </div>
       </div>
 
-      <CardContent className="flex flex-1 flex-col pt-8">
-        {/* Name + Lead */}
-        <div className="mb-2">
-          <h3 className="text-base font-semibold text-zinc-50">
-            {group.name}
-          </h3>
-          <p className="text-xs text-zinc-500">
-            Led by{" "}
-            <span className="text-zinc-400">{group.leadName}</span>
-            <span className="ml-1 text-zinc-600">{group.leadWallet}</span>
-          </p>
-        </div>
-
-        {/* Description */}
-        <p className="mb-4 line-clamp-2 text-sm text-zinc-400">
-          {group.description}
-        </p>
-
-        {/* Stats grid */}
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-1.5 text-sm">
-            <Users className="h-3.5 w-3.5 text-zinc-500" />
-            <span className="text-zinc-300">
-              {group.memberCount}
-              <span className="text-zinc-600">/{group.maxMembers}</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <TrendingUp className="h-3.5 w-3.5 text-zinc-500" />
-            <span className="text-zinc-300">{group.dealCount} deals</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <DollarSign className="h-3.5 w-3.5 text-zinc-500" />
-            <span className="text-zinc-300">
-              ${formatLargeNumber(group.totalRaised)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <Crown className="h-3.5 w-3.5 text-zinc-500" />
-            <span className="text-zinc-300">{group.carryPercent}% carry</span>
-          </div>
-        </div>
-
-        {/* Badges */}
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          {group.minTierRequired && (
-            <Badge
-              variant={TIER_COLORS[group.minTierRequired] || "outline"}
-              size="sm"
+      {/* CTA */}
+      <div className="mt-auto">
+        {!isAuthenticated ? (
+          <Link href="/onboarding">
+            <button className="flex w-full items-center justify-center gap-2 border border-zinc-200 py-3 font-sans text-xs font-normal text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-700">
+              <Shield className="h-3.5 w-3.5" />
+              Verify to Join
+            </button>
+          </Link>
+        ) : (
+          <Link href={`/groups/${group.slug}`}>
+            <button
+              className={`w-full py-3 font-sans text-xs font-normal transition-colors ${
+                isFull
+                  ? "border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-600"
+                  : "bg-violet-500 text-white hover:bg-violet-400"
+              }`}
             >
-              <Shield className="mr-1 h-3 w-3" />
-              {group.minTierRequired}+
-            </Badge>
-          )}
-          {isFull && (
-            <Badge variant="outline" size="sm">
-              Full
-            </Badge>
-          )}
-        </div>
-
-        {/* Member capacity bar */}
-        <div className="mb-4">
-          <Progress value={fillPercent} color={isFull ? "warning" : "default"} />
-        </div>
-
-        {/* CTA */}
-        <div className="mt-auto">
-          {!isAuthenticated ? (
-            <Link href="/onboarding">
-              <Button
-                className="w-full"
-                variant="outline"
-                size="sm"
-              >
-                <Shield className="mr-1.5 h-3.5 w-3.5" />
-                Verify to Join
-              </Button>
-            </Link>
-          ) : (
-            <Link href={`/groups/${group.slug}`}>
-              <Button
-                className="w-full"
-                variant={isFull ? "outline" : "default"}
-                size="sm"
-              >
-                {isFull ? "View Group" : "Apply to Join"}
-              </Button>
-            </Link>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              {isFull ? "View Group" : "Apply to Join"}
+            </button>
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

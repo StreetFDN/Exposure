@@ -92,7 +92,7 @@ export function ContributionForm({
     <div className={cn("flex flex-col gap-4", className)}>
       {/* Amount input */}
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-zinc-300">Amount</label>
+        <label className="text-sm font-medium text-zinc-700">Amount</label>
         <div className="flex items-center gap-2">
           <Input
             type="number"
@@ -107,7 +107,7 @@ export function ContributionForm({
               <button
                 type="button"
                 onClick={handleMax}
-                className="rounded bg-zinc-800 px-2 py-0.5 text-xs font-medium text-violet-400 transition-colors hover:bg-zinc-700"
+                className="rounded bg-zinc-100 px-2 py-0.5 text-xs font-medium text-violet-600 transition-colors hover:bg-zinc-200"
               >
                 MAX
               </button>
@@ -120,7 +120,7 @@ export function ContributionForm({
 
       {/* Currency toggle */}
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-zinc-300">Currency</label>
+        <label className="text-sm font-medium text-zinc-700">Currency</label>
         <div className="flex gap-1.5">
           {currencies.map((c) => (
             <button
@@ -130,8 +130,8 @@ export function ContributionForm({
               className={cn(
                 "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                 currency === c
-                  ? "border-violet-500 bg-violet-500/10 text-violet-400"
-                  : "border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600"
+                  ? "border-violet-500 bg-violet-50 text-violet-600"
+                  : "border-zinc-300 bg-white text-zinc-500 hover:border-zinc-400"
               )}
             >
               {c}
@@ -141,7 +141,7 @@ export function ContributionForm({
       </div>
 
       {/* Info rows */}
-      <div className="flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
         <InfoRow
           label="Your allocation"
           value={formatCurrency(numericAmount)}
@@ -159,7 +159,7 @@ export function ContributionForm({
           value={`${formatCurrency(walletBalance)} ${currency}`}
           icon={<Wallet className="h-3.5 w-3.5" />}
         />
-        <div className="border-t border-zinc-800 pt-2">
+        <div className="border-t border-zinc-200 pt-2">
           <InfoRow
             label="Est. tokens received"
             value={`${estimatedTokens.toLocaleString("en-US", {
@@ -172,7 +172,7 @@ export function ContributionForm({
 
       {/* Error display */}
       {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-400">
+        <div className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -190,7 +190,7 @@ export function ContributionForm({
       </Button>
 
       {/* Fine print */}
-      <p className="text-center text-xs text-zinc-600">
+      <p className="text-center text-xs text-zinc-400">
         Min: {formatCurrency(minContribution)} | Max:{" "}
         {formatCurrency(maxContribution)} | Requires{" "}
         <Badge variant="outline" size="sm">
@@ -225,7 +225,7 @@ function InfoRow({
       <span
         className={cn(
           "font-medium",
-          highlight ? "text-violet-400" : "text-zinc-300"
+          highlight ? "text-violet-600" : "text-zinc-700"
         )}
       >
         {value}

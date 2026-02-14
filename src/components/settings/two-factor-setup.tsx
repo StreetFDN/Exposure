@@ -233,8 +233,8 @@ export function TwoFactorSetup({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-                <ShieldCheck className="h-5 w-5 text-emerald-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50">
+                <ShieldCheck className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
                 <CardTitle>Two-Factor Authentication</CardTitle>
@@ -250,14 +250,14 @@ export function TwoFactorSetup({
         </CardHeader>
         <CardContent className="space-y-4">
           {showDisable ? (
-            <div className="space-y-4 rounded-lg border border-rose-500/20 bg-rose-500/5 p-4">
+            <div className="space-y-4 rounded-lg border border-rose-200 bg-rose-50 p-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
                 <div>
-                  <p className="text-sm font-medium text-rose-300">
+                  <p className="text-sm font-medium text-rose-700">
                     Disable Two-Factor Authentication
                   </p>
-                  <p className="mt-1 text-xs text-rose-400/70">
+                  <p className="mt-1 text-xs text-rose-500">
                     This will reduce the security of your account. Enter your
                     current authenticator code to confirm.
                   </p>
@@ -297,9 +297,9 @@ export function TwoFactorSetup({
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
+            <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               <div>
-                <p className="text-sm text-zinc-300">
+                <p className="text-sm text-zinc-700">
                   Two-factor authentication adds an extra layer of security to
                   your account by requiring a code from your authenticator app
                   for sensitive actions.
@@ -332,13 +332,13 @@ export function TwoFactorSetup({
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-12">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
-            <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
           </div>
-          <p className="text-lg font-semibold text-zinc-50">
+          <p className="text-lg font-semibold text-zinc-900">
             2FA Successfully Enabled
           </p>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-500">
             Your account is now protected with two-factor authentication.
           </p>
         </CardContent>
@@ -354,8 +354,8 @@ export function TwoFactorSetup({
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-            <Shield className="h-5 w-5 text-violet-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-50">
+            <Shield className="h-5 w-5 text-violet-600" />
           </div>
           <div>
             <CardTitle>
@@ -393,8 +393,8 @@ export function TwoFactorSetup({
                       ? "bg-violet-500 text-white"
                       : (step === "verify" && i === 0) ||
                         (step === "backup" && i <= 1)
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-zinc-800 text-zinc-500"
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-zinc-100 text-zinc-500"
                   )}
                 >
                   {(step === "verify" && i === 0) ||
@@ -410,8 +410,8 @@ export function TwoFactorSetup({
                       "h-px w-8",
                       (step === "verify" && i === 0) ||
                         (step === "backup" && i <= 1)
-                        ? "bg-emerald-500/30"
-                        : "bg-zinc-800"
+                        ? "bg-emerald-200"
+                        : "bg-zinc-200"
                     )}
                   />
                 )}
@@ -425,12 +425,12 @@ export function TwoFactorSetup({
         {/* ---- IDLE ---- */}
         {step === "idle" && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
+                  <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
                   <div>
-                    <p className="text-sm font-medium text-zinc-200">
+                    <p className="text-sm font-medium text-zinc-700">
                       Protect sensitive actions
                     </p>
                     <p className="text-xs text-zinc-500">
@@ -440,9 +440,9 @@ export function TwoFactorSetup({
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Shield className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
+                  <Shield className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
                   <div>
-                    <p className="text-sm font-medium text-zinc-200">
+                    <p className="text-sm font-medium text-zinc-700">
                       Prevent unauthorized access
                     </p>
                     <p className="text-xs text-zinc-500">
@@ -455,7 +455,7 @@ export function TwoFactorSetup({
             </div>
 
             {error && (
-              <p className="text-sm text-rose-400">{error}</p>
+              <p className="text-sm text-rose-600">{error}</p>
             )}
 
             <Button
@@ -472,7 +472,7 @@ export function TwoFactorSetup({
         {step === "qr" && (
           <div className="space-y-4">
             <div className="flex justify-center">
-              <div className="rounded-lg border border-zinc-700 bg-white p-4">
+              <div className="rounded-lg border border-zinc-200 bg-white p-4">
                 {/* QR Code placeholder - renders the URI as a visual block */}
                 <div className="flex h-48 w-48 flex-col items-center justify-center gap-2">
                   <QrCode className="h-16 w-16 text-zinc-800" />
@@ -488,7 +488,7 @@ export function TwoFactorSetup({
               <br />
               If you cannot scan,{" "}
               <button
-                className="text-violet-400 underline underline-offset-2 hover:text-violet-300"
+                className="text-violet-600 underline underline-offset-2 hover:text-violet-500"
                 onClick={() => setStep("manual")}
               >
                 enter the key manually
@@ -501,12 +501,12 @@ export function TwoFactorSetup({
         {/* ---- MANUAL ENTRY ---- */}
         {step === "manual" && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-zinc-700 bg-zinc-950 p-4">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
                 Secret Key
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 break-all font-mono text-sm text-violet-400">
+                <code className="flex-1 break-all font-mono text-sm text-violet-600">
                   {secret}
                 </code>
                 <Button
@@ -515,7 +515,7 @@ export function TwoFactorSetup({
                   onClick={() => copyToClipboard(secret)}
                 >
                   {copied ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
@@ -530,7 +530,7 @@ export function TwoFactorSetup({
             </p>
 
             <button
-              className="text-xs text-violet-400 underline underline-offset-2 hover:text-violet-300"
+              className="text-xs text-violet-600 underline underline-offset-2 hover:text-violet-500"
               onClick={() => setStep("qr")}
             >
               Back to QR code
@@ -541,7 +541,7 @@ export function TwoFactorSetup({
         {/* ---- VERIFY CODE ---- */}
         {step === "verify" && (
           <div className="space-y-4">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-zinc-500">
               Enter the 6-digit code displayed in your authenticator app to
               complete the setup.
             </p>
@@ -563,21 +563,21 @@ export function TwoFactorSetup({
         {/* ---- BACKUP CODES ---- */}
         {step === "backup" && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
-                <p className="text-sm text-amber-300">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <p className="text-sm text-amber-700">
                   Save these backup codes now. They will not be shown again. Each
                   code can only be used once.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-700 bg-zinc-950 p-4">
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               {backupCodes.map((backupCode, i) => (
                 <div
                   key={i}
-                  className="rounded bg-zinc-900 px-3 py-2 font-mono text-sm text-zinc-300"
+                  className="rounded bg-white px-3 py-2 font-mono text-sm text-zinc-700"
                 >
                   {backupCode}
                 </div>
@@ -593,7 +593,7 @@ export function TwoFactorSetup({
                 }
                 leftIcon={
                   copied ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )

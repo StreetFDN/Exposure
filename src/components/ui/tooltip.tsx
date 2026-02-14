@@ -69,18 +69,21 @@ function Tooltip({
     >
       {React.cloneElement(children, {
         "aria-describedby": visible ? tooltipId : undefined,
-      })}
+      } as React.HTMLAttributes<HTMLElement>)}
 
       {visible && (
         <span
           id={tooltipId}
           role="tooltip"
           className={cn(
-            "absolute z-50 whitespace-nowrap rounded-md bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-200 shadow-lg",
-            "pointer-events-none animate-in fade-in-0 zoom-in-95",
+            "absolute z-50 whitespace-nowrap rounded bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 text-xs font-medium text-zinc-100",
+            "pointer-events-none",
             positionClasses[position],
             className
           )}
+          style={{
+            animation: "page-enter 0.15s ease forwards",
+          }}
         >
           {content}
           <span

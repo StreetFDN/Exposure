@@ -9,7 +9,7 @@ import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
   variable: "--font-inter",
 });
@@ -45,9 +45,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${playfair.variable} font-sans bg-zinc-950 text-zinc-50 antialiased`}
+        className={`${inter.variable} ${playfair.variable} font-sans bg-white text-zinc-900`}
       >
         <Providers>{children}</Providers>
       </body>

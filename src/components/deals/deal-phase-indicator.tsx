@@ -45,9 +45,9 @@ export function DealPhaseIndicator({
                   phase.status === "completed" &&
                     "border-violet-500 bg-violet-500 text-white",
                   phase.status === "active" &&
-                    "border-violet-500 bg-violet-500/20 text-violet-400",
+                    "border-violet-500 bg-violet-50 text-violet-600",
                   phase.status === "upcoming" &&
-                    "border-zinc-700 bg-zinc-800 text-zinc-500"
+                    "border-zinc-300 bg-zinc-100 text-zinc-500"
                 )}
               >
                 {phase.status === "completed" ? (
@@ -63,15 +63,15 @@ export function DealPhaseIndicator({
                   className={cn(
                     "text-xs font-medium",
                     phase.status === "active"
-                      ? "text-violet-400"
+                      ? "text-violet-600"
                       : phase.status === "completed"
-                        ? "text-zinc-300"
+                        ? "text-zinc-700"
                         : "text-zinc-500"
                   )}
                 >
                   {phase.name}
                 </span>
-                <span className="text-[10px] text-zinc-600">
+                <span className="text-[10px] text-zinc-400">
                   {formatDate(phase.startsAt)}
                 </span>
               </div>
@@ -85,7 +85,7 @@ export function DealPhaseIndicator({
                     "h-full w-full rounded-full",
                     phase.status === "completed"
                       ? "bg-violet-500"
-                      : "bg-zinc-700"
+                      : "bg-zinc-300"
                   )}
                 />
               </div>
@@ -106,9 +106,9 @@ export function DealPhaseIndicator({
                   phase.status === "completed" &&
                     "border-violet-500 bg-violet-500 text-white",
                   phase.status === "active" &&
-                    "border-violet-500 bg-violet-500/20 text-violet-400",
+                    "border-violet-500 bg-violet-50 text-violet-600",
                   phase.status === "upcoming" &&
-                    "border-zinc-700 bg-zinc-800 text-zinc-500"
+                    "border-zinc-300 bg-zinc-100 text-zinc-500"
                 )}
               >
                 {phase.status === "completed" ? (
@@ -123,7 +123,7 @@ export function DealPhaseIndicator({
                     "my-1 w-0.5 flex-1",
                     phase.status === "completed"
                       ? "bg-violet-500"
-                      : "bg-zinc-700"
+                      : "bg-zinc-300"
                   )}
                 />
               )}
@@ -135,15 +135,15 @@ export function DealPhaseIndicator({
                 className={cn(
                   "text-sm font-medium",
                   phase.status === "active"
-                    ? "text-violet-400"
+                    ? "text-violet-600"
                     : phase.status === "completed"
-                      ? "text-zinc-300"
+                      ? "text-zinc-700"
                       : "text-zinc-500"
                 )}
               >
                 {phase.name}
               </span>
-              <span className="text-xs text-zinc-600">
+              <span className="text-xs text-zinc-400">
                 {formatDate(phase.startsAt)} - {formatDate(phase.endsAt)}
               </span>
             </div>

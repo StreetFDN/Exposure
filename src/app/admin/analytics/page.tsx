@@ -1,36 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Calendar,
   TrendingUp,
   Users,
   DollarSign,
   BarChart3,
-  PieChart,
-  ArrowRight,
+  PieChart as PieChartIcon,
   Globe,
-  Layers,
   Target,
 } from "lucide-react";
-import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { formatCurrency, formatLargeNumber, formatPercent } from "@/lib/utils/format";
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import { cn } from "@/lib/utils/cn";
+import {
+  formatCurrency,
+  formatLargeNumber,
+  formatPercent,
+} from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
-/*  Placeholder data                                                          */
+/*  Types (matching API response shape)                                       */
+/* -------------------------------------------------------------------------- */
+
+interface AnalyticsData {
+  kpis: {
+    totalRaised: number;
+    newUsers: number;
+    totalUsers: number;
+    conversionRate: number;
+    avgContribution: number;
+    revenue: number;
+    allTimeRaised: number;
+  };
+  raiseVolumeChart: { month: string; amount: number }[];
+  signupsChart: { month: string; count: number }[];
+  topDeals: {
+    id: string;
+    title: string;
+    raised: number;
+    contributorCount: number;
+    avgContribution: number;
+    oversubscription: number;
+    status: string;
+    chain: string;
+  }[];
+  tierDistribution: {
+    tier: string;
+    count: number;
+    pct: number;
+  }[];
+  geoDistribution: {
+    country: string;
+    users: number;
+    contributions: number;
+  }[];
+  chainDistribution: {
+    chain: string;
+    amount: number;
+    count: number;
+  }[];
+  range: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Constants                                                                 */
 /* -------------------------------------------------------------------------- */
 
 const dateRanges = [
@@ -41,117 +87,121 @@ const dateRanges = [
   { label: "All", value: "all" },
 ];
 
-const kpis = [
-  {
-    label: "Total Raised (30d)",
-    value: "$8.4M",
-    description: "+23.5% vs prior period",
-    icon: <DollarSign className="h-5 w-5" />,
-  },
-  {
-    label: "New Users",
-    value: "2,847",
-    description: "+18.2% vs prior period",
-    icon: <Users className="h-5 w-5" />,
-  },
-  {
-    label: "Conversion Rate",
-    value: "12.4%",
-    description: "Viewed to Contributed",
-    icon: <Target className="h-5 w-5" />,
-  },
-  {
-    label: "Avg Contribution",
-    value: "$4,280",
-    description: "+5.1% vs prior period",
-    icon: <BarChart3 className="h-5 w-5" />,
-  },
-  {
-    label: "Revenue",
-    value: "$336K",
-    description: "4% avg platform fee",
-    icon: <TrendingUp className="h-5 w-5" />,
-  },
-];
-
-const funnelData = [
-  { stage: "Viewed Deal", count: 48_200, pct: 100 },
-  { stage: "Registered", count: 12_840, pct: 26.6 },
-  { stage: "Contributed", count: 5_978, pct: 12.4 },
-  { stage: "Claimed", count: 4_210, pct: 8.7 },
-];
-
-const geoData = [
-  { country: "United States", users: 4_820, contributions: 14_200_000 },
-  { country: "United Kingdom", users: 2_310, contributions: 6_800_000 },
-  { country: "Germany", users: 1_890, contributions: 5_100_000 },
-  { country: "Singapore", users: 1_540, contributions: 8_400_000 },
-  { country: "Canada", users: 1_280, contributions: 3_200_000 },
-  { country: "Australia", users: 980, contributions: 2_600_000 },
-  { country: "Japan", users: 870, contributions: 3_800_000 },
-  { country: "South Korea", users: 760, contributions: 2_100_000 },
-  { country: "France", users: 640, contributions: 1_400_000 },
-  { country: "Switzerland", users: 520, contributions: 4_200_000 },
-];
-
-const topDeals = [
-  {
-    name: "Quantum Bridge",
-    raised: 6_000_000,
-    fillTime: "4h 23m",
-    contributors: 4_821,
-    avgContribution: 1_244,
-    oversubscription: 3.2,
-  },
-  {
-    name: "Nexus Protocol",
-    raised: 2_450_000,
-    fillTime: "In progress",
-    contributors: 1_284,
-    avgContribution: 1_908,
-    oversubscription: 1.8,
-  },
-  {
-    name: "Prism Finance",
-    raised: 3_200_000,
-    fillTime: "In progress",
-    contributors: 2_156,
-    avgContribution: 1_484,
-    oversubscription: 2.1,
-  },
-  {
-    name: "Onchain Labs",
-    raised: 1_800_000,
-    fillTime: "12h 08m",
-    contributors: 943,
-    avgContribution: 1_909,
-    oversubscription: 1.5,
-  },
-  {
-    name: "NeuralDAO",
-    raised: 3_500_000,
-    fillTime: "Upcoming",
-    contributors: 0,
-    avgContribution: 0,
-    oversubscription: 0,
-  },
-];
-
-const tierDistribution = [
-  { tier: "Diamond", count: 142, pct: 0.8 },
-  { tier: "Platinum", count: 680, pct: 3.7 },
-  { tier: "Gold", count: 2_140, pct: 11.6 },
-  { tier: "Silver", count: 4_890, pct: 26.5 },
-  { tier: "Bronze", count: 10_587, pct: 57.4 },
-];
-
 const tierColor: Record<string, string> = {
-  Diamond: "bg-emerald-500",
-  Platinum: "bg-violet-500",
-  Gold: "bg-amber-500",
-  Silver: "bg-sky-500",
-  Bronze: "bg-zinc-500",
+  DIAMOND: "bg-emerald-500",
+  PLATINUM: "bg-violet-500",
+  GOLD: "bg-amber-500",
+  SILVER: "bg-sky-500",
+  BRONZE: "bg-zinc-500",
 };
+
+const tierLabel: Record<string, string> = {
+  DIAMOND: "Diamond",
+  PLATINUM: "Platinum",
+  GOLD: "Gold",
+  SILVER: "Silver",
+  BRONZE: "Bronze",
+};
+
+const PIE_COLORS = ["#8b5cf6", "#a1a1aa", "#0ea5e9", "#10b981", "#f59e0b"];
+
+const dealStatusLabel: Record<string, string> = {
+  COMPLETED: "Completed",
+  DISTRIBUTING: "Distributing",
+  SETTLEMENT: "Settlement",
+  FCFS: "In progress",
+  GUARANTEED_ALLOCATION: "In progress",
+  REGISTRATION_OPEN: "Registration",
+  APPROVED: "Approved",
+  UNDER_REVIEW: "Under Review",
+  DRAFT: "Draft",
+  CANCELLED: "Cancelled",
+};
+
+const dealStatusColor: Record<string, string> = {
+  COMPLETED: "text-emerald-600",
+  DISTRIBUTING: "text-sky-600",
+  SETTLEMENT: "text-sky-600",
+  FCFS: "text-sky-600",
+  GUARANTEED_ALLOCATION: "text-sky-600",
+  REGISTRATION_OPEN: "text-amber-600",
+  APPROVED: "text-zinc-500",
+  UNDER_REVIEW: "text-zinc-500",
+  DRAFT: "text-zinc-500",
+  CANCELLED: "text-red-600",
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Loading skeleton                                                          */
+/* -------------------------------------------------------------------------- */
+
+function AnalyticsSkeleton() {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="grid grid-cols-5 gap-px bg-zinc-200">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-white p-5">
+            <div className="h-2.5 w-20 animate-pulse rounded bg-zinc-200" />
+            <div className="mt-3 h-6 w-24 animate-pulse rounded bg-zinc-200" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <div className="border border-zinc-200 p-6">
+          <div className="h-3 w-40 animate-pulse rounded bg-zinc-200" />
+          <div className="mt-4 h-[280px] animate-pulse rounded bg-zinc-200" />
+        </div>
+        <div className="border border-zinc-200 p-6">
+          <div className="h-3 w-40 animate-pulse rounded bg-zinc-200" />
+          <div className="mt-4 h-[280px] animate-pulse rounded bg-zinc-200" />
+        </div>
+      </div>
+      <div className="border border-zinc-200">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-6 border-b border-zinc-200 px-5 py-4">
+            <div className="h-3 w-32 animate-pulse rounded bg-zinc-200" />
+            <div className="h-3 w-20 animate-pulse rounded bg-zinc-200" />
+            <div className="h-3 w-16 animate-pulse rounded bg-zinc-200" />
+            <div className="h-3 w-14 animate-pulse rounded bg-zinc-200" />
+            <div className="h-3 w-14 animate-pulse rounded bg-zinc-200" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Custom tooltip                                                            */
+/* -------------------------------------------------------------------------- */
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  formatter,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number; name: string; color: string }>;
+  label?: string;
+  formatter?: (value: number) => string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="border border-zinc-200 bg-white px-3 py-2">
+      <p className="mb-1 text-xs font-normal text-zinc-500">{label}</p>
+      {payload.map((entry, i) => (
+        <p key={i} className="text-sm font-normal text-zinc-800">
+          <span
+            className="mr-1.5 inline-block h-1.5 w-1.5"
+            style={{ backgroundColor: entry.color }}
+          />
+          {formatter ? formatter(entry.value) : entry.value.toLocaleString()}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                      */
@@ -159,27 +209,47 @@ const tierColor: Record<string, string> = {
 
 export default function AnalyticsDashboardPage() {
   const [selectedRange, setSelectedRange] = useState("30d");
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAnalytics = useCallback(async (range: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/analytics?range=${range}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message || "Failed to fetch analytics");
+      setAnalytics(json.data.analytics);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch analytics");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAnalytics(selectedRange); }, [selectedRange, fetchAnalytics]);
+
+  const handleRangeChange = (range: string) => { setSelectedRange(range); };
 
   return (
     <div className="flex flex-col gap-8">
       {/* Header + date range */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-50">Analytics</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Platform performance and insights
-          </p>
+          <h1 className="font-serif text-2xl font-light text-zinc-900">Analytics</h1>
+          <p className="mt-1 text-sm font-normal text-zinc-500">Platform performance and insights</p>
         </div>
-        <div className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 p-1">
+        <div className="flex items-center gap-0 border border-zinc-200">
           {dateRanges.map((range) => (
             <button
               key={range.value}
-              onClick={() => setSelectedRange(range.value)}
+              onClick={() => handleRangeChange(range.value)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "px-4 py-2 text-xs uppercase tracking-widest transition-colors",
                 selectedRange === range.value
-                  ? "bg-violet-500/15 text-violet-400"
-                  : "text-zinc-500 hover:text-zinc-300"
+                  ? "bg-zinc-100 text-zinc-800"
+                  : "text-zinc-500 hover:text-zinc-600"
               )}
             >
               {range.label}
@@ -188,291 +258,247 @@ export default function AnalyticsDashboardPage() {
         </div>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {kpis.map((kpi) => (
-          <StatCard
-            key={kpi.label}
-            label={kpi.label}
-            value={kpi.value}
-            description={kpi.description}
-            icon={kpi.icon}
-          />
-        ))}
-      </div>
+      {/* Error state */}
+      {error && (
+        <div className="flex flex-col items-center justify-center py-32 text-center">
+          <BarChart3 className="mb-6 h-8 w-8 text-zinc-400" />
+          <h2 className="font-serif text-2xl font-light text-zinc-800">Unable to load analytics</h2>
+          <p className="mt-3 max-w-sm text-sm font-normal leading-relaxed text-zinc-500">{error}</p>
+          <button onClick={() => fetchAnalytics(selectedRange)} className="mt-8 border border-zinc-300 px-6 py-2.5 text-sm font-normal text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-800">Retry</button>
+        </div>
+      )}
 
-      {/* Charts row 1 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Raise Volume Over Time</CardTitle>
-            <CardDescription>Monthly capital raised in USD</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-[300px] items-center justify-center rounded-lg border border-violet-500/10 bg-violet-500/5">
-              <div className="flex flex-col items-center gap-2 text-zinc-500">
-                <BarChart3 className="h-8 w-8 text-violet-500/40" />
-                <span className="text-sm font-medium">
-                  Bar Chart — Recharts Integration Pending
-                </span>
-                <span className="text-xs text-zinc-600">
-                  Jan: $2.1M | Feb: $3.4M | Mar: $4.8M | Apr: $6.2M | ...
-                </span>
+      {/* Loading state */}
+      {loading && <AnalyticsSkeleton />}
+
+      {/* Content */}
+      {!loading && analytics && (
+        <>
+          {/* KPI cards */}
+          <div className="grid grid-cols-5 gap-px bg-zinc-200">
+            {[
+              { label: `Total Raised (${selectedRange})`, value: formatCurrency(analytics.kpis.totalRaised) },
+              { label: "New Users", value: formatLargeNumber(analytics.kpis.newUsers), sub: `of ${formatLargeNumber(analytics.kpis.totalUsers)} total` },
+              { label: "Conversion Rate", value: formatPercent(analytics.kpis.conversionRate), sub: "Users with contributions / total" },
+              { label: "Avg Contribution", value: formatCurrency(analytics.kpis.avgContribution) },
+              { label: "Revenue", value: formatCurrency(analytics.kpis.revenue), sub: "2.5% platform fee" },
+            ].map((kpi) => (
+              <div key={kpi.label} className="bg-white p-5">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">{kpi.label}</p>
+                <p className="mt-2 font-serif text-2xl font-light text-zinc-800">{kpi.value}</p>
+                {kpi.sub && <p className="mt-1 text-xs font-normal text-zinc-400">{kpi.sub}</p>}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>User Signups &amp; KYC Completions</CardTitle>
-            <CardDescription>Daily new users and verified KYC</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-[300px] items-center justify-center rounded-lg border border-emerald-500/10 bg-emerald-500/5">
-              <div className="flex flex-col items-center gap-2 text-zinc-500">
-                <Users className="h-8 w-8 text-emerald-500/40" />
-                <span className="text-sm font-medium">
-                  Dual Line Chart — Recharts Integration Pending
-                </span>
-                <span className="text-xs text-zinc-600">
-                  Signups (green) vs KYC completions (blue)
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Deal Conversion Funnel */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Deal Conversion Funnel</CardTitle>
-          <CardDescription>User journey from viewing a deal to claiming tokens</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex h-[300px] items-center justify-center">
-            <div className="flex w-full max-w-3xl items-end justify-center gap-4">
-              {funnelData.map((stage, idx) => {
-                const widthPct = 100 - idx * 20;
-                return (
-                  <div key={stage.stage} className="flex flex-1 flex-col items-center gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-2xl font-bold text-zinc-50">
-                        {formatLargeNumber(stage.count)}
-                      </span>
-                      <span className="text-xs text-zinc-500">
-                        {formatPercent(stage.pct)}
-                      </span>
-                    </div>
-                    <div
-                      className={cn(
-                        "w-full rounded-lg transition-all",
-                        idx === 0 && "bg-violet-500/20",
-                        idx === 1 && "bg-violet-500/35",
-                        idx === 2 && "bg-violet-500/55",
-                        idx === 3 && "bg-violet-500/80"
-                      )}
-                      style={{
-                        height: `${Math.max(40, (stage.pct / 100) * 160)}px`,
-                      }}
-                    />
-                    <span className="text-sm font-medium text-zinc-400">
-                      {stage.stage}
-                    </span>
-                    {idx < funnelData.length - 1 && (
-                      <div className="absolute">
-                        <ArrowRight className="h-4 w-4 text-zinc-700" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            ))}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Charts row 2 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Contributions by Chain */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Contributions by Chain</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-[300px] items-center justify-center rounded-lg border border-sky-500/10 bg-sky-500/5">
-              <div className="flex flex-col items-center gap-2 text-zinc-500">
-                <PieChart className="h-8 w-8 text-sky-500/40" />
-                <span className="text-sm font-medium">
-                  Pie Chart — Recharts Integration Pending
-                </span>
-                <span className="text-xs text-zinc-600">
-                  Ethereum: 42% | Arbitrum: 28% | Base: 18% | Polygon: 12%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tier Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tier Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              {tierDistribution.map((tier) => (
-                <div key={tier.tier} className="flex items-center gap-4">
-                  <span className="w-20 text-sm font-medium text-zinc-300">
-                    {tier.tier}
-                  </span>
-                  <div className="flex-1">
-                    <div className="h-6 w-full overflow-hidden rounded-md bg-zinc-800">
-                      <div
-                        className={cn(
-                          "h-full rounded-md transition-all",
-                          tierColor[tier.tier]
-                        )}
-                        style={{ width: `${tier.pct}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex w-28 items-center justify-end gap-2">
-                    <span className="text-sm tabular-nums text-zinc-300">
-                      {formatLargeNumber(tier.count)}
-                    </span>
-                    <span className="text-xs tabular-nums text-zinc-500">
-                      ({formatPercent(tier.pct)})
-                    </span>
+          {/* Charts row 1 */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Raise Volume BarChart */}
+            <div className="border border-zinc-200 p-6">
+              <h3 className="text-xs uppercase tracking-widest text-zinc-500">Raise Volume Over Time</h3>
+              <p className="mt-0.5 text-xs font-normal text-zinc-400">Monthly capital raised in USD</p>
+              {analytics.raiseVolumeChart.length === 0 ? (
+                <div className="mt-6 flex h-[280px] items-center justify-center">
+                  <div className="flex flex-col items-center gap-2 text-zinc-400">
+                    <BarChart3 className="h-6 w-6" />
+                    <span className="text-sm font-normal">No raise volume data for this period</span>
                   </div>
                 </div>
-              ))}
+              ) : (
+                <div className="mt-6 h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analytics.raiseVolumeChart}>
+                      <XAxis dataKey="month" stroke="transparent" tick={{ fill: "#71717a", fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <YAxis stroke="transparent" tick={{ fill: "#71717a", fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(value: number) => `$${(value / 1_000_000).toFixed(1)}M`} />
+                      <Tooltip content={<ChartTooltip formatter={(value: number) => formatCurrency(value)} />} />
+                      <Bar dataKey="amount" fill="#8b5cf6" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Geographic Distribution */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-zinc-400" />
-            <CardTitle>Geographic Distribution</CardTitle>
+            {/* User Signups LineChart */}
+            <div className="border border-zinc-200 p-6">
+              <h3 className="text-xs uppercase tracking-widest text-zinc-500">User Signups</h3>
+              <p className="mt-0.5 text-xs font-normal text-zinc-400">Monthly new user registrations</p>
+              {analytics.signupsChart.length === 0 ? (
+                <div className="mt-6 flex h-[280px] items-center justify-center">
+                  <div className="flex flex-col items-center gap-2 text-zinc-400">
+                    <Users className="h-6 w-6" />
+                    <span className="text-sm font-normal">No signup data for this period</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6 h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics.signupsChart}>
+                      <XAxis dataKey="month" stroke="transparent" tick={{ fill: "#71717a", fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <YAxis stroke="transparent" tick={{ fill: "#71717a", fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <Tooltip content={<ChartTooltip formatter={(value: number) => value.toLocaleString()} />} />
+                      <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: "#10b981" }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border border-zinc-800">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-8">#</TableHead>
-                  <TableHead>Country</TableHead>
-                  <TableHead>Users</TableHead>
-                  <TableHead>Contributions</TableHead>
-                  <TableHead>Avg Per User</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {geoData.map((row, idx) => (
-                  <TableRow key={row.country}>
-                    <TableCell className="text-zinc-500">{idx + 1}</TableCell>
-                    <TableCell className="font-medium text-zinc-200">
-                      {row.country}
-                    </TableCell>
-                    <TableCell>{formatLargeNumber(row.users)}</TableCell>
-                    <TableCell className="font-medium text-zinc-50">
-                      {formatCurrency(row.contributions)}
-                    </TableCell>
-                    <TableCell className="text-zinc-400">
-                      {formatCurrency(
-                        row.users > 0
-                          ? Math.round(row.contributions / row.users)
-                          : 0
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Top Performing Deals */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-zinc-400" />
-            <CardTitle>Top Performing Deals</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border border-zinc-800">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Deal Name</TableHead>
-                  <TableHead>Raised</TableHead>
-                  <TableHead>Fill Time</TableHead>
-                  <TableHead>Contributors</TableHead>
-                  <TableHead>Avg Contribution</TableHead>
-                  <TableHead>Oversubscription</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topDeals.map((deal) => (
-                  <TableRow key={deal.name}>
-                    <TableCell className="font-medium text-zinc-50">
-                      {deal.name}
-                    </TableCell>
-                    <TableCell className="font-semibold text-zinc-200">
-                      {formatCurrency(deal.raised)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          deal.fillTime === "Upcoming"
-                            ? "outline"
-                            : deal.fillTime === "In progress"
-                              ? "info"
-                              : "success"
-                        }
+          {/* Charts row 2 */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Contributions by Chain PieChart */}
+            <div className="border border-zinc-200 p-6">
+              <h3 className="text-xs uppercase tracking-widest text-zinc-500">Contributions by Chain</h3>
+              {analytics.chainDistribution.length === 0 ? (
+                <div className="mt-6 flex h-[280px] items-center justify-center">
+                  <div className="flex flex-col items-center gap-2 text-zinc-400">
+                    <PieChartIcon className="h-6 w-6" />
+                    <span className="text-sm font-normal">No chain distribution data</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6 h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={analytics.chainDistribution}
+                        dataKey="amount"
+                        nameKey="chain"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        strokeWidth={0}
+                        label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                        labelLine={false}
                       >
-                        {deal.fillTime}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatLargeNumber(deal.contributors)}</TableCell>
-                    <TableCell>
-                      {deal.avgContribution > 0
-                        ? formatCurrency(deal.avgContribution)
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {deal.oversubscription > 0 ? (
-                        <span
-                          className={cn(
-                            "font-semibold",
-                            deal.oversubscription >= 2
-                              ? "text-emerald-400"
-                              : deal.oversubscription >= 1
-                                ? "text-amber-400"
-                                : "text-zinc-400"
-                          )}
-                        >
-                          {deal.oversubscription}x
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        {analytics.chainDistribution.map((_, idx) => (
+                          <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltip formatter={(value: number) => formatCurrency(value)} />} />
+                      <Legend formatter={(value: string) => <span className="text-xs font-normal text-zinc-500">{value}</span>} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* Tier Distribution */}
+            <div className="border border-zinc-200 p-6">
+              <h3 className="text-xs uppercase tracking-widest text-zinc-500">Tier Distribution</h3>
+              {analytics.tierDistribution.length === 0 ? (
+                <div className="mt-6 flex h-[280px] items-center justify-center text-zinc-400">
+                  <p className="text-sm font-normal">No tier data available</p>
+                </div>
+              ) : (
+                <div className="mt-6 flex flex-col gap-5">
+                  {["DIAMOND", "PLATINUM", "GOLD", "SILVER", "BRONZE"]
+                    .map((tier) => analytics.tierDistribution.find((t) => t.tier === tier))
+                    .filter(Boolean)
+                    .map((tier) => (
+                      <div key={tier!.tier} className="flex items-center gap-4">
+                        <span className="w-20 text-sm font-normal text-zinc-500">{tierLabel[tier!.tier] || tier!.tier}</span>
+                        <div className="flex-1">
+                          <div className="h-1.5 w-full bg-zinc-200">
+                            <div className={cn("h-full transition-all", tierColor[tier!.tier] || "bg-zinc-500")} style={{ width: `${Math.max(1, tier!.pct)}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex w-28 items-center justify-end gap-2">
+                          <span className="text-sm tabular-nums text-zinc-600">{formatLargeNumber(tier!.count)}</span>
+                          <span className="text-xs tabular-nums text-zinc-400">({formatPercent(tier!.pct)})</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Geographic Distribution */}
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <Globe className="h-4 w-4 text-zinc-500" />
+              <h2 className="text-xs uppercase tracking-widest text-zinc-500">Geographic Distribution</h2>
+            </div>
+            {analytics.geoDistribution.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 border border-zinc-200 py-16 text-zinc-500">
+                <Globe className="h-6 w-6" />
+                <p className="font-serif text-lg font-normal text-zinc-500">No geographic data available</p>
+                <p className="text-sm font-normal">Country data will appear as users register with location information</p>
+              </div>
+            ) : (
+              <div className="border border-zinc-200">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-zinc-200">
+                      <th className="w-8 px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">#</th>
+                      <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Country</th>
+                      <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Users</th>
+                      <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Contributions</th>
+                      <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Avg Per User</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.geoDistribution.map((row, idx) => (
+                      <tr key={row.country} className="border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+                        <td className="px-5 py-4 text-sm tabular-nums text-zinc-400">{idx + 1}</td>
+                        <td className="px-5 py-4 text-sm font-normal text-zinc-700">{row.country}</td>
+                        <td className="px-5 py-4 text-sm tabular-nums text-zinc-600">{formatLargeNumber(row.users)}</td>
+                        <td className="px-5 py-4 font-mono text-sm text-zinc-800">{formatCurrency(row.contributions)}</td>
+                        <td className="px-5 py-4 text-sm font-normal text-zinc-500">{formatCurrency(row.users > 0 ? Math.round(row.contributions / row.users) : 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Top Performing Deals */}
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-zinc-500" />
+              <h2 className="text-xs uppercase tracking-widest text-zinc-500">Top Performing Deals</h2>
+            </div>
+            {analytics.topDeals.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 border border-zinc-200 py-16 text-zinc-500">
+                <TrendingUp className="h-6 w-6" />
+                <p className="font-serif text-lg font-normal text-zinc-500">No deals data available</p>
+              </div>
+            ) : (
+              <div className="border border-zinc-200">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-zinc-200">
+                      {["Deal Name", "Raised", "Status", "Contributors", "Avg Contribution", "Oversubscription"].map((h) => (
+                        <th key={h} className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.topDeals.map((deal) => (
+                      <tr key={deal.id} className="border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+                        <td className="px-5 py-4 text-sm font-normal text-zinc-800">{deal.title}</td>
+                        <td className="px-5 py-4 font-mono text-sm text-zinc-700">{formatCurrency(deal.raised)}</td>
+                        <td className="px-5 py-4"><span className={cn("text-xs uppercase tracking-wider", dealStatusColor[deal.status] || "text-zinc-500")}>{dealStatusLabel[deal.status] || deal.status}</span></td>
+                        <td className="px-5 py-4 text-sm tabular-nums text-zinc-600">{formatLargeNumber(deal.contributorCount)}</td>
+                        <td className="px-5 py-4 text-sm font-normal text-zinc-500">{deal.avgContribution > 0 ? formatCurrency(deal.avgContribution) : "---"}</td>
+                        <td className="px-5 py-4">
+                          {deal.oversubscription > 0 ? (
+                            <span className={cn("font-mono text-sm", deal.oversubscription >= 2 ? "text-emerald-600" : deal.oversubscription >= 1 ? "text-amber-600" : "text-zinc-500")}>{deal.oversubscription}x</span>
+                          ) : (
+                            <span className="text-sm text-zinc-400">---</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -29,23 +29,23 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col gap-1 rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-5",
+          "flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white p-5",
           className
         )}
         {...props}
       >
-        <span className="text-xs font-light uppercase tracking-wider text-zinc-600">
+        <span className="text-xs font-normal uppercase tracking-wider text-zinc-400">
           {label}
         </span>
-        <span className="font-serif text-2xl font-light tabular-nums text-zinc-100">
+        <span className="font-serif text-2xl font-light tabular-nums text-zinc-900">
           {value}
         </span>
         {change !== undefined && (
           <span
             className={cn(
-              "inline-flex items-center gap-0.5 text-xs font-light",
-              isPositive && "text-emerald-700",
-              isNegative && "text-rose-700"
+              "inline-flex items-center gap-0.5 text-xs font-normal",
+              isPositive && "text-emerald-600",
+              isNegative && "text-rose-600"
             )}
             style={{ opacity: 0.7 }}
           >
@@ -59,7 +59,7 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
           </span>
         )}
         {description && (
-          <span className="text-xs font-light text-zinc-500">{description}</span>
+          <span className="text-xs font-normal text-zinc-500">{description}</span>
         )}
       </div>
     );

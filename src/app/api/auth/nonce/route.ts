@@ -4,36 +4,50 @@
 
 import { NextRequest } from "next/server";
 import crypto from "crypto";
-import { apiResponse, apiError, handleApiError } from "@/lib/utils/api";
+import { apiResponse, handleApiError } from "@/lib/utils/api";
 import { withRateLimit, getClientIp } from "@/lib/utils/rate-limit";
+import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
-// In-memory nonce store with 5-minute expiry
-// In production, replace with Redis or a database-backed store.
+// Constants
 // ---------------------------------------------------------------------------
-
-interface NonceEntry {
-  nonce: string;
-  createdAt: number;
-  expiresAt: number;
-}
-
-// TODO: Replace in-memory Map with Redis or DB-backed store for multi-instance deployments
-const nonceStore = new Map<string, NonceEntry>();
 
 const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const NONCE_KEY_PREFIX = "nonce:";
 
-// Periodic cleanup of expired nonces (runs at most every 60 seconds)
-let lastCleanup = 0;
-function cleanupExpiredNonces() {
-  const now = Date.now();
-  if (now - lastCleanup < 60_000) return;
-  lastCleanup = now;
+// ---------------------------------------------------------------------------
+// Cleanup expired nonces (older than 5 minutes)
+// ---------------------------------------------------------------------------
 
-  for (const [key, entry] of nonceStore.entries()) {
-    if (entry.expiresAt < now) {
-      nonceStore.delete(key);
+async function cleanupExpiredNonces() {
+  try {
+    // Delete all nonce entries whose stored expiresAt has passed
+    const allNonces = await prisma.platformConfig.findMany({
+      where: {
+        key: { startsWith: NONCE_KEY_PREFIX },
+      },
+      select: { key: true, value: true },
+    });
+
+    const now = Date.now();
+    const expiredKeys = allNonces
+      .filter((entry) => {
+        try {
+          const parsed = JSON.parse(entry.value);
+          return parsed.expiresAt < now;
+        } catch {
+          return true; // Delete malformed entries
+        }
+      })
+      .map((entry) => entry.key);
+
+    if (expiredKeys.length > 0) {
+      await prisma.platformConfig.deleteMany({
+        where: { key: { in: expiredKeys } },
+      });
     }
+  } catch (error) {
+    console.error("[nonce cleanup] Failed to clean expired nonces:", error);
   }
 }
 
@@ -41,19 +55,39 @@ function cleanupExpiredNonces() {
 // Exported helpers for the verify route
 // ---------------------------------------------------------------------------
 
-export function consumeNonce(nonce: string): boolean {
-  cleanupExpiredNonces();
+export async function consumeNonce(nonce: string): Promise<boolean> {
+  try {
+    // Clean up expired nonces opportunistically
+    await cleanupExpiredNonces();
 
-  const entry = nonceStore.get(nonce);
-  if (!entry) return false;
-  if (entry.expiresAt < Date.now()) {
-    nonceStore.delete(nonce);
+    // Direct lookup by key since nonce is part of the key
+    const nonceKey = `${NONCE_KEY_PREFIX}${nonce}`;
+    const entry = await prisma.platformConfig.findUnique({
+      where: { key: nonceKey },
+    });
+
+    if (!entry) return false;
+
+    // Delete immediately (single-use)
+    await prisma.platformConfig.delete({
+      where: { key: nonceKey },
+    });
+
+    // Check if expired
+    try {
+      const parsed = JSON.parse(entry.value);
+      if (parsed.expiresAt < Date.now()) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("[consumeNonce] Error:", error);
     return false;
   }
-
-  // Nonces are single-use
-  nonceStore.delete(nonce);
-  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,15 +101,23 @@ export async function GET(_request: NextRequest) {
     const rateLimited = withRateLimit(_request, `nonce:${ip}`, 20, 60_000);
     if (rateLimited) return rateLimited;
 
-    cleanupExpiredNonces();
+    // Clean up expired nonces
+    await cleanupExpiredNonces();
 
     const nonce = crypto.randomBytes(16).toString("hex");
     const now = Date.now();
+    const nonceKey = `${NONCE_KEY_PREFIX}${nonce}`;
 
-    nonceStore.set(nonce, {
-      nonce,
-      createdAt: now,
-      expiresAt: now + NONCE_TTL_MS,
+    await prisma.platformConfig.create({
+      data: {
+        key: nonceKey,
+        value: JSON.stringify({
+          nonce,
+          createdAt: now,
+          expiresAt: now + NONCE_TTL_MS,
+        }),
+        description: "SIWE nonce",
+      },
     });
 
     return apiResponse({ nonce });

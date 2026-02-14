@@ -18,18 +18,18 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-6 py-12 text-center",
+          "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center",
           className
         )}
         {...props}
       >
         {icon && (
-          <span className="text-zinc-600" aria-hidden="true">
+          <span className="text-zinc-400" aria-hidden="true">
             {icon}
           </span>
         )}
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-zinc-300">{title}</h3>
+          <h3 className="text-base font-semibold text-zinc-700">{title}</h3>
           {description && (
             <p className="max-w-sm text-sm text-zinc-500">{description}</p>
           )}

@@ -45,9 +45,9 @@ const CopyButton = React.forwardRef<HTMLButtonElement, CopyButtonProps>(
         aria-label={copied ? "Copied" : "Copy to clipboard"}
         className={cn(
           "inline-flex items-center justify-center rounded-md p-2 text-zinc-400 transition-colors duration-150",
-          "hover:bg-zinc-800 hover:text-zinc-50",
+          "hover:bg-zinc-100 hover:text-zinc-900",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-          copied && "text-emerald-400 hover:text-emerald-300",
+          copied && "text-emerald-500 hover:text-emerald-600",
           className
         )}
         {...props}

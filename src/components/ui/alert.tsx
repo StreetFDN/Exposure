@@ -16,10 +16,10 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        info: "border-sky-500/20 bg-sky-500/10 text-sky-300",
-        success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-        warning: "border-amber-500/20 bg-amber-500/10 text-amber-300",
-        error: "border-rose-500/20 bg-rose-500/10 text-rose-300",
+        info: "border-sky-200 bg-sky-50 text-sky-700",
+        success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        warning: "border-amber-200 bg-amber-50 text-amber-700",
+        error: "border-rose-200 bg-rose-50 text-rose-700",
       },
     },
     defaultVariants: {

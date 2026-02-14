@@ -54,8 +54,8 @@ function verifySignedCookie(value: string): SessionUser | null {
   try {
     const decoded = JSON.parse(Buffer.from(payload, "base64").toString("utf-8"));
 
-    // Check expiry
-    if (decoded.exp && decoded.exp < Date.now()) return null;
+    // Check expiry — sessions without an exp field are considered expired
+    if (!decoded.exp || decoded.exp < Date.now()) return null;
 
     return {
       id: decoded.id,
@@ -80,7 +80,7 @@ export function createSessionCookie(user: SessionUser): string {
     role: user.role,
     kycStatus: user.kycStatus,
     tierLevel: user.tierLevel,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
   };
 
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
@@ -294,7 +294,7 @@ export function setSessionCookie(response: NextResponse, user: SessionUser): Nex
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    maxAge: 24 * 60 * 60, // 24 hours in seconds
   });
   return response;
 }

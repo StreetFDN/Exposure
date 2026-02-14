@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils/cn";
 
 const avatarVariants = cva(
-  "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-800",
+  "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100",
   {
     variants: {
       size: {
@@ -52,7 +52,7 @@ const Avatar = React.forwardRef<HTMLSpanElement, AvatarProps>(
         aria-label={alt || "Avatar"}
         className={cn(
           avatarVariants({ size }),
-          ring && "ring-2 ring-violet-500 ring-offset-2 ring-offset-zinc-950",
+          ring && "ring-2 ring-violet-500 ring-offset-2 ring-offset-white",
           className
         )}
         {...props}
@@ -65,7 +65,7 @@ const Avatar = React.forwardRef<HTMLSpanElement, AvatarProps>(
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="font-medium text-zinc-300" aria-hidden="true">
+          <span className="font-medium text-zinc-600" aria-hidden="true">
             {alt ? getInitials(alt) : "?"}
           </span>
         )}

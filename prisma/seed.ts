@@ -3,7 +3,7 @@
 // Run: npx tsx prisma/seed.ts
 // =============================================================================
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, GroupMemberRole } from "@prisma/client";
 import crypto from "crypto";
 
 const prisma = new PrismaClient();
@@ -1523,11 +1523,11 @@ async function main() {
   const group1 = await prisma.investmentGroup.create({
     data: {
       name: "Whale Alliance",
+      slug: "whale-alliance",
       description: "A syndicate of high-conviction crypto investors pooling capital for premier deal access. Minimum commitment $50K per deal.",
       leadId: investor1.id,
       isPublic: true,
       maxMembers: 25,
-      minContribution: "50000",
       createdAt: daysAgo(60),
     },
   });
@@ -1535,11 +1535,11 @@ async function main() {
   const group2 = await prisma.investmentGroup.create({
     data: {
       name: "DeFi Degens Collective",
+      slug: "defi-degens-collective",
       description: "Community-driven investment group focused on early-stage DeFi protocols. We research together and invest together.",
       leadId: investor2.id,
       isPublic: true,
       maxMembers: 50,
-      minContribution: "5000",
       createdAt: daysAgo(45),
     },
   });
@@ -1547,11 +1547,11 @@ async function main() {
   const group3 = await prisma.investmentGroup.create({
     data: {
       name: "Infrastructure Maxi Fund",
+      slug: "infrastructure-maxi-fund",
       description: "Private investment group focused exclusively on blockchain infrastructure, L1s, L2s, data availability, and cross-chain protocols.",
       leadId: investor3.id,
       isPublic: false,
       maxMembers: 15,
-      minContribution: "25000",
       createdAt: daysAgo(30),
     },
   });
@@ -1564,18 +1564,18 @@ async function main() {
 
   const memberships = [
     // Whale Alliance members
-    { groupId: group1.id, userId: investor1.id, role: "LEAD", joinedAt: daysAgo(60) },
-    { groupId: group1.id, userId: investor2.id, role: "MEMBER", joinedAt: daysAgo(55) },
-    { groupId: group1.id, userId: investor3.id, role: "MEMBER", joinedAt: daysAgo(50) },
-    { groupId: group1.id, userId: investor4.id, role: "MEMBER", joinedAt: daysAgo(40) },
+    { groupId: group1.id, userId: investor1.id, role: "LEAD" as GroupMemberRole, joinedAt: daysAgo(60) },
+    { groupId: group1.id, userId: investor2.id, role: "MEMBER" as GroupMemberRole, joinedAt: daysAgo(55) },
+    { groupId: group1.id, userId: investor3.id, role: "MEMBER" as GroupMemberRole, joinedAt: daysAgo(50) },
+    { groupId: group1.id, userId: investor4.id, role: "MEMBER" as GroupMemberRole, joinedAt: daysAgo(40) },
     // DeFi Degens Collective members
-    { groupId: group2.id, userId: investor2.id, role: "LEAD", joinedAt: daysAgo(45) },
-    { groupId: group2.id, userId: investor5.id, role: "MEMBER", joinedAt: daysAgo(40) },
-    { groupId: group2.id, userId: investor4.id, role: "MEMBER", joinedAt: daysAgo(35) },
-    { groupId: group2.id, userId: investor1.id, role: "MEMBER", joinedAt: daysAgo(30) },
+    { groupId: group2.id, userId: investor2.id, role: "LEAD" as GroupMemberRole, joinedAt: daysAgo(45) },
+    { groupId: group2.id, userId: investor5.id, role: "MEMBER" as GroupMemberRole, joinedAt: daysAgo(40) },
+    { groupId: group2.id, userId: investor4.id, role: "MEMBER" as GroupMemberRole, joinedAt: daysAgo(35) },
+    { groupId: group2.id, userId: investor1.id, role: "MEMBER" as GroupMemberRole, joinedAt: daysAgo(30) },
     // Infrastructure Maxi Fund members
-    { groupId: group3.id, userId: investor3.id, role: "LEAD", joinedAt: daysAgo(30) },
-    { groupId: group3.id, userId: investor1.id, role: "MEMBER", joinedAt: daysAgo(25) },
+    { groupId: group3.id, userId: investor3.id, role: "LEAD" as GroupMemberRole, joinedAt: daysAgo(30) },
+    { groupId: group3.id, userId: investor1.id, role: "MEMBER" as GroupMemberRole, joinedAt: daysAgo(25) },
   ];
 
   for (const m of memberships) {
@@ -1590,13 +1590,13 @@ async function main() {
 
   const groupDeals = [
     // Whale Alliance participated in Deal 1 (Meridian), Deal 4 (Aether), Deal 5 (NeuralSwap)
-    { groupId: group1.id, dealId: deal1.id, totalGroupContribution: "47000", status: "COMPLETED", createdAt: daysAgo(78) },
-    { groupId: group1.id, dealId: deal4.id, totalGroupContribution: "95000", status: "ACTIVE", createdAt: daysAgo(5) },
+    { groupId: group1.id, dealId: deal1.id, allocatedAmount: "500000", filledAmount: "47000", isActive: false },
+    { groupId: group1.id, dealId: deal4.id, allocatedAmount: "500000", filledAmount: "95000", isActive: true },
     // DeFi Degens Collective participated in Deal 5 (NeuralSwap), Deal 1 (Meridian)
-    { groupId: group2.id, dealId: deal5.id, totalGroupContribution: "42000", status: "ACTIVE", createdAt: daysAgo(5) },
-    { groupId: group2.id, dealId: deal1.id, totalGroupContribution: "27000", status: "COMPLETED", createdAt: daysAgo(75) },
+    { groupId: group2.id, dealId: deal5.id, allocatedAmount: "500000", filledAmount: "42000", isActive: true },
+    { groupId: group2.id, dealId: deal1.id, allocatedAmount: "500000", filledAmount: "27000", isActive: false },
     // Infrastructure Maxi Fund targeting Deal 4 (Aether)
-    { groupId: group3.id, dealId: deal4.id, totalGroupContribution: "60000", status: "ACTIVE", createdAt: daysAgo(4) },
+    { groupId: group3.id, dealId: deal4.id, allocatedAmount: "500000", filledAmount: "60000", isActive: true },
   ];
 
   for (const gd of groupDeals) {

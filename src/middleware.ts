@@ -12,6 +12,9 @@ const PUBLIC_PATHS = [
   "/api/auth",
   "/api/health",
   "/api/staking/tiers",
+  "/admin/login",
+  "/api/admin/login",
+  "/api/admin/logout",
 ];
 
 /**
@@ -62,6 +65,19 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=()"
   );
+
+  // Content Security Policy
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://*.supabase.co wss://*.walletconnect.com https://*.walletconnect.com https://*.alchemy.com",
+    "frame-src 'self' https://*.walletconnect.com",
+  ].join("; ");
+  response.headers.set("Content-Security-Policy", csp);
+
   return response;
 }
 
@@ -141,6 +157,25 @@ export function middleware(request: NextRequest) {
 
     // API/mutating calls within semi-public paths still need auth — fall
     // through to the auth check below
+  }
+
+  // ------------------------------------------------------------------
+  // 4.5. Admin routes — check admin cookie instead of normal auth
+  // ------------------------------------------------------------------
+  if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
+    const adminCookie = request.cookies.get("exposure_admin");
+    if (adminCookie?.value === "admin_authenticated") {
+      const response = NextResponse.next();
+      addSecurityHeaders(response);
+      if (pathname.startsWith("/api/")) {
+        addCorsHeaders(response, request);
+      }
+      return response;
+    }
+    // No valid admin cookie — redirect to admin login
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin/login";
+    return NextResponse.redirect(url);
   }
 
   // ------------------------------------------------------------------

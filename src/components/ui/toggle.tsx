@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils/cn";
 const toggleVariants = cva(
   [
     "relative inline-flex shrink-0 cursor-pointer rounded-full transition-colors duration-200",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
     "disabled:cursor-not-allowed disabled:opacity-50",
   ],
   {
@@ -101,7 +101,7 @@ const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
           onClick={handleClick}
           className={cn(
             toggleVariants({ size }),
-            isChecked ? "bg-violet-600" : "bg-zinc-700",
+            isChecked ? "bg-violet-600" : "bg-zinc-300",
             className
           )}
           {...props}
@@ -119,7 +119,7 @@ const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
           <label
             htmlFor={id}
             className={cn(
-              "cursor-pointer text-sm text-zinc-300",
+              "cursor-pointer text-sm text-zinc-700",
               disabled && "cursor-not-allowed opacity-50"
             )}
           >

@@ -2,31 +2,22 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   Upload,
-  Globe,
-  MessageCircle,
-  Github,
-  Info,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Toggle } from "@/components/ui/toggle";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
-/*  Types                                                                     */
+/*  Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
 interface FormData {
-  // Step 1 — Basic Info
   projectName: string;
   slug: string;
   shortDescription: string;
@@ -38,21 +29,20 @@ interface FormData {
   discord: string;
   telegram: string;
   github: string;
-  // Step 2 — Token Details
+  featuredImageUrl: string;
+  bannerImageUrl: string;
   tokenName: string;
   ticker: string;
   totalSupply: string;
   tokenPrice: string;
   distributionTokenAddress: string;
   raiseToken: string;
-  // Step 3 — Raise Config
   hardCap: string;
   softCap: string;
   minContribution: string;
   maxContribution: string;
   allocationMethod: string;
   oversubscription: boolean;
-  // Step 4 — Timeline
   registrationOpen: string;
   registrationClose: string;
   contributionOpen: string;
@@ -63,7 +53,6 @@ interface FormData {
   tgeUnlockPercent: string;
   cliffDays: string;
   vestingDurationDays: string;
-  // Step 5 — Access Control
   requireKyc: boolean;
   requireAccreditation: boolean;
   whitelistOnly: boolean;
@@ -73,49 +62,21 @@ interface FormData {
 }
 
 const defaultForm: FormData = {
-  projectName: "",
-  slug: "",
-  shortDescription: "",
-  fullDescription: "",
-  category: "",
-  chain: "",
-  website: "",
-  twitter: "",
-  discord: "",
-  telegram: "",
-  github: "",
-  tokenName: "",
-  ticker: "",
-  totalSupply: "",
-  tokenPrice: "",
-  distributionTokenAddress: "",
-  raiseToken: "",
-  hardCap: "",
-  softCap: "",
-  minContribution: "",
-  maxContribution: "",
-  allocationMethod: "",
-  oversubscription: false,
-  registrationOpen: "",
-  registrationClose: "",
-  contributionOpen: "",
-  contributionClose: "",
-  distributionDate: "",
-  vestingStartDate: "",
-  vestingType: "",
-  tgeUnlockPercent: "",
-  cliffDays: "",
-  vestingDurationDays: "",
-  requireKyc: true,
-  requireAccreditation: false,
-  whitelistOnly: false,
-  minTier: "",
-  allowedCountries: "",
-  blockedCountries: "",
+  projectName: "", slug: "", shortDescription: "", fullDescription: "",
+  category: "", chain: "", website: "", twitter: "", discord: "", telegram: "",
+  github: "", featuredImageUrl: "", bannerImageUrl: "", tokenName: "", ticker: "",
+  totalSupply: "", tokenPrice: "", distributionTokenAddress: "", raiseToken: "",
+  hardCap: "", softCap: "", minContribution: "", maxContribution: "",
+  allocationMethod: "", oversubscription: false, registrationOpen: "",
+  registrationClose: "", contributionOpen: "", contributionClose: "",
+  distributionDate: "", vestingStartDate: "", vestingType: "", tgeUnlockPercent: "",
+  cliffDays: "", vestingDurationDays: "", requireKyc: true,
+  requireAccreditation: false, whitelistOnly: false, minTier: "",
+  allowedCountries: "", blockedCountries: "",
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Steps config                                                              */
+/*  Steps                                                                      */
 /* -------------------------------------------------------------------------- */
 
 const STEPS = [
@@ -128,73 +89,162 @@ const STEPS = [
 ];
 
 /* -------------------------------------------------------------------------- */
-/*  Validation                                                                */
+/*  Validation                                                                 */
 /* -------------------------------------------------------------------------- */
 
 function validateStep(step: number, form: FormData): Record<string, string> {
   const errors: Record<string, string> = {};
-
   if (step === 0) {
-    if (!form.projectName.trim()) errors.projectName = "Project name is required";
-    if (!form.shortDescription.trim()) errors.shortDescription = "Short description is required";
-    if (!form.category) errors.category = "Category is required";
-    if (!form.chain) errors.chain = "Chain is required";
+    if (!form.projectName.trim()) errors.projectName = "Required";
+    if (!form.shortDescription.trim()) errors.shortDescription = "Required";
+    if (!form.category) errors.category = "Required";
+    if (!form.chain) errors.chain = "Required";
   }
   if (step === 1) {
-    if (!form.tokenName.trim()) errors.tokenName = "Token name is required";
-    if (!form.ticker.trim()) errors.ticker = "Ticker is required";
-    if (!form.totalSupply || Number(form.totalSupply) <= 0) errors.totalSupply = "Total supply must be positive";
-    if (!form.tokenPrice || Number(form.tokenPrice) <= 0) errors.tokenPrice = "Token price must be positive";
-    if (!form.raiseToken) errors.raiseToken = "Raise token is required";
+    if (!form.tokenName.trim()) errors.tokenName = "Required";
+    if (!form.ticker.trim()) errors.ticker = "Required";
+    if (!form.totalSupply || Number(form.totalSupply) <= 0) errors.totalSupply = "Must be positive";
+    if (!form.tokenPrice || Number(form.tokenPrice) <= 0) errors.tokenPrice = "Must be positive";
+    if (!form.raiseToken) errors.raiseToken = "Required";
   }
   if (step === 2) {
-    if (!form.hardCap || Number(form.hardCap) <= 0) errors.hardCap = "Hard cap is required";
-    if (!form.minContribution || Number(form.minContribution) <= 0) errors.minContribution = "Min contribution is required";
-    if (!form.maxContribution || Number(form.maxContribution) <= 0) errors.maxContribution = "Max contribution is required";
-    if (!form.allocationMethod) errors.allocationMethod = "Allocation method is required";
+    if (!form.hardCap || Number(form.hardCap) <= 0) errors.hardCap = "Required";
+    if (!form.minContribution || Number(form.minContribution) <= 0) errors.minContribution = "Required";
+    if (!form.maxContribution || Number(form.maxContribution) <= 0) errors.maxContribution = "Required";
+    if (!form.allocationMethod) errors.allocationMethod = "Required";
   }
   if (step === 3) {
-    if (!form.registrationOpen) errors.registrationOpen = "Registration open date is required";
-    if (!form.registrationClose) errors.registrationClose = "Registration close date is required";
-    if (!form.contributionOpen) errors.contributionOpen = "Contribution open date is required";
-    if (!form.contributionClose) errors.contributionClose = "Contribution close date is required";
-    if (!form.distributionDate) errors.distributionDate = "Distribution date is required";
+    if (!form.registrationOpen) errors.registrationOpen = "Required";
+    if (!form.registrationClose) errors.registrationClose = "Required";
+    if (!form.contributionOpen) errors.contributionOpen = "Required";
+    if (!form.contributionClose) errors.contributionClose = "Required";
+    if (!form.distributionDate) errors.distributionDate = "Required";
   }
-
   return errors;
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Helper: auto-generate slug                                                */
+/*  Helpers                                                                    */
 /* -------------------------------------------------------------------------- */
 
 function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function toISOString(datetimeLocal: string): string | undefined {
+  if (!datetimeLocal) return undefined;
+  return new Date(datetimeLocal).toISOString();
+}
+
+const categoryApiMap: Record<string, string> = { DeFi: "DEFI", Infrastructure: "INFRASTRUCTURE", Gaming: "GAMING", AI: "AI", RWA: "OTHER", Social: "SOCIAL", NFT: "NFT", DAO: "OTHER" };
+const chainApiMap: Record<string, string> = { ethereum: "ETHEREUM", arbitrum: "ARBITRUM", base: "BASE", polygon: "ETHEREUM", optimism: "ETHEREUM", avalanche: "ETHEREUM" };
+const allocationApiMap: Record<string, string> = { guaranteed: "GUARANTEED", "pro-rata": "PRO_RATA", lottery: "LOTTERY", fcfs: "FCFS", hybrid: "HYBRID" };
+const vestingApiMap: Record<string, string> = { none: "LINEAR", linear: "LINEAR", "cliff-then-linear": "TGE_PLUS_LINEAR", monthly: "MONTHLY_CLIFF", custom: "CUSTOM" };
+const tierApiMap: Record<string, string> = { bronze: "BRONZE", silver: "SILVER", gold: "GOLD", platinum: "PLATINUM", diamond: "DIAMOND" };
+
+/* -------------------------------------------------------------------------- */
+/*  Form field component                                                       */
+/* -------------------------------------------------------------------------- */
+
+function Field({
+  label,
+  error,
+  children,
+  className,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <label className="text-xs uppercase tracking-widest text-zinc-500">
+        {label}
+      </label>
+      {children}
+      {error && <p className="text-xs text-zinc-500">{error}</p>}
+    </div>
+  );
+}
+
+function TextInput({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  prefix,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  prefix?: string;
+}) {
+  return (
+    <div className="flex items-center border border-zinc-200 transition-colors focus-within:border-zinc-400">
+      {prefix && (
+        <span className="px-3 text-sm font-normal text-zinc-500">{prefix}</span>
+      )}
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-transparent px-3 py-2.5 text-sm font-normal text-zinc-700 outline-none placeholder:text-zinc-300"
+      />
+    </div>
+  );
+}
+
+function SelectInput({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full border border-zinc-200 bg-transparent px-3 py-2.5 text-sm font-normal text-zinc-600 outline-none transition-colors focus:border-zinc-400"
+    >
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Page                                                                      */
+/*  Page                                                                       */
 /* -------------------------------------------------------------------------- */
 
 export default function CreateDealPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState<FormData>(defaultForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const updateField = useCallback(
     <K extends keyof FormData>(key: K, value: FormData[K]) => {
       setForm((prev) => {
         const next = { ...prev, [key]: value };
-        // Auto-generate slug
         if (key === "projectName" && typeof value === "string") {
           next.slug = toSlug(value);
         }
         return next;
       });
-      // Clear error when user types
       setErrors((prev) => {
         if (prev[key]) {
           const copy = { ...prev };
@@ -222,24 +272,88 @@ export default function CreateDealPage() {
     setCurrentStep((s) => Math.max(s - 1, 0));
   };
 
-  // FDV auto-calc
   const fdv =
     Number(form.totalSupply) > 0 && Number(form.tokenPrice) > 0
       ? Number(form.totalSupply) * Number(form.tokenPrice)
       : 0;
 
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+
+      const body: Record<string, unknown> = {
+        title: form.projectName,
+        slug: form.slug || toSlug(form.projectName),
+        shortDescription: form.shortDescription || undefined,
+        description: form.fullDescription || form.shortDescription,
+        projectName: form.projectName,
+        category: categoryApiMap[form.category] || "OTHER",
+        chain: chainApiMap[form.chain] || "ETHEREUM",
+        tokenPrice: form.tokenPrice,
+        totalRaise: form.hardCap,
+        hardCap: form.hardCap,
+        softCap: form.softCap || undefined,
+        minContribution: form.minContribution || "0",
+        maxContribution: form.maxContribution || "0",
+        allocationMethod: allocationApiMap[form.allocationMethod] || "FCFS",
+        vestingType: vestingApiMap[form.vestingType] || "LINEAR",
+        tgeUnlockPercent: form.tgeUnlockPercent || "0",
+        vestingCliffDays: form.cliffDays ? parseInt(form.cliffDays, 10) : 0,
+        vestingDurationDays: form.vestingDurationDays ? parseInt(form.vestingDurationDays, 10) : 0,
+        minTierRequired: form.minTier ? (tierApiMap[form.minTier] ?? null) : null,
+        distributionTokenSymbol: form.ticker || undefined,
+        raiseTokenSymbol: form.raiseToken || undefined,
+        registrationOpenAt: toISOString(form.registrationOpen),
+        registrationCloseAt: toISOString(form.registrationClose),
+        contributionOpenAt: toISOString(form.contributionOpen),
+        contributionCloseAt: toISOString(form.contributionClose),
+        requiresKyc: form.requireKyc,
+        requiresAccreditation: form.requireAccreditation,
+        projectWebsite: form.website || undefined,
+        projectTwitter: form.twitter || undefined,
+        projectDiscord: form.discord || undefined,
+        featuredImageUrl: form.featuredImageUrl || undefined,
+        bannerImageUrl: form.bannerImageUrl || undefined,
+        isFeatured: false,
+      };
+
+      const cleanBody = Object.fromEntries(
+        Object.entries(body).filter(([_, v]) => v !== undefined)
+      );
+
+      const res = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanBody),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || json.error?.details || "Failed to create deal");
+      }
+      router.push("/admin/deals");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/admin/deals">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+        <Link
+          href="/admin/deals"
+          className="p-1 text-zinc-500 transition-colors hover:text-zinc-600"
+        >
+          <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-zinc-50">Create Deal</h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <h1 className="font-serif text-2xl font-light text-zinc-900">
+            Create Deal
+          </h1>
+          <p className="mt-1 text-sm font-normal text-zinc-500">
             Set up a new capital raise on the platform
           </p>
         </div>
@@ -257,33 +371,33 @@ export default function CreateDealPage() {
                 }
               }}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                idx === currentStep && "bg-violet-500/10 text-violet-400",
-                idx < currentStep && "text-emerald-400 cursor-pointer hover:bg-zinc-800",
-                idx > currentStep && "text-zinc-600 cursor-default"
+                "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                idx === currentStep && "text-zinc-900",
+                idx < currentStep && "cursor-pointer text-zinc-500 hover:text-zinc-700",
+                idx > currentStep && "cursor-default text-zinc-400"
               )}
             >
               <span
                 className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                  idx === currentStep && "bg-violet-500 text-white",
-                  idx < currentStep && "bg-emerald-500 text-white",
-                  idx > currentStep && "bg-zinc-800 text-zinc-500"
+                  "flex h-5 w-5 items-center justify-center text-[10px]",
+                  idx === currentStep && "border border-zinc-900 text-zinc-900",
+                  idx < currentStep && "border border-emerald-600 text-emerald-600",
+                  idx > currentStep && "border border-zinc-300 text-zinc-400"
                 )}
               >
                 {idx < currentStep ? (
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-3 w-3" />
                 ) : (
                   idx + 1
                 )}
               </span>
-              <span className="hidden md:inline">{step.label}</span>
+              <span className="hidden font-normal md:inline">{step.label}</span>
             </button>
             {idx < STEPS.length - 1 && (
               <div
                 className={cn(
-                  "mx-1 h-px w-8",
-                  idx < currentStep ? "bg-emerald-500/50" : "bg-zinc-800"
+                  "mx-1 h-px w-6",
+                  idx < currentStep ? "bg-emerald-500" : "bg-zinc-200"
                 )}
               />
             )}
@@ -292,629 +406,342 @@ export default function CreateDealPage() {
       </div>
 
       {/* Form content */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{STEPS[currentStep].label}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Step 0: Basic Info */}
-          {currentStep === 0 && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Input
-                label="Project Name *"
-                placeholder="e.g. Nexus Protocol"
-                value={form.projectName}
-                onChange={(e) => updateField("projectName", e.target.value)}
-                error={errors.projectName}
-              />
-              <Input
-                label="Slug"
-                placeholder="auto-generated"
-                value={form.slug}
-                onChange={(e) => updateField("slug", e.target.value)}
-                helperText="URL-safe identifier"
-              />
-              <div className="lg:col-span-2">
-                <Input
-                  label="Short Description *"
-                  placeholder="One-line summary of the project"
-                  value={form.shortDescription}
-                  onChange={(e) => updateField("shortDescription", e.target.value)}
-                  error={errors.shortDescription}
-                />
-              </div>
-              <div className="lg:col-span-2">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-zinc-300">
-                    Full Description
-                  </label>
-                  <textarea
-                    rows={5}
-                    placeholder="Detailed project description, tokenomics, and value proposition..."
-                    value={form.fullDescription}
-                    onChange={(e) => updateField("fullDescription", e.target.value)}
-                    className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30"
-                  />
-                </div>
-              </div>
-              <Select
-                label="Category *"
-                placeholder="Select category"
-                value={form.category}
-                onChange={(e) => updateField("category", e.target.value)}
-                error={errors.category}
-                options={[
-                  { value: "DeFi", label: "DeFi" },
-                  { value: "Infrastructure", label: "Infrastructure" },
-                  { value: "Gaming", label: "Gaming" },
-                  { value: "AI", label: "AI / ML" },
-                  { value: "RWA", label: "Real World Assets" },
-                  { value: "Social", label: "Social" },
-                  { value: "NFT", label: "NFT / Metaverse" },
-                  { value: "DAO", label: "DAO Tooling" },
-                ]}
-              />
-              <Select
-                label="Chain *"
-                placeholder="Select chain"
-                value={form.chain}
-                onChange={(e) => updateField("chain", e.target.value)}
-                error={errors.chain}
-                options={[
-                  { value: "ethereum", label: "Ethereum" },
-                  { value: "arbitrum", label: "Arbitrum" },
-                  { value: "base", label: "Base" },
-                  { value: "polygon", label: "Polygon" },
-                  { value: "optimism", label: "Optimism" },
-                  { value: "avalanche", label: "Avalanche" },
-                ]}
-              />
-              <Input
-                label="Website"
-                placeholder="https://example.com"
-                value={form.website}
-                onChange={(e) => updateField("website", e.target.value)}
-                leftAddon={<Globe className="h-4 w-4" />}
-              />
-              <Input
-                label="Twitter"
-                placeholder="@handle"
-                value={form.twitter}
-                onChange={(e) => updateField("twitter", e.target.value)}
-              />
-              <Input
-                label="Discord"
-                placeholder="https://discord.gg/..."
-                value={form.discord}
-                onChange={(e) => updateField("discord", e.target.value)}
-                leftAddon={<MessageCircle className="h-4 w-4" />}
-              />
-              <Input
-                label="Telegram"
-                placeholder="https://t.me/..."
-                value={form.telegram}
-                onChange={(e) => updateField("telegram", e.target.value)}
-              />
-              <Input
-                label="GitHub"
-                placeholder="https://github.com/..."
-                value={form.github}
-                onChange={(e) => updateField("github", e.target.value)}
-                leftAddon={<Github className="h-4 w-4" />}
-              />
+      <div className="border border-zinc-200 p-6">
+        <h2 className="mb-6 text-xs uppercase tracking-widest text-zinc-500">
+          {STEPS[currentStep].label}
+        </h2>
 
-              {/* Image upload areas */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-300">
-                  Featured Image
-                </label>
-                <div className="flex h-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 transition-colors hover:border-zinc-600">
-                  <div className="flex flex-col items-center gap-2 text-zinc-500">
-                    <Upload className="h-6 w-6" />
-                    <span className="text-xs">Click to upload or drag & drop</span>
-                    <span className="text-xs text-zinc-600">PNG, JPG up to 5MB</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-300">
-                  Banner Image
-                </label>
-                <div className="flex h-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 transition-colors hover:border-zinc-600">
-                  <div className="flex flex-col items-center gap-2 text-zinc-500">
-                    <Upload className="h-6 w-6" />
-                    <span className="text-xs">Click to upload or drag & drop</span>
-                    <span className="text-xs text-zinc-600">1200x400 recommended</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Step 0: Basic Info */}
+        {currentStep === 0 && (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <Field label="Project Name *" error={errors.projectName}>
+              <TextInput value={form.projectName} onChange={(v) => updateField("projectName", v)} placeholder="e.g. Nexus Protocol" />
+            </Field>
+            <Field label="Slug">
+              <TextInput value={form.slug} onChange={(v) => updateField("slug", v)} placeholder="auto-generated" />
+            </Field>
+            <Field label="Short Description *" error={errors.shortDescription} className="lg:col-span-2">
+              <TextInput value={form.shortDescription} onChange={(v) => updateField("shortDescription", v)} placeholder="One-line summary" />
+            </Field>
+            <Field label="Full Description" className="lg:col-span-2">
+              <textarea
+                rows={4}
+                value={form.fullDescription}
+                onChange={(e) => updateField("fullDescription", e.target.value)}
+                placeholder="Detailed project description..."
+                className="w-full border border-zinc-200 bg-transparent px-3 py-2.5 text-sm font-normal text-zinc-700 outline-none transition-colors placeholder:text-zinc-300 focus:border-zinc-400"
+              />
+            </Field>
+            <Field label="Category *" error={errors.category}>
+              <SelectInput value={form.category} onChange={(v) => updateField("category", v)} placeholder="Select" options={[
+                { value: "DeFi", label: "DeFi" }, { value: "Infrastructure", label: "Infrastructure" },
+                { value: "Gaming", label: "Gaming" }, { value: "AI", label: "AI / ML" },
+                { value: "RWA", label: "Real World Assets" }, { value: "Social", label: "Social" },
+                { value: "NFT", label: "NFT / Metaverse" }, { value: "DAO", label: "DAO Tooling" },
+              ]} />
+            </Field>
+            <Field label="Chain *" error={errors.chain}>
+              <SelectInput value={form.chain} onChange={(v) => updateField("chain", v)} placeholder="Select" options={[
+                { value: "ethereum", label: "Ethereum" }, { value: "arbitrum", label: "Arbitrum" }, { value: "base", label: "Base" },
+              ]} />
+            </Field>
+            <Field label="Website">
+              <TextInput value={form.website} onChange={(v) => updateField("website", v)} placeholder="https://example.com" />
+            </Field>
+            <Field label="Twitter">
+              <TextInput value={form.twitter} onChange={(v) => updateField("twitter", v)} placeholder="https://twitter.com/handle" />
+            </Field>
+            <Field label="Discord">
+              <TextInput value={form.discord} onChange={(v) => updateField("discord", v)} placeholder="https://discord.gg/..." />
+            </Field>
+            <Field label="Telegram">
+              <TextInput value={form.telegram} onChange={(v) => updateField("telegram", v)} placeholder="https://t.me/..." />
+            </Field>
+            <Field label="Featured Image URL">
+              <TextInput value={form.featuredImageUrl} onChange={(v) => updateField("featuredImageUrl", v)} placeholder="https://..." />
+            </Field>
+            <Field label="Banner Image URL">
+              <TextInput value={form.bannerImageUrl} onChange={(v) => updateField("bannerImageUrl", v)} placeholder="https://... (1200x400)" />
+            </Field>
+          </div>
+        )}
 
-          {/* Step 1: Token Details */}
-          {currentStep === 1 && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Input
-                label="Token Name *"
-                placeholder="e.g. Nexus Token"
-                value={form.tokenName}
-                onChange={(e) => updateField("tokenName", e.target.value)}
-                error={errors.tokenName}
-              />
-              <Input
-                label="Ticker *"
-                placeholder="e.g. NXS"
-                value={form.ticker}
-                onChange={(e) => updateField("ticker", e.target.value.toUpperCase())}
-                error={errors.ticker}
-              />
-              <Input
-                label="Total Supply *"
-                placeholder="e.g. 1000000000"
-                type="number"
-                value={form.totalSupply}
-                onChange={(e) => updateField("totalSupply", e.target.value)}
-                error={errors.totalSupply}
-              />
-              <Input
-                label="Token Price (USD) *"
-                placeholder="e.g. 0.05"
-                type="number"
-                value={form.tokenPrice}
-                onChange={(e) => updateField("tokenPrice", e.target.value)}
-                error={errors.tokenPrice}
-                leftAddon="$"
-              />
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-300">
-                  Fully Diluted Valuation (FDV)
-                </label>
-                <div className="flex h-10 items-center rounded-lg border border-zinc-700 bg-zinc-800/50 px-3">
-                  <span className="text-sm text-zinc-400">
-                    {fdv > 0 ? formatCurrency(fdv) : "Auto-calculated"}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-500">
-                  Calculated from total supply x token price
-                </p>
+        {/* Step 1: Token Details */}
+        {currentStep === 1 && (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <Field label="Token Name *" error={errors.tokenName}>
+              <TextInput value={form.tokenName} onChange={(v) => updateField("tokenName", v)} placeholder="e.g. Nexus Token" />
+            </Field>
+            <Field label="Ticker *" error={errors.ticker}>
+              <TextInput value={form.ticker} onChange={(v) => updateField("ticker", v.toUpperCase())} placeholder="e.g. NXS" />
+            </Field>
+            <Field label="Total Supply *" error={errors.totalSupply}>
+              <TextInput value={form.totalSupply} onChange={(v) => updateField("totalSupply", v)} placeholder="e.g. 1000000000" type="number" />
+            </Field>
+            <Field label="Token Price (USD) *" error={errors.tokenPrice}>
+              <TextInput value={form.tokenPrice} onChange={(v) => updateField("tokenPrice", v)} placeholder="e.g. 0.05" type="number" prefix="$" />
+            </Field>
+            <Field label="FDV (Calculated)">
+              <div className="flex h-10 items-center border border-zinc-200 px-3 text-sm font-normal text-zinc-500">
+                {fdv > 0 ? formatCurrency(fdv) : "Auto-calculated"}
               </div>
-              <Input
-                label="Distribution Token Address"
-                placeholder="0x..."
-                value={form.distributionTokenAddress}
-                onChange={(e) =>
-                  updateField("distributionTokenAddress", e.target.value)
-                }
-                helperText="Leave empty if token is not yet deployed"
-              />
-              <Select
-                label="Raise Token *"
-                placeholder="Select raise token"
-                value={form.raiseToken}
-                onChange={(e) => updateField("raiseToken", e.target.value)}
-                error={errors.raiseToken}
-                options={[
-                  { value: "USDC", label: "USDC" },
-                  { value: "USDT", label: "USDT" },
-                  { value: "ETH", label: "ETH" },
-                ]}
-              />
-            </div>
-          )}
+            </Field>
+            <Field label="Distribution Token Address">
+              <TextInput value={form.distributionTokenAddress} onChange={(v) => updateField("distributionTokenAddress", v)} placeholder="0x..." />
+            </Field>
+            <Field label="Raise Token *" error={errors.raiseToken}>
+              <SelectInput value={form.raiseToken} onChange={(v) => updateField("raiseToken", v)} placeholder="Select" options={[
+                { value: "USDC", label: "USDC" }, { value: "USDT", label: "USDT" }, { value: "ETH", label: "ETH" },
+              ]} />
+            </Field>
+          </div>
+        )}
 
-          {/* Step 2: Raise Config */}
-          {currentStep === 2 && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Input
-                label="Hard Cap *"
-                placeholder="e.g. 3000000"
-                type="number"
-                value={form.hardCap}
-                onChange={(e) => updateField("hardCap", e.target.value)}
-                error={errors.hardCap}
-                leftAddon="$"
-              />
-              <Input
-                label="Soft Cap"
-                placeholder="Optional minimum raise"
-                type="number"
-                value={form.softCap}
-                onChange={(e) => updateField("softCap", e.target.value)}
-                leftAddon="$"
-                helperText="Leave empty for no soft cap"
-              />
-              <Input
-                label="Min Contribution *"
-                placeholder="e.g. 100"
-                type="number"
-                value={form.minContribution}
-                onChange={(e) => updateField("minContribution", e.target.value)}
-                error={errors.minContribution}
-                leftAddon="$"
-              />
-              <Input
-                label="Max Contribution Per User *"
-                placeholder="e.g. 50000"
-                type="number"
-                value={form.maxContribution}
-                onChange={(e) => updateField("maxContribution", e.target.value)}
-                error={errors.maxContribution}
-                leftAddon="$"
-              />
-              <Select
-                label="Allocation Method *"
-                placeholder="Select method"
-                value={form.allocationMethod}
-                onChange={(e) => updateField("allocationMethod", e.target.value)}
-                error={errors.allocationMethod}
-                options={[
-                  { value: "guaranteed", label: "Guaranteed" },
-                  { value: "pro-rata", label: "Pro-Rata" },
-                  { value: "lottery", label: "Lottery" },
-                  { value: "fcfs", label: "First Come First Serve" },
-                  { value: "hybrid", label: "Hybrid" },
-                ]}
-              />
-              <div className="flex items-end pb-1">
-                <Toggle
+        {/* Step 2: Raise Config */}
+        {currentStep === 2 && (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <Field label="Hard Cap *" error={errors.hardCap}>
+              <TextInput value={form.hardCap} onChange={(v) => updateField("hardCap", v)} placeholder="e.g. 3000000" type="number" prefix="$" />
+            </Field>
+            <Field label="Soft Cap">
+              <TextInput value={form.softCap} onChange={(v) => updateField("softCap", v)} placeholder="Optional" type="number" prefix="$" />
+            </Field>
+            <Field label="Min Contribution *" error={errors.minContribution}>
+              <TextInput value={form.minContribution} onChange={(v) => updateField("minContribution", v)} placeholder="e.g. 100" type="number" prefix="$" />
+            </Field>
+            <Field label="Max Contribution *" error={errors.maxContribution}>
+              <TextInput value={form.maxContribution} onChange={(v) => updateField("maxContribution", v)} placeholder="e.g. 50000" type="number" prefix="$" />
+            </Field>
+            <Field label="Allocation Method *" error={errors.allocationMethod}>
+              <SelectInput value={form.allocationMethod} onChange={(v) => updateField("allocationMethod", v)} placeholder="Select" options={[
+                { value: "guaranteed", label: "Guaranteed" }, { value: "pro-rata", label: "Pro-Rata" },
+                { value: "lottery", label: "Lottery" }, { value: "fcfs", label: "First Come First Serve" },
+                { value: "hybrid", label: "Hybrid" },
+              ]} />
+            </Field>
+            <Field label="Oversubscription">
+              <label className="flex cursor-pointer items-center gap-3 border border-zinc-200 px-3 py-2.5">
+                <input
+                  type="checkbox"
                   checked={form.oversubscription}
-                  onCheckedChange={(v) => updateField("oversubscription", v)}
-                  label="Allow Oversubscription"
+                  onChange={(e) => updateField("oversubscription", e.target.checked)}
+                  className="accent-violet-500"
                 />
-              </div>
-            </div>
-          )}
+                <span className="text-sm font-normal text-zinc-600">Allow oversubscription</span>
+              </label>
+            </Field>
+          </div>
+        )}
 
-          {/* Step 3: Timeline */}
-          {currentStep === 3 && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Input
-                label="Registration Open *"
-                type="datetime-local"
-                value={form.registrationOpen}
-                onChange={(e) => updateField("registrationOpen", e.target.value)}
-                error={errors.registrationOpen}
-              />
-              <Input
-                label="Registration Close *"
-                type="datetime-local"
-                value={form.registrationClose}
-                onChange={(e) => updateField("registrationClose", e.target.value)}
-                error={errors.registrationClose}
-              />
-              <Input
-                label="Contribution Open *"
-                type="datetime-local"
-                value={form.contributionOpen}
-                onChange={(e) => updateField("contributionOpen", e.target.value)}
-                error={errors.contributionOpen}
-              />
-              <Input
-                label="Contribution Close *"
-                type="datetime-local"
-                value={form.contributionClose}
-                onChange={(e) => updateField("contributionClose", e.target.value)}
-                error={errors.contributionClose}
-              />
-              <Input
-                label="Distribution Date *"
-                type="datetime-local"
-                value={form.distributionDate}
-                onChange={(e) => updateField("distributionDate", e.target.value)}
-                error={errors.distributionDate}
-              />
-              <Input
-                label="Vesting Start Date"
-                type="datetime-local"
-                value={form.vestingStartDate}
-                onChange={(e) => updateField("vestingStartDate", e.target.value)}
-              />
-              <Select
-                label="Vesting Type"
-                placeholder="Select vesting type"
-                value={form.vestingType}
-                onChange={(e) => updateField("vestingType", e.target.value)}
-                options={[
-                  { value: "none", label: "No Vesting" },
-                  { value: "linear", label: "Linear" },
-                  { value: "cliff-then-linear", label: "Cliff + Linear" },
-                  { value: "monthly", label: "Monthly Unlock" },
-                  { value: "custom", label: "Custom Schedule" },
-                ]}
-              />
-              <Input
-                label="TGE Unlock %"
-                placeholder="e.g. 20"
-                type="number"
-                value={form.tgeUnlockPercent}
-                onChange={(e) => updateField("tgeUnlockPercent", e.target.value)}
-                rightAddon="%"
-                helperText="Percentage unlocked at token generation event"
-              />
-              <Input
-                label="Cliff (Days)"
-                placeholder="e.g. 90"
-                type="number"
-                value={form.cliffDays}
-                onChange={(e) => updateField("cliffDays", e.target.value)}
-              />
-              <Input
-                label="Vesting Duration (Days)"
-                placeholder="e.g. 365"
-                type="number"
-                value={form.vestingDurationDays}
-                onChange={(e) => updateField("vestingDurationDays", e.target.value)}
-              />
-            </div>
-          )}
+        {/* Step 3: Timeline */}
+        {currentStep === 3 && (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <Field label="Registration Open *" error={errors.registrationOpen}>
+              <TextInput value={form.registrationOpen} onChange={(v) => updateField("registrationOpen", v)} type="datetime-local" />
+            </Field>
+            <Field label="Registration Close *" error={errors.registrationClose}>
+              <TextInput value={form.registrationClose} onChange={(v) => updateField("registrationClose", v)} type="datetime-local" />
+            </Field>
+            <Field label="Contribution Open *" error={errors.contributionOpen}>
+              <TextInput value={form.contributionOpen} onChange={(v) => updateField("contributionOpen", v)} type="datetime-local" />
+            </Field>
+            <Field label="Contribution Close *" error={errors.contributionClose}>
+              <TextInput value={form.contributionClose} onChange={(v) => updateField("contributionClose", v)} type="datetime-local" />
+            </Field>
+            <Field label="Distribution Date *" error={errors.distributionDate}>
+              <TextInput value={form.distributionDate} onChange={(v) => updateField("distributionDate", v)} type="datetime-local" />
+            </Field>
+            <Field label="Vesting Start Date">
+              <TextInput value={form.vestingStartDate} onChange={(v) => updateField("vestingStartDate", v)} type="datetime-local" />
+            </Field>
+            <Field label="Vesting Type">
+              <SelectInput value={form.vestingType} onChange={(v) => updateField("vestingType", v)} placeholder="Select" options={[
+                { value: "none", label: "No Vesting" }, { value: "linear", label: "Linear" },
+                { value: "cliff-then-linear", label: "Cliff + Linear" }, { value: "monthly", label: "Monthly Unlock" },
+                { value: "custom", label: "Custom Schedule" },
+              ]} />
+            </Field>
+            <Field label="TGE Unlock %">
+              <TextInput value={form.tgeUnlockPercent} onChange={(v) => updateField("tgeUnlockPercent", v)} placeholder="e.g. 20" type="number" />
+            </Field>
+            <Field label="Cliff (Days)">
+              <TextInput value={form.cliffDays} onChange={(v) => updateField("cliffDays", v)} placeholder="e.g. 90" type="number" />
+            </Field>
+            <Field label="Vesting Duration (Days)">
+              <TextInput value={form.vestingDurationDays} onChange={(v) => updateField("vestingDurationDays", v)} placeholder="e.g. 365" type="number" />
+            </Field>
+          </div>
+        )}
 
-          {/* Step 4: Access Control */}
-          {currentStep === 4 && (
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                <div className="rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
-                  <Toggle
-                    checked={form.requireKyc}
-                    onCheckedChange={(v) => updateField("requireKyc", v)}
-                    label="Require KYC"
-                  />
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Users must complete KYC verification to participate
-                  </p>
-                </div>
-                <div className="rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
-                  <Toggle
-                    checked={form.requireAccreditation}
-                    onCheckedChange={(v) =>
-                      updateField("requireAccreditation", v)
-                    }
-                    label="Require Accreditation"
-                  />
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Only accredited investors can participate
-                  </p>
-                </div>
-                <div className="rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
-                  <Toggle
-                    checked={form.whitelistOnly}
-                    onCheckedChange={(v) => updateField("whitelistOnly", v)}
-                    label="Whitelist Only"
-                  />
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Restrict participation to whitelisted wallets
-                  </p>
-                </div>
-              </div>
-
-              {form.whitelistOnly && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-zinc-300">
-                    Whitelist CSV Upload
-                  </label>
-                  <div className="flex h-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 transition-colors hover:border-zinc-600">
-                    <div className="flex flex-col items-center gap-1 text-zinc-500">
-                      <Upload className="h-5 w-5" />
-                      <span className="text-xs">
-                        Upload CSV with wallet addresses
-                      </span>
-                    </div>
+        {/* Step 4: Access Control */}
+        {currentStep === 4 && (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 gap-px border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
+              {[
+                { key: "requireKyc" as const, label: "Require KYC", desc: "Users must complete KYC verification" },
+                { key: "requireAccreditation" as const, label: "Require Accreditation", desc: "Only accredited investors" },
+                { key: "whitelistOnly" as const, label: "Whitelist Only", desc: "Restrict to whitelisted wallets" },
+              ].map((item) => (
+                <label key={item.key} className="flex cursor-pointer flex-col gap-2 bg-white p-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={form[item.key] as boolean}
+                      onChange={(e) => updateField(item.key, e.target.checked)}
+                      className="accent-violet-500"
+                    />
+                    <span className="text-sm font-normal text-zinc-700">{item.label}</span>
                   </div>
-                </div>
-              )}
-
-              <Select
-                label="Minimum Tier"
-                placeholder="No minimum tier"
-                value={form.minTier}
-                onChange={(e) => updateField("minTier", e.target.value)}
-                options={[
-                  { value: "", label: "No Minimum" },
-                  { value: "bronze", label: "Bronze" },
-                  { value: "silver", label: "Silver" },
-                  { value: "gold", label: "Gold" },
-                  { value: "platinum", label: "Platinum" },
-                  { value: "diamond", label: "Diamond" },
-                ]}
-              />
-
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-zinc-300">
-                    Allowed Countries
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Enter country codes separated by commas (e.g. US, GB, DE)&#10;Leave empty to allow all non-blocked countries"
-                    value={form.allowedCountries}
-                    onChange={(e) =>
-                      updateField("allowedCountries", e.target.value)
-                    }
-                    className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-zinc-300">
-                    Blocked Countries
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Enter country codes separated by commas (e.g. KP, IR, CU)&#10;Standard sanctions list applied by default"
-                    value={form.blockedCountries}
-                    onChange={(e) =>
-                      updateField("blockedCountries", e.target.value)
-                    }
-                    className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30"
-                  />
-                </div>
-              </div>
+                  <p className="text-xs font-normal text-zinc-400">{item.desc}</p>
+                </label>
+              ))}
             </div>
-          )}
 
-          {/* Step 5: Review */}
-          {currentStep === 5 && (
-            <div className="flex flex-col gap-6">
-              {/* Basic Info Review */}
-              <div className="rounded-lg border border-zinc-800 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-zinc-300">
-                  Basic Info
-                </h4>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow label="Project Name" value={form.projectName || "—"} />
-                  <ReviewRow label="Slug" value={form.slug || "—"} />
-                  <ReviewRow label="Category" value={form.category || "—"} />
-                  <ReviewRow label="Chain" value={form.chain || "—"} />
-                  <ReviewRow label="Short Description" value={form.shortDescription || "—"} />
-                  <ReviewRow label="Website" value={form.website || "—"} />
+            {form.whitelistOnly && (
+              <div className="flex h-20 cursor-pointer items-center justify-center border border-dashed border-zinc-200 transition-colors hover:border-zinc-400">
+                <div className="flex items-center gap-2 text-zinc-500">
+                  <Upload className="h-4 w-4" />
+                  <span className="text-xs">Upload CSV with wallet addresses</span>
                 </div>
               </div>
+            )}
 
-              {/* Token Details Review */}
-              <div className="rounded-lg border border-zinc-800 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-zinc-300">
-                  Token Details
-                </h4>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow label="Token Name" value={form.tokenName || "—"} />
-                  <ReviewRow label="Ticker" value={form.ticker || "—"} />
-                  <ReviewRow
-                    label="Total Supply"
-                    value={form.totalSupply ? Number(form.totalSupply).toLocaleString() : "—"}
-                  />
-                  <ReviewRow
-                    label="Token Price"
-                    value={form.tokenPrice ? `$${form.tokenPrice}` : "—"}
-                  />
-                  <ReviewRow
-                    label="FDV"
-                    value={fdv > 0 ? formatCurrency(fdv) : "—"}
-                  />
-                  <ReviewRow label="Raise Token" value={form.raiseToken || "—"} />
-                </div>
-              </div>
+            <Field label="Minimum Tier">
+              <SelectInput value={form.minTier} onChange={(v) => updateField("minTier", v)} placeholder="No minimum" options={[
+                { value: "", label: "No Minimum" }, { value: "bronze", label: "Bronze" },
+                { value: "silver", label: "Silver" }, { value: "gold", label: "Gold" },
+                { value: "platinum", label: "Platinum" }, { value: "diamond", label: "Diamond" },
+              ]} />
+            </Field>
 
-              {/* Raise Config Review */}
-              <div className="rounded-lg border border-zinc-800 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-zinc-300">
-                  Raise Configuration
-                </h4>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow
-                    label="Hard Cap"
-                    value={form.hardCap ? formatCurrency(Number(form.hardCap)) : "—"}
-                  />
-                  <ReviewRow
-                    label="Soft Cap"
-                    value={form.softCap ? formatCurrency(Number(form.softCap)) : "None"}
-                  />
-                  <ReviewRow
-                    label="Min Contribution"
-                    value={
-                      form.minContribution
-                        ? formatCurrency(Number(form.minContribution))
-                        : "—"
-                    }
-                  />
-                  <ReviewRow
-                    label="Max Contribution"
-                    value={
-                      form.maxContribution
-                        ? formatCurrency(Number(form.maxContribution))
-                        : "—"
-                    }
-                  />
-                  <ReviewRow label="Allocation Method" value={form.allocationMethod || "—"} />
-                  <ReviewRow
-                    label="Oversubscription"
-                    value={form.oversubscription ? "Enabled" : "Disabled"}
-                  />
-                </div>
-              </div>
-
-              {/* Timeline Review */}
-              <div className="rounded-lg border border-zinc-800 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-zinc-300">
-                  Timeline
-                </h4>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow label="Registration Open" value={form.registrationOpen || "—"} />
-                  <ReviewRow label="Registration Close" value={form.registrationClose || "—"} />
-                  <ReviewRow label="Contribution Open" value={form.contributionOpen || "—"} />
-                  <ReviewRow label="Contribution Close" value={form.contributionClose || "—"} />
-                  <ReviewRow label="Distribution Date" value={form.distributionDate || "—"} />
-                  <ReviewRow label="Vesting Type" value={form.vestingType || "None"} />
-                  <ReviewRow label="TGE Unlock" value={form.tgeUnlockPercent ? `${form.tgeUnlockPercent}%` : "—"} />
-                  <ReviewRow label="Cliff" value={form.cliffDays ? `${form.cliffDays} days` : "—"} />
-                  <ReviewRow label="Duration" value={form.vestingDurationDays ? `${form.vestingDurationDays} days` : "—"} />
-                </div>
-              </div>
-
-              {/* Access Control Review */}
-              <div className="rounded-lg border border-zinc-800 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-zinc-300">
-                  Access Control
-                </h4>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                  <ReviewRow label="Require KYC" value={form.requireKyc ? "Yes" : "No"} />
-                  <ReviewRow label="Require Accreditation" value={form.requireAccreditation ? "Yes" : "No"} />
-                  <ReviewRow label="Whitelist Only" value={form.whitelistOnly ? "Yes" : "No"} />
-                  <ReviewRow label="Min Tier" value={form.minTier || "None"} />
-                </div>
-              </div>
-
-              {/* Submit buttons */}
-              <div className="flex items-center gap-3">
-                <Button>Create Deal</Button>
-                <Button variant="secondary">Save as Draft</Button>
-              </div>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <Field label="Allowed Countries">
+                <textarea
+                  rows={3}
+                  value={form.allowedCountries}
+                  onChange={(e) => updateField("allowedCountries", e.target.value)}
+                  placeholder="e.g. US, GB, DE (leave empty to allow all)"
+                  className="w-full border border-zinc-200 bg-transparent px-3 py-2.5 text-sm font-normal text-zinc-700 outline-none transition-colors placeholder:text-zinc-300 focus:border-zinc-400"
+                />
+              </Field>
+              <Field label="Blocked Countries">
+                <textarea
+                  rows={3}
+                  value={form.blockedCountries}
+                  onChange={(e) => updateField("blockedCountries", e.target.value)}
+                  placeholder="e.g. KP, IR, CU"
+                  className="w-full border border-zinc-200 bg-transparent px-3 py-2.5 text-sm font-normal text-zinc-700 outline-none transition-colors placeholder:text-zinc-300 focus:border-zinc-400"
+                />
+              </Field>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+
+        {/* Step 5: Review */}
+        {currentStep === 5 && (
+          <div className="flex flex-col gap-6">
+            {[
+              {
+                title: "Basic Info",
+                rows: [
+                  ["Project Name", form.projectName], ["Slug", form.slug],
+                  ["Category", form.category], ["Chain", form.chain],
+                  ["Description", form.shortDescription], ["Website", form.website || "\u2014"],
+                ],
+              },
+              {
+                title: "Token Details",
+                rows: [
+                  ["Token Name", form.tokenName], ["Ticker", form.ticker],
+                  ["Total Supply", form.totalSupply ? Number(form.totalSupply).toLocaleString() : "\u2014"],
+                  ["Token Price", form.tokenPrice ? `$${form.tokenPrice}` : "\u2014"],
+                  ["FDV", fdv > 0 ? formatCurrency(fdv) : "\u2014"],
+                  ["Raise Token", form.raiseToken || "\u2014"],
+                ],
+              },
+              {
+                title: "Raise Configuration",
+                rows: [
+                  ["Hard Cap", form.hardCap ? formatCurrency(Number(form.hardCap)) : "\u2014"],
+                  ["Soft Cap", form.softCap ? formatCurrency(Number(form.softCap)) : "None"],
+                  ["Min Contribution", form.minContribution ? formatCurrency(Number(form.minContribution)) : "\u2014"],
+                  ["Max Contribution", form.maxContribution ? formatCurrency(Number(form.maxContribution)) : "\u2014"],
+                  ["Allocation", form.allocationMethod || "\u2014"],
+                  ["Oversubscription", form.oversubscription ? "Enabled" : "Disabled"],
+                ],
+              },
+              {
+                title: "Access Control",
+                rows: [
+                  ["Require KYC", form.requireKyc ? "Yes" : "No"],
+                  ["Accreditation", form.requireAccreditation ? "Yes" : "No"],
+                  ["Whitelist Only", form.whitelistOnly ? "Yes" : "No"],
+                  ["Min Tier", form.minTier || "None"],
+                ],
+              },
+            ].map((section) => (
+              <div key={section.title} className="border border-zinc-200 p-4">
+                <p className="mb-3 text-xs uppercase tracking-widest text-zinc-500">
+                  {section.title}
+                </p>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                  {section.rows.map(([label, value]) => (
+                    <div key={label} className="flex flex-col gap-0.5 py-1">
+                      <span className="text-xs font-normal text-zinc-500">{label}</span>
+                      <span className="text-sm text-zinc-700">{value || "\u2014"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {submitError && (
+              <div className="border border-zinc-300 bg-zinc-50 p-4">
+                <p className="text-sm font-normal text-zinc-500">{submitError}</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="border border-zinc-900 px-6 py-2.5 text-sm font-normal text-zinc-900 transition-colors hover:bg-zinc-900 hover:text-white disabled:opacity-50"
+              >
+                {submitting && <Loader2 className="mr-2 inline h-3 w-3 animate-spin" />}
+                Create Deal
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="border border-zinc-200 px-6 py-2.5 text-sm font-normal text-zinc-500 transition-colors hover:text-zinc-700 disabled:opacity-50"
+              >
+                Save as Draft
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Navigation buttons */}
-      {currentStep < 5 && (
-        <div className="flex items-center justify-between">
-          <Button
-            variant="secondary"
-            onClick={goBack}
-            disabled={currentStep === 0}
-            leftIcon={<ArrowLeft className="h-4 w-4" />}
-          >
-            Back
-          </Button>
-          <Button
+      <div className="flex items-center justify-between">
+        <button
+          onClick={goBack}
+          disabled={currentStep === 0}
+          className="flex items-center gap-2 text-sm font-normal text-zinc-500 transition-colors hover:text-zinc-700 disabled:opacity-30"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
+        </button>
+        {currentStep < 5 && (
+          <button
             onClick={goNext}
-            rightIcon={<ArrowRight className="h-4 w-4" />}
+            className="flex items-center gap-2 text-sm font-normal text-zinc-600 transition-colors hover:text-zinc-900"
           >
             Next
-          </Button>
-        </div>
-      )}
-
-      {currentStep === 5 && (
-        <div className="flex items-center justify-between">
-          <Button
-            variant="secondary"
-            onClick={goBack}
-            leftIcon={<ArrowLeft className="h-4 w-4" />}
-          >
-            Back
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Review row helper                                                         */
-/* -------------------------------------------------------------------------- */
-
-function ReviewRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 py-1">
-      <span className="text-zinc-500">{label}</span>
-      <span className="font-medium text-zinc-200">{value}</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
