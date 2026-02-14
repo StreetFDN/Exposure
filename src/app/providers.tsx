@@ -2,6 +2,7 @@
 
 import {
   type ReactNode,
+  Component,
   createContext,
   useCallback,
   useContext,
@@ -18,6 +19,66 @@ import { api } from "@/lib/api/client";
 import type { SessionUser } from "@/types/api";
 
 import "@rainbow-me/rainbowkit/styles.css";
+
+// =============================================================================
+// Error Boundary
+// =============================================================================
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ProviderErrorBoundary extends Component<
+  { children: ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("[Providers] Error caught by boundary:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4 text-center">
+          <div className="mb-12 h-px w-16 bg-zinc-800" />
+          <p className="text-xs font-light uppercase tracking-[0.25em] text-zinc-600">
+            Initialization Error
+          </p>
+          <h1 className="mt-6 font-serif text-4xl font-light text-zinc-100">
+            Unable to connect
+          </h1>
+          <p className="mt-4 max-w-md text-sm font-light leading-relaxed text-zinc-500">
+            The application failed to initialize. This may be due to a wallet
+            provider issue or network configuration. Please refresh the page to
+            try again.
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="mt-8 rounded-md border border-zinc-700 px-6 py-2.5 text-sm font-light text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+          >
+            Refresh Page
+          </button>
+          <div className="mt-12 h-px w-16 bg-zinc-800" />
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // =============================================================================
 // RainbowKit theme
@@ -96,8 +157,12 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
   // Public refresh function
   const refresh = useCallback(async () => {
-    const sessionUser = await fetchSession();
-    setUser(sessionUser);
+    try {
+      const sessionUser = await fetchSession();
+      setUser(sessionUser);
+    } catch {
+      // Silently fail on refresh errors
+    }
   }, [fetchSession]);
 
   const clearSession = useCallback(() => {
@@ -115,6 +180,10 @@ function AuthProvider({ children }: { children: ReactNode }) {
     fetchSession().then((sessionUser) => {
       if (!cancelled) {
         setUser(sessionUser);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
         setIsLoading(false);
       }
     });
@@ -181,14 +250,16 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={rainbowTheme} modalSize="compact">
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <ProviderErrorBoundary>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider theme={rainbowTheme} modalSize="compact">
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ProviderErrorBoundary>
   );
 }

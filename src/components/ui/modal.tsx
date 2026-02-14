@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils/cn";
 
 const modalSizeVariants = cva(
   [
-    "relative w-full rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-50 shadow-xl",
+    "relative w-full rounded-xl border border-zinc-200 bg-white text-zinc-900 shadow-xl",
     "transform transition-all duration-200",
   ],
   {
@@ -125,7 +125,7 @@ function Modal({
       {/* Backdrop */}
       <div
         className={cn(
-          "absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200",
+          "absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-200",
           visible ? "opacity-100" : "opacity-0"
         )}
         onClick={onClose}
@@ -162,14 +162,14 @@ function Modal({
                 </h2>
               )}
               {description && (
-                <p id={descriptionId} className="text-sm text-zinc-400">
+                <p id={descriptionId} className="text-sm text-zinc-500">
                   {description}
                 </p>
               )}
             </div>
             <button
               onClick={onClose}
-              className="shrink-0 rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              className="shrink-0 rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
               aria-label="Close dialog"
             >
               <X className="h-4 w-4" />
@@ -181,7 +181,7 @@ function Modal({
         {!title && !description && (
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            className="absolute right-4 top-4 rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
             aria-label="Close dialog"
           >
             <X className="h-4 w-4" />

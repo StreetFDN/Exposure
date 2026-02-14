@@ -2,40 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  AlertTriangle,
   Shield,
   Search,
-  FileWarning,
   Activity,
   ChevronRight,
   Eye,
   CheckCircle2,
-  XCircle,
   ArrowUpRight,
   Clock,
   Flag,
   Loader2,
   Users,
   Inbox,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Alert } from "@/components/ui/alert";
-import { StatCard } from "@/components/ui/stat-card";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
 import { formatCurrency, formatAddress, formatDate } from "@/lib/utils/format";
 
 /* -------------------------------------------------------------------------- */
@@ -108,62 +89,38 @@ interface AuditLogEntry {
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
 
-const severityVariant: Record<string, "error" | "warning" | "info"> = {
-  CRITICAL: "error",
-  HIGH: "error",
-  MEDIUM: "warning",
-  LOW: "info",
+const severityColor: Record<string, string> = {
+  CRITICAL: "text-red-600",
+  HIGH: "text-red-600",
+  MEDIUM: "text-amber-600",
+  LOW: "text-zinc-500",
 };
+
+const tabs = [
+  { id: "flagged", label: "Flagged Transactions" },
+  { id: "kyc", label: "KYC Queue" },
+  { id: "sanctions", label: "Sanctions Alerts" },
+  { id: "audit", label: "Audit Log" },
+];
 
 /* -------------------------------------------------------------------------- */
 /*  Loading skeletons                                                         */
 /* -------------------------------------------------------------------------- */
 
-function FlagTableSkeleton() {
+function RowSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="flex flex-col gap-0">
-      {Array.from({ length: 6 }).map((_, i) => (
+    <div>
+      {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-4 border-b border-zinc-800/50 px-4 py-3"
+          className="flex items-center gap-6 border-b border-zinc-200 px-5 py-4"
         >
-          <Skeleton variant="text" width="100px" />
-          <Skeleton variant="text" width="80px" />
-          <Skeleton variant="text" width="70px" />
-          <Skeleton variant="text" width="100px" />
-          <Skeleton variant="text" width="60px" />
-          <Skeleton variant="text" width="70px" />
-          <Skeleton variant="text" width="80px" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function KycQueueSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} variant="card" height="80px" />
-      ))}
-    </div>
-  );
-}
-
-function AuditLogSkeleton() {
-  return (
-    <div className="flex flex-col gap-0">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-4 border-b border-zinc-800/50 px-4 py-3"
-        >
-          <Skeleton variant="text" width="20px" />
-          <Skeleton variant="text" width="120px" />
-          <Skeleton variant="text" width="100px" />
-          <Skeleton variant="text" width="80px" />
-          <Skeleton variant="text" width="100px" />
-          <Skeleton variant="text" width="80px" />
+          <div className="h-3 w-24 animate-pulse rounded bg-zinc-200" />
+          <div className="h-3 w-20 animate-pulse rounded bg-zinc-200" />
+          <div className="h-3 w-16 animate-pulse rounded bg-zinc-200" />
+          <div className="h-3 w-28 animate-pulse rounded bg-zinc-200" />
+          <div className="h-3 w-14 animate-pulse rounded bg-zinc-200" />
+          <div className="h-3 w-20 animate-pulse rounded bg-zinc-200" />
         </div>
       ))}
     </div>
@@ -197,9 +154,6 @@ export default function ComplianceDashboardPage() {
   const [auditSearch, setAuditSearch] = useState("");
   const [auditActionFilter, setAuditActionFilter] = useState("");
 
-  // --------------------------------------------------------------------------
-  // Fetch flagged transactions
-  // --------------------------------------------------------------------------
   const fetchFlags = useCallback(async () => {
     setFlagsLoading(true);
     setFlagsError(null);
@@ -216,9 +170,6 @@ export default function ComplianceDashboardPage() {
     }
   }, []);
 
-  // --------------------------------------------------------------------------
-  // Fetch KYC queue
-  // --------------------------------------------------------------------------
   const fetchKycQueue = useCallback(async () => {
     setKycLoading(true);
     setKycError(null);
@@ -234,9 +185,6 @@ export default function ComplianceDashboardPage() {
     }
   }, []);
 
-  // --------------------------------------------------------------------------
-  // Fetch audit logs
-  // --------------------------------------------------------------------------
   const fetchAuditLogs = useCallback(async () => {
     setAuditLoading(true);
     setAuditError(null);
@@ -245,7 +193,6 @@ export default function ComplianceDashboardPage() {
       params.set("limit", "50");
       if (auditSearch) params.set("search", auditSearch);
       if (auditActionFilter) params.set("action", auditActionFilter);
-
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message || "Failed to fetch audit logs");
@@ -257,31 +204,22 @@ export default function ComplianceDashboardPage() {
     }
   }, [auditSearch, auditActionFilter]);
 
-  // --------------------------------------------------------------------------
-  // Load data based on active tab
-  // --------------------------------------------------------------------------
   useEffect(() => {
     if (activeTab === "flagged") fetchFlags();
     else if (activeTab === "kyc") fetchKycQueue();
     else if (activeTab === "audit") fetchAuditLogs();
   }, [activeTab, fetchFlags, fetchKycQueue, fetchAuditLogs]);
 
-  // --------------------------------------------------------------------------
-  // Resolve flag action
-  // --------------------------------------------------------------------------
   const handleResolveFlag = async (flagId: string) => {
     setResolvingFlagId(flagId);
     try {
       const res = await fetch(`/api/admin/compliance/flags/${flagId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resolution: "Resolved by admin review — no further action required",
-        }),
+        body: JSON.stringify({ resolution: "Resolved by admin review -- no further action required" }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message || "Failed to resolve flag");
-      // Refresh flags
       await fetchFlags();
     } catch {
       // Silently handle
@@ -290,412 +228,280 @@ export default function ComplianceDashboardPage() {
     }
   };
 
-  // --------------------------------------------------------------------------
-  // Derived stats
-  // --------------------------------------------------------------------------
   const openFlags = flagSummary?.unresolved ?? 0;
   const resolvedFlags = flags.filter((f) => f.isResolved).length;
-  const highSeverity =
-    (flagSummary?.bySeverity?.CRITICAL ?? 0) +
-    (flagSummary?.bySeverity?.HIGH ?? 0);
-  const pendingSar = flags.filter(
-    (f) => !f.isResolved && (f.severity === "CRITICAL" || f.severity === "HIGH")
-  ).length;
+  const highSeverity = (flagSummary?.bySeverity?.CRITICAL ?? 0) + (flagSummary?.bySeverity?.HIGH ?? 0);
+  const pendingSar = flags.filter((f) => !f.isResolved && (f.severity === "CRITICAL" || f.severity === "HIGH")).length;
 
   return (
     <div className="flex flex-col gap-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-zinc-50">Compliance</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Monitor flagged transactions, KYC reviews, and sanctions alerts
-        </p>
+        <h1 className="font-serif text-2xl font-light text-zinc-900">Compliance</h1>
+        <p className="mt-1 text-sm font-normal text-zinc-500">Monitor flagged transactions, KYC reviews, and sanctions alerts</p>
       </div>
 
       {/* Critical alert banner */}
       {highSeverity > 0 && (
-        <Alert
-          variant="error"
-          title={`${highSeverity} high-severity flags require immediate attention`}
-          description="Review flagged transactions below to address potential compliance violations."
-          dismissible
-        />
+        <div className="flex items-center gap-3 border border-red-200 bg-red-50 px-5 py-4">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+          <p className="text-sm font-normal text-red-700">
+            {highSeverity} high-severity flags require immediate attention. Review flagged transactions below.
+          </p>
+        </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard
-          label="Open Flags"
-          value={flagsLoading ? "..." : openFlags}
-          icon={<Flag className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Resolved"
-          value={flagsLoading ? "..." : resolvedFlags}
-          icon={<CheckCircle2 className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Pending SAR"
-          value={flagsLoading ? "..." : pendingSar}
-          icon={<FileWarning className="h-5 w-5" />}
-        />
-        <StatCard
-          label="High Severity"
-          value={flagsLoading ? "..." : highSeverity}
-          icon={<AlertTriangle className="h-5 w-5" />}
-        />
+      <div className="grid grid-cols-4 gap-px bg-zinc-200">
+        {[
+          { label: "Open Flags", value: flagsLoading ? "..." : openFlags },
+          { label: "Resolved", value: flagsLoading ? "..." : resolvedFlags },
+          { label: "Pending SAR", value: flagsLoading ? "..." : pendingSar },
+          { label: "High Severity", value: flagsLoading ? "..." : highSeverity },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white p-5">
+            <p className="text-xs uppercase tracking-widest text-zinc-500">{stat.label}</p>
+            <p className="mt-2 font-serif text-2xl font-light text-zinc-800">{stat.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="flagged" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="flagged">Flagged Transactions</TabsTrigger>
-          <TabsTrigger value="kyc">KYC Queue</TabsTrigger>
-          <TabsTrigger value="sanctions">Sanctions Alerts</TabsTrigger>
-          <TabsTrigger value="audit">Audit Log</TabsTrigger>
-        </TabsList>
+      <div className="border-b border-zinc-200">
+        <div className="flex gap-0">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "border-b-2 px-5 py-3 text-sm font-normal transition-colors",
+                activeTab === tab.id
+                  ? "border-violet-500 text-zinc-800"
+                  : "border-transparent text-zinc-500 hover:text-zinc-600"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* ================================================================ */}
-        {/* Flagged Transactions                                             */}
-        {/* ================================================================ */}
-        <TabsContent value="flagged">
+      {/* Flagged Transactions */}
+      {activeTab === "flagged" && (
+        <>
           {flagsError && (
-            <div className="mb-4 flex items-center gap-3 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>{flagsError}</span>
-              <Button size="sm" variant="ghost" onClick={fetchFlags} className="ml-auto">
-                Retry
-              </Button>
+            <div className="flex flex-col items-center justify-center py-32 text-center">
+              <Shield className="mb-6 h-8 w-8 text-zinc-400" />
+              <h2 className="font-serif text-2xl font-light text-zinc-800">Unable to load flags</h2>
+              <p className="mt-3 max-w-sm text-sm font-normal leading-relaxed text-zinc-500">{flagsError}</p>
+              <button onClick={fetchFlags} className="mt-8 border border-zinc-300 px-6 py-2.5 text-sm font-normal text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-800">Retry</button>
             </div>
           )}
-          <div className="overflow-hidden rounded-xl border border-zinc-800">
+
+          <div className="border border-zinc-200">
             {flagsLoading ? (
-              <FlagTableSkeleton />
+              <RowSkeleton />
             ) : flags.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-12 text-zinc-500">
-                <CheckCircle2 className="h-8 w-8" />
-                <p className="text-sm font-medium">No flagged transactions</p>
-                <p className="text-xs">All clear -- no compliance flags to review</p>
+              <div className="flex flex-col items-center gap-3 py-16 text-zinc-500">
+                <CheckCircle2 className="h-6 w-6" />
+                <p className="font-serif text-lg font-normal text-zinc-500">No flagged transactions</p>
+                <p className="text-sm font-normal">All clear -- no compliance flags to review</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Wallet</TableHead>
-                    <TableHead>Deal</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Flag Reason</TableHead>
-                    <TableHead>Severity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-200">
+                    {["Wallet", "Deal", "Amount", "Flag Reason", "Severity", "Status", "Date", ""].map((h) => (
+                      <th key={h} className={cn("px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500", h === "" && "text-right")}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
                   {flags.map((flag) => (
-                    <TableRow key={flag.id}>
-                      <TableCell>
-                        <span className="font-mono text-xs text-zinc-400">
-                          {formatAddress(flag.user.walletAddress)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-zinc-200">
-                        {flag.deal?.title ?? "---"}
-                      </TableCell>
-                      <TableCell className="font-medium text-zinc-50">
-                        {flag.contribution
-                          ? formatCurrency(flag.contribution.amountUsd)
-                          : "---"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{flag.reason}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={severityVariant[flag.severity] || "info"}>
-                          {flag.severity}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            "text-sm",
-                            !flag.isResolved && "text-amber-400",
-                            flag.isResolved && "text-emerald-400"
-                          )}
-                        >
-                          {flag.isResolved ? "Resolved" : "Open"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-zinc-500">
-                        {formatDate(flag.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button size="sm" variant="ghost">
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
+                    <tr key={flag.id} className="border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+                      <td className="px-5 py-4"><span className="font-mono text-xs text-zinc-500">{formatAddress(flag.user.walletAddress)}</span></td>
+                      <td className="px-5 py-4 text-sm font-normal text-zinc-700">{flag.deal?.title ?? "---"}</td>
+                      <td className="px-5 py-4 font-mono text-sm text-zinc-800">{flag.contribution ? formatCurrency(flag.contribution.amountUsd) : "---"}</td>
+                      <td className="px-5 py-4"><span className="text-sm font-normal text-zinc-600">{flag.reason}</span></td>
+                      <td className="px-5 py-4"><span className={cn("text-sm font-normal", severityColor[flag.severity] || "text-zinc-500")}>{flag.severity}</span></td>
+                      <td className="px-5 py-4"><span className={cn("text-sm font-normal", !flag.isResolved ? "text-amber-600" : "text-emerald-600")}>{flag.isResolved ? "Resolved" : "Open"}</span></td>
+                      <td className="px-5 py-4 text-sm font-normal text-zinc-500">{formatDate(flag.createdAt)}</td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button className="text-zinc-500 transition-colors hover:text-zinc-600"><Eye className="h-3.5 w-3.5" /></button>
                           {!flag.isResolved && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleResolveFlag(flag.id)}
-                              disabled={resolvingFlagId === flag.id}
-                            >
-                              {resolvingFlagId === flag.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
+                            <button onClick={() => handleResolveFlag(flag.id)} disabled={resolvingFlagId === flag.id} className="text-zinc-500 transition-colors hover:text-emerald-600 disabled:opacity-50">
+                              {resolvingFlagId === flag.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                            </button>
                           )}
-                          <Button size="sm" variant="ghost">
-                            <ArrowUpRight className="h-3.5 w-3.5" />
-                          </Button>
+                          <button className="text-zinc-500 transition-colors hover:text-zinc-600"><ArrowUpRight className="h-3.5 w-3.5" /></button>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             )}
           </div>
-        </TabsContent>
+        </>
+      )}
 
-        {/* ================================================================ */}
-        {/* KYC Queue                                                        */}
-        {/* ================================================================ */}
-        <TabsContent value="kyc">
+      {/* KYC Queue */}
+      {activeTab === "kyc" && (
+        <>
           {kycError && (
-            <div className="mb-4 flex items-center gap-3 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>{kycError}</span>
-              <Button size="sm" variant="ghost" onClick={fetchKycQueue} className="ml-auto">
-                Retry
-              </Button>
+            <div className="flex flex-col items-center justify-center py-32 text-center">
+              <Users className="mb-6 h-8 w-8 text-zinc-400" />
+              <h2 className="font-serif text-2xl font-light text-zinc-800">Unable to load KYC queue</h2>
+              <p className="mt-3 max-w-sm text-sm font-normal leading-relaxed text-zinc-500">{kycError}</p>
+              <button onClick={fetchKycQueue} className="mt-8 border border-zinc-300 px-6 py-2.5 text-sm font-normal text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-800">Retry</button>
             </div>
           )}
+
           {kycLoading ? (
-            <KycQueueSkeleton />
+            <RowSkeleton rows={4} />
           ) : kycUsers.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-zinc-800 py-12 text-zinc-500">
-              <CheckCircle2 className="h-8 w-8" />
-              <p className="text-sm font-medium">KYC queue is empty</p>
-              <p className="text-xs">No pending KYC submissions to review</p>
+            <div className="flex flex-col items-center gap-3 border border-zinc-200 py-16 text-zinc-500">
+              <CheckCircle2 className="h-6 w-6" />
+              <p className="font-serif text-lg font-normal text-zinc-500">KYC queue is empty</p>
+              <p className="text-sm font-normal">No pending KYC submissions to review</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-px bg-zinc-200">
               {kycUsers.map((kyc) => (
-                <Card key={kyc.id}>
-                  <div className="flex items-center justify-between p-5">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-zinc-50">
-                          {kyc.displayName || "Unknown User"}
-                        </span>
-                        <Badge variant="warning">Pending KYC</Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-zinc-400">
-                        <span className="font-mono text-xs">
-                          {formatAddress(kyc.walletAddress)}
-                        </span>
-                        <span>{kyc.email || "No email"}</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          Joined {formatDate(kyc.createdAt)}
-                        </span>
-                      </div>
+                <div key={kyc.id} className="flex items-center justify-between bg-white px-5 py-5">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-normal text-zinc-800">{kyc.displayName || "Unknown User"}</span>
+                      <span className="text-[10px] uppercase tracking-widest text-amber-600">Pending KYC</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm">Approve</Button>
-                      <Button size="sm" variant="destructive">
-                        Reject
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        Request Resubmission
-                      </Button>
+                    <div className="flex items-center gap-4 text-zinc-500">
+                      <span className="font-mono text-xs">{formatAddress(kyc.walletAddress)}</span>
+                      <span className="text-xs font-normal">{kyc.email || "No email"}</span>
+                      <span className="flex items-center gap-1 text-xs font-normal"><Clock className="h-3 w-3" />Joined {formatDate(kyc.createdAt)}</span>
                     </div>
                   </div>
-                </Card>
+                  <div className="flex items-center gap-2">
+                    <button className="border border-emerald-200 px-4 py-2 text-sm font-normal text-emerald-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50">Approve</button>
+                    <button className="border border-red-200 px-4 py-2 text-sm font-normal text-red-600 transition-colors hover:border-red-300 hover:bg-red-50">Reject</button>
+                    <button className="border border-zinc-200 px-4 py-2 text-sm font-normal text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-700">Request Resubmission</button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
-        </TabsContent>
+        </>
+      )}
 
-        {/* ================================================================ */}
-        {/* Sanctions Alerts                                                 */}
-        {/* ================================================================ */}
-        <TabsContent value="sanctions">
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-800 py-16 text-zinc-500">
-            <Shield className="h-10 w-10 text-zinc-600" />
-            <p className="text-sm font-medium text-zinc-400">
-              No sanctions alerts
-            </p>
-            <p className="max-w-sm text-center text-xs text-zinc-600">
-              Chainalysis sanctions screening integration is pending. When
-              connected, real-time OFAC/EU/UN sanctions matches will appear
-              here.
-            </p>
-          </div>
-        </TabsContent>
+      {/* Sanctions Alerts */}
+      {activeTab === "sanctions" && (
+        <div className="flex flex-col items-center gap-4 border border-zinc-200 py-20 text-center">
+          <Shield className="h-8 w-8 text-zinc-300" />
+          <p className="font-serif text-lg font-normal text-zinc-500">No sanctions alerts</p>
+          <p className="max-w-sm text-sm font-normal leading-relaxed text-zinc-400">
+            Chainalysis sanctions screening integration is pending. When connected, real-time OFAC/EU/UN sanctions matches will appear here.
+          </p>
+        </div>
+      )}
 
-        {/* ================================================================ */}
-        {/* Audit Log                                                        */}
-        {/* ================================================================ */}
-        <TabsContent value="audit">
-          <div className="mb-4 flex flex-wrap items-end gap-4">
-            <div className="w-72">
-              <Input
-                placeholder="Search by user, action, resource..."
-                value={auditSearch}
-                onChange={(e) => setAuditSearch(e.target.value)}
-                leftAddon={<Search className="h-4 w-4" />}
-              />
+      {/* Audit Log */}
+      {activeTab === "audit" && (
+        <>
+          {/* Filters */}
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+              <input type="text" placeholder="Search by user, action, resource..." value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)}
+                className="h-9 w-full rounded-none border border-zinc-200 bg-transparent pl-9 pr-3 text-sm font-normal text-zinc-700 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none" />
             </div>
             <div className="w-48">
-              <Select
-                placeholder="All Actions"
-                value={auditActionFilter}
-                onChange={(e) => setAuditActionFilter(e.target.value)}
-                options={[
-                  { value: "", label: "All Actions" },
-                  { value: "COMPLIANCE_FLAG", label: "Flag Events" },
-                  { value: "USER_KYC", label: "KYC Events" },
-                  { value: "USER_BANNED", label: "User Ban Events" },
-                  { value: "USER_UPDATED", label: "User Updates" },
-                ]}
-              />
+              <label className="mb-1.5 block text-xs uppercase tracking-widest text-zinc-500">Action Type</label>
+              <select value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value)}
+                className="h-9 w-full rounded-none border border-zinc-200 bg-transparent px-3 text-sm font-normal text-zinc-600 focus:border-zinc-400 focus:outline-none">
+                <option value="">All Actions</option>
+                <option value="COMPLIANCE_FLAG">Flag Events</option>
+                <option value="USER_KYC">KYC Events</option>
+                <option value="USER_BANNED">User Ban Events</option>
+                <option value="USER_UPDATED">User Updates</option>
+              </select>
             </div>
           </div>
 
           {auditError && (
-            <div className="mb-4 flex items-center gap-3 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>{auditError}</span>
-              <Button size="sm" variant="ghost" onClick={fetchAuditLogs} className="ml-auto">
-                Retry
-              </Button>
+            <div className="flex flex-col items-center justify-center py-32 text-center">
+              <Activity className="mb-6 h-8 w-8 text-zinc-400" />
+              <h2 className="font-serif text-2xl font-light text-zinc-800">Unable to load audit logs</h2>
+              <p className="mt-3 max-w-sm text-sm font-normal leading-relaxed text-zinc-500">{auditError}</p>
+              <button onClick={fetchAuditLogs} className="mt-8 border border-zinc-300 px-6 py-2.5 text-sm font-normal text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-800">Retry</button>
             </div>
           )}
 
-          <div className="overflow-hidden rounded-xl border border-zinc-800">
+          <div className="border border-zinc-200">
             {auditLoading ? (
-              <AuditLogSkeleton />
+              <RowSkeleton rows={10} />
             ) : auditLogs.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-12 text-zinc-500">
-                <Inbox className="h-8 w-8" />
-                <p className="text-sm font-medium">No audit log entries</p>
-                <p className="text-xs">Activity will appear here as actions are taken</p>
+              <div className="flex flex-col items-center gap-3 py-16 text-zinc-500">
+                <Inbox className="h-6 w-6" />
+                <p className="font-serif text-lg font-normal text-zinc-500">No audit log entries</p>
+                <p className="text-sm font-normal">Activity will appear here as actions are taken</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-8" />
-                    <TableHead>Timestamp</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Resource</TableHead>
-                    <TableHead>IP</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-200">
+                    <th className="w-8 px-3 py-3" />
+                    <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Timestamp</th>
+                    <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">User</th>
+                    <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Action</th>
+                    <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">Resource</th>
+                    <th className="px-5 py-3 text-left text-xs font-normal uppercase tracking-widest text-zinc-500">IP</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {auditLogs.map((entry) => {
                     const isExpanded = expandedAuditId === entry.id;
-                    const displayUser =
-                      entry.user?.email ||
-                      entry.user?.displayName ||
-                      (entry.userId ? "Unknown" : "system");
+                    const displayUser = entry.user?.email || entry.user?.displayName || (entry.userId ? "Unknown" : "system");
+                    const actionColor = entry.action.includes("CREATED") || entry.action.includes("SUBMIT")
+                      ? "text-sky-600"
+                      : entry.action.includes("APPROVED") || entry.action.includes("RESOLVED")
+                        ? "text-emerald-600"
+                        : entry.action.includes("REJECTED") || entry.action.includes("BANNED")
+                          ? "text-red-600"
+                          : entry.action.includes("ALERT") || entry.action.includes("PAUSE")
+                            ? "text-amber-600"
+                            : "text-zinc-500";
+
                     return (
                       <>
-                        <TableRow
-                          key={entry.id}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            setExpandedAuditId(isExpanded ? null : entry.id)
-                          }
-                        >
-                          <TableCell>
-                            <ChevronRight
-                              className={cn(
-                                "h-3.5 w-3.5 text-zinc-600 transition-transform",
-                                isExpanded && "rotate-90"
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell className="text-zinc-400 whitespace-nowrap">
-                            {formatDate(entry.createdAt, { includeTime: true })}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={cn(
-                                "text-sm",
-                                displayUser === "system"
-                                  ? "text-zinc-500 italic"
-                                  : "text-zinc-200"
-                              )}
-                            >
-                              {displayUser}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                entry.action.includes("CREATED") ||
-                                entry.action.includes("SUBMIT")
-                                  ? "info"
-                                  : entry.action.includes("APPROVED") ||
-                                      entry.action.includes("RESOLVED")
-                                    ? "success"
-                                    : entry.action.includes("REJECTED") ||
-                                        entry.action.includes("BANNED")
-                                      ? "error"
-                                      : entry.action.includes("ALERT") ||
-                                          entry.action.includes("PAUSE")
-                                        ? "warning"
-                                        : "outline"
-                              }
-                            >
-                              {entry.action}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs text-zinc-400">
-                            {entry.resourceType}
-                            {entry.resourceId
-                              ? `:${entry.resourceId.slice(0, 8)}...`
-                              : ""}
-                          </TableCell>
-                          <TableCell className="text-zinc-500 text-xs">
-                            {entry.ipAddress || "---"}
-                          </TableCell>
-                        </TableRow>
+                        <tr key={entry.id} className="cursor-pointer border-b border-zinc-200 transition-colors hover:bg-zinc-50" onClick={() => setExpandedAuditId(isExpanded ? null : entry.id)}>
+                          <td className="px-3 py-4"><ChevronRight className={cn("h-3.5 w-3.5 text-zinc-400 transition-transform", isExpanded && "rotate-90")} /></td>
+                          <td className="whitespace-nowrap px-5 py-4 text-sm font-normal text-zinc-500">{formatDate(entry.createdAt, { includeTime: true })}</td>
+                          <td className="px-5 py-4"><span className={cn("text-sm font-normal", displayUser === "system" ? "italic text-zinc-400" : "text-zinc-700")}>{displayUser}</span></td>
+                          <td className="px-5 py-4"><span className={cn("text-xs font-normal uppercase tracking-wider", actionColor)}>{entry.action}</span></td>
+                          <td className="px-5 py-4 font-mono text-xs text-zinc-500">{entry.resourceType}{entry.resourceId ? `:${entry.resourceId.slice(0, 8)}...` : ""}</td>
+                          <td className="px-5 py-4 text-xs font-normal text-zinc-400">{entry.ipAddress || "---"}</td>
+                        </tr>
                         {isExpanded && (
-                          <TableRow
-                            key={`${entry.id}-detail`}
-                            className="hover:bg-transparent"
-                          >
-                            <TableCell colSpan={6} className="bg-zinc-800/20 p-0">
-                              <div className="p-4">
-                                <p className="mb-1 text-xs font-medium text-zinc-400">
-                                  Details (JSON)
-                                </p>
-                                <pre className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-400">
-                                  {entry.metadata
-                                    ? JSON.stringify(entry.metadata, null, 2)
-                                    : "No metadata"}
+                          <tr key={`${entry.id}-detail`}>
+                            <td colSpan={6} className="border-b border-zinc-200 bg-zinc-50 p-0">
+                              <div className="px-5 py-4">
+                                <p className="mb-2 text-xs uppercase tracking-widest text-zinc-500">Metadata</p>
+                                <pre className="overflow-x-auto border border-zinc-200 bg-white p-4 font-mono text-xs leading-relaxed text-zinc-500">
+                                  {entry.metadata ? JSON.stringify(entry.metadata, null, 2) : "No metadata"}
                                 </pre>
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         )}
                       </>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             )}
           </div>
-        </TabsContent>
-      </Tabs>
+        </>
+      )}
     </div>
   );
 }

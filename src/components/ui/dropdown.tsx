@@ -119,7 +119,7 @@ const DropdownMenu = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
         ref={ref}
         role="menu"
         className={cn(
-          "absolute z-50 mt-1 min-w-[12rem] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 py-1 shadow-xl",
+          "absolute z-50 mt-1 min-w-[12rem] overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-xl",
           "animate-in fade-in-0 zoom-in-95",
           align === "right" ? "right-0" : "left-0",
           className
@@ -160,17 +160,17 @@ const DropdownItem = React.forwardRef<HTMLButtonElement, DropdownItemProps>(
         disabled={disabled}
         onClick={handleClick}
         className={cn(
-          "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-300 transition-colors",
-          "outline-none focus-visible:bg-zinc-800",
+          "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-700 transition-colors",
+          "outline-none focus-visible:bg-zinc-100",
           disabled
             ? "cursor-not-allowed opacity-50"
-            : "cursor-pointer hover:bg-zinc-800 hover:text-zinc-50",
+            : "cursor-pointer hover:bg-zinc-100 hover:text-zinc-900",
           className
         )}
         {...props}
       >
         {icon && (
-          <span className="shrink-0 text-zinc-500" aria-hidden="true">
+          <span className="shrink-0 text-zinc-400" aria-hidden="true">
             {icon}
           </span>
         )}
@@ -189,7 +189,7 @@ function DropdownSeparator({ className }: { className?: string }) {
   return (
     <div
       role="separator"
-      className={cn("my-1 h-px bg-zinc-800", className)}
+      className={cn("my-1 h-px bg-zinc-200", className)}
     />
   );
 }

@@ -2,7 +2,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils/cn";
 
-const skeletonVariants = cva("animate-pulse bg-zinc-800", {
+const skeletonVariants = cva("animate-pulse bg-zinc-200", {
   variants: {
     variant: {
       text: "h-4 w-full rounded",

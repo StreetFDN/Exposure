@@ -167,21 +167,21 @@ export function ParticipationFlow({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl border border-zinc-800 bg-zinc-900",
+        "flex flex-col rounded-xl border border-zinc-200 bg-white",
         className
       )}
     >
       {/* Step indicator */}
-      <div className="border-b border-zinc-800 px-6 py-4">
+      <div className="border-b border-zinc-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-serif text-lg font-light text-zinc-100">
+          <h3 className="font-serif text-lg font-light text-zinc-900">
             Participate
           </h3>
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-1 text-zinc-500 transition-colors hover:text-zinc-300"
+              className="rounded-md p-1 text-zinc-500 transition-colors hover:text-zinc-700"
             >
               <X className="h-4 w-4" />
             </button>
@@ -197,10 +197,10 @@ export function ParticipationFlow({
                   className={cn(
                     "flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition-colors",
                     i < step
-                      ? "bg-zinc-600 text-zinc-100"
+                      ? "bg-zinc-400 text-white"
                       : i === step
-                        ? "bg-zinc-50 text-zinc-900"
-                        : "bg-zinc-800 text-zinc-600"
+                        ? "bg-zinc-900 text-white"
+                        : "bg-zinc-100 text-zinc-400"
                   )}
                 >
                   {i < step ? (
@@ -212,7 +212,7 @@ export function ParticipationFlow({
                 <span
                   className={cn(
                     "hidden text-[10px] sm:block",
-                    i === step ? "text-zinc-300" : "text-zinc-600"
+                    i === step ? "text-zinc-700" : "text-zinc-400"
                   )}
                 >
                   {label}
@@ -222,7 +222,7 @@ export function ParticipationFlow({
                 <div
                   className={cn(
                     "h-px flex-1 transition-colors",
-                    i < step ? "bg-zinc-600" : "bg-zinc-800"
+                    i < step ? "bg-zinc-400" : "bg-zinc-200"
                   )}
                 />
               )}
@@ -236,19 +236,19 @@ export function ParticipationFlow({
         {/* Step 1: Register Interest */}
         {step === 0 && (
           <div className="flex flex-col items-center gap-6 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-800">
-              <Wallet className="h-8 w-8 text-zinc-400" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100">
+              <Wallet className="h-8 w-8 text-zinc-500" />
             </div>
             <div>
-              <h4 className="font-serif text-xl font-light text-zinc-100">
+              <h4 className="font-serif text-xl font-light text-zinc-900">
                 Register for this Deal
               </h4>
-              <p className="mt-2 text-sm text-zinc-400">
+              <p className="mt-2 text-sm text-zinc-500">
                 Confirm your interest in the {dealName} {roundType}.
               </p>
             </div>
 
-            <div className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+            <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               <div className="flex flex-col gap-2">
                 <InfoRow label="Deal" value={dealName} />
                 <InfoRow label="Round" value={roundType} />
@@ -271,10 +271,10 @@ export function ParticipationFlow({
         {step === 1 && (
           <div className="flex flex-col gap-6">
             <div className="text-center">
-              <h4 className="font-serif text-xl font-light text-zinc-100">
+              <h4 className="font-serif text-xl font-light text-zinc-900">
                 Eligibility Check
               </h4>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-500">
                 Verifying your eligibility for this deal.
               </p>
             </div>
@@ -283,32 +283,32 @@ export function ParticipationFlow({
               {eligibilityChecks.map((check, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3"
+                  className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3"
                 >
                   {check.passed ? (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10">
-                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50">
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
                     </div>
                   ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/10">
-                      <X className="h-3.5 w-3.5 text-rose-400" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-50">
+                      <X className="h-3.5 w-3.5 text-rose-600" />
                     </div>
                   )}
                   <span
                     className={cn(
                       "text-sm",
-                      check.passed ? "text-zinc-300" : "text-rose-400"
+                      check.passed ? "text-zinc-700" : "text-rose-600"
                     )}
                   >
                     {check.label}
                   </span>
                   {check.passed && (
-                    <span className="ml-auto text-xs text-emerald-400">
+                    <span className="ml-auto text-xs text-emerald-600">
                       Passed
                     </span>
                   )}
                   {!check.passed && check.reason && (
-                    <span className="ml-auto text-xs text-rose-400">
+                    <span className="ml-auto text-xs text-rose-600">
                       {check.reason}
                     </span>
                   )}
@@ -316,9 +316,9 @@ export function ParticipationFlow({
               ))}
 
               {isChecking && (
-                <div className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
-                  <span className="text-sm text-zinc-400">
+                <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+                  <span className="text-sm text-zinc-500">
                     Checking...
                   </span>
                 </div>
@@ -339,7 +339,7 @@ export function ParticipationFlow({
 
             {!isChecking &&
               eligibilityChecks.some((c) => !c.passed) && (
-                <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-400">
+                <div className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>
                     You do not meet all eligibility requirements for this deal.
@@ -352,28 +352,28 @@ export function ParticipationFlow({
         {/* Step 3: Allocation Reveal */}
         {step === 2 && (
           <div className="flex flex-col items-center gap-6 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-800">
-              <CheckCircle2 className="h-8 w-8 text-zinc-400" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100">
+              <CheckCircle2 className="h-8 w-8 text-zinc-500" />
             </div>
             <div>
-              <h4 className="font-serif text-xl font-light text-zinc-100">
+              <h4 className="font-serif text-xl font-light text-zinc-900">
                 Your Allocation
               </h4>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-500">
                 Based on your tier and the allocation snapshot.
               </p>
             </div>
 
-            <div className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-6">
+            <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 p-6">
               <span className="text-xs text-zinc-500">
                 Guaranteed Allocation
               </span>
-              <p className="mt-1 font-serif text-3xl font-light text-zinc-100">
+              <p className="mt-1 font-serif text-3xl font-light text-zinc-900">
                 {formatCurrency(guaranteedAllocation)}
               </p>
             </div>
 
-            <div className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+            <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               <div className="flex flex-col gap-2">
                 <InfoRow label="Your Tier" value={userTier} />
                 <InfoRow label="Multiplier" value={tierMultiplier} />
@@ -402,17 +402,17 @@ export function ParticipationFlow({
         {step === 3 && (
           <div className="flex flex-col gap-5">
             <div>
-              <h4 className="font-serif text-xl font-light text-zinc-100">
+              <h4 className="font-serif text-xl font-light text-zinc-900">
                 Contribute
               </h4>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-500">
                 Enter your contribution amount.
               </p>
             </div>
 
             {/* Amount */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-300">
+              <label className="text-sm font-medium text-zinc-700">
                 Amount ({raiseTokenSymbol})
               </label>
               <Input
@@ -428,7 +428,7 @@ export function ParticipationFlow({
                       onClick={() =>
                         setAmount(minContribution.toString())
                       }
-                      className="rounded bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-700"
+                      className="rounded bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200"
                     >
                       MIN
                     </button>
@@ -442,7 +442,7 @@ export function ParticipationFlow({
                           ).toString()
                         )
                       }
-                      className="rounded bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-700"
+                      className="rounded bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200"
                     >
                       MAX
                     </button>
@@ -453,7 +453,7 @@ export function ParticipationFlow({
 
             {/* Currency selector */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-300">
+              <label className="text-sm font-medium text-zinc-700">
                 Currency
               </label>
               <div className="flex gap-1.5">
@@ -465,8 +465,8 @@ export function ParticipationFlow({
                     className={cn(
                       "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                       currency === c
-                        ? "border-zinc-500 bg-zinc-700/30 text-zinc-200"
-                        : "border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-700"
+                        ? "border-zinc-500 bg-zinc-100 text-zinc-700"
+                        : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
                     )}
                   >
                     {c}
@@ -476,7 +476,7 @@ export function ParticipationFlow({
             </div>
 
             {/* Wallet balance */}
-            <div className="flex items-center gap-2 text-sm text-zinc-400">
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
               <Wallet className="h-4 w-4" />
               <span>
                 Balance: {formatCurrency(walletBalance)} {currency}
@@ -484,7 +484,7 @@ export function ParticipationFlow({
             </div>
 
             {/* Summary */}
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
               <div className="flex flex-col gap-2">
                 <InfoRow
                   label="Contribution"
@@ -494,14 +494,14 @@ export function ParticipationFlow({
                   label="Platform Fee (0.5%)"
                   value={formatCurrency(platformFee)}
                 />
-                <div className="border-t border-zinc-800 pt-2">
+                <div className="border-t border-zinc-200 pt-2">
                   <InfoRow
                     label="Total"
                     value={formatCurrency(totalCost)}
                     highlight
                   />
                 </div>
-                <div className="border-t border-zinc-800 pt-2">
+                <div className="border-t border-zinc-200 pt-2">
                   <InfoRow
                     label="Est. Tokens"
                     value={`${estimatedTokens.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${tokenSymbol}`}
@@ -526,15 +526,15 @@ export function ParticipationFlow({
         {step === 4 && (
           <div className="flex flex-col gap-6">
             <div className="text-center">
-              <h4 className="font-serif text-xl font-light text-zinc-100">
+              <h4 className="font-serif text-xl font-light text-zinc-900">
                 Confirm Contribution
               </h4>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-500">
                 Review the details before signing.
               </p>
             </div>
 
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               <div className="flex flex-col gap-3">
                 <InfoRow label="Deal" value={dealName} />
                 <InfoRow
@@ -542,14 +542,14 @@ export function ParticipationFlow({
                   value={`${formatCurrency(numericAmount)} ${currency}`}
                 />
                 <InfoRow label="Platform Fee" value={formatCurrency(platformFee)} />
-                <div className="border-t border-zinc-800 pt-2">
+                <div className="border-t border-zinc-200 pt-2">
                   <InfoRow
                     label="Total Debit"
                     value={formatCurrency(totalCost)}
                     highlight
                   />
                 </div>
-                <div className="border-t border-zinc-800 pt-2">
+                <div className="border-t border-zinc-200 pt-2">
                   <InfoRow
                     label="You Receive"
                     value={`${estimatedTokens.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${tokenSymbol}`}
@@ -559,7 +559,7 @@ export function ParticipationFlow({
               </div>
             </div>
 
-            <div className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-500">
+            <div className="flex items-start gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
                 By confirming, you agree to the deal terms and conditions.
@@ -581,19 +581,19 @@ export function ParticipationFlow({
         {/* Step 6: Receipt */}
         {step === 5 && (
           <div className="flex flex-col items-center gap-6 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
-              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </div>
             <div>
-              <h4 className="font-serif text-xl font-light text-zinc-100">
+              <h4 className="font-serif text-xl font-light text-zinc-900">
                 Contribution Confirmed
               </h4>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-500">
                 Your contribution to {dealName} was successful.
               </p>
             </div>
 
-            <div className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+            <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 p-4">
               <div className="flex flex-col gap-2">
                 <InfoRow
                   label="Amount"
@@ -608,21 +608,21 @@ export function ParticipationFlow({
 
             {/* Transaction hash */}
             {txHash && (
-              <div className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+              <div className="w-full rounded-lg border border-zinc-200 bg-zinc-50 p-3">
                 <span className="mb-1 block text-xs text-zinc-500">
                   Transaction Hash
                 </span>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate text-xs text-zinc-400">
+                  <code className="flex-1 truncate text-xs text-zinc-500">
                     {txHash}
                   </code>
                   <button
                     type="button"
                     onClick={handleCopyTx}
-                    className="rounded-md p-1 text-zinc-500 transition-colors hover:text-zinc-300"
+                    className="rounded-md p-1 text-zinc-400 transition-colors hover:text-zinc-700"
                   >
                     {copiedTx ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
                     ) : (
                       <Copy className="h-3.5 w-3.5" />
                     )}
@@ -631,7 +631,7 @@ export function ParticipationFlow({
                     href={`https://etherscan.io/tx/${txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md p-1 text-zinc-500 transition-colors hover:text-zinc-300"
+                    className="rounded-md p-1 text-zinc-400 transition-colors hover:text-zinc-700"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
@@ -644,14 +644,14 @@ export function ParticipationFlow({
                 href={`https://twitter.com/intent/tweet?text=Just%20contributed%20to%20${encodeURIComponent(dealName)}%20on%20Exposure!`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
               >
                 <Share2 className="h-4 w-4" />
                 Share
               </a>
               <a
                 href="/portfolio"
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
               >
                 View Portfolio
                 <ArrowRight className="h-4 w-4" />
@@ -663,11 +663,11 @@ export function ParticipationFlow({
 
       {/* Back button */}
       {canGoBack() && (
-        <div className="border-t border-zinc-800 px-6 py-3">
+        <div className="border-t border-zinc-200 px-6 py-3">
           <button
             type="button"
             onClick={() => setStep((step - 1) as StepIndex)}
-            className="inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+            className="inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-700"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
@@ -697,7 +697,7 @@ function InfoRow({
       <span
         className={cn(
           "font-medium",
-          highlight ? "text-zinc-100" : "text-zinc-300"
+          highlight ? "text-zinc-900" : "text-zinc-700"
         )}
       >
         {value}

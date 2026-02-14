@@ -2,29 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import {
-  Users,
-  Crown,
-  Clock,
-  ChevronRight,
-  Settings,
-  TrendingUp,
-  Shield,
-  UserPlus,
-  Loader2,
-} from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Avatar } from "@/components/ui/avatar";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Alert } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils/cn";
 import { formatRelativeTime, formatLargeNumber } from "@/lib/utils/format";
 
 // ---------------------------------------------------------------------------
-// Types — matching API response from GET /api/groups?membership=mine
+// Types
 // ---------------------------------------------------------------------------
 
 interface GroupLead {
@@ -52,61 +34,37 @@ interface ApiGroup {
   _count: {
     members: number;
   };
-  // Attached by the membership=mine branch
   membershipRole: "LEAD" | "CO_LEAD" | "MEMBER";
   membershipStatus: "APPROVED" | "PENDING";
   joinedAt: string | null;
 }
 
 // ---------------------------------------------------------------------------
-// Status/role badge helpers
+// Skeleton
 // ---------------------------------------------------------------------------
 
-const MEMBER_STATUS_CONFIG: Record<
-  string,
-  { label: string; variant: "default" | "success" | "warning" | "info" | "outline" }
-> = {
-  PENDING: { label: "Pending", variant: "warning" },
-  APPROVED: { label: "Active", variant: "success" },
-  REJECTED: { label: "Rejected", variant: "outline" },
-  LEFT: { label: "Left", variant: "outline" },
-};
-
-const GROUP_STATUS_CONFIG: Record<
-  string,
-  { label: string; variant: "default" | "success" | "warning" | "info" | "outline" }
-> = {
-  PENDING_APPROVAL: { label: "Pending", variant: "warning" },
-  ACTIVE: { label: "Active", variant: "success" },
-  SUSPENDED: { label: "Suspended", variant: "outline" },
-  CLOSED: { label: "Closed", variant: "outline" },
-};
-
-const ROLE_CONFIG: Record<
-  string,
-  { label: string; variant: "default" | "warning" | "outline" }
-> = {
-  LEAD: { label: "Lead", variant: "warning" },
-  CO_LEAD: { label: "Co-Lead", variant: "default" },
-  MEMBER: { label: "Member", variant: "outline" },
-};
-
-// ---------------------------------------------------------------------------
-// Loading Skeletons
-// ---------------------------------------------------------------------------
-
-function GroupCardSkeleton() {
+function GroupsSkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Skeleton key={i} variant="card" className="h-24" />
-      ))}
+    <div className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
+      <div className="mb-16">
+        <div className="h-8 w-32 animate-pulse rounded bg-zinc-200" />
+        <div className="mt-3 h-4 w-64 animate-pulse rounded bg-zinc-200" />
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="border border-zinc-200 p-8">
+            <div className="h-5 w-40 animate-pulse rounded bg-zinc-200" />
+            <div className="mt-3 h-3 w-32 animate-pulse rounded bg-zinc-200" />
+            <div className="mt-2 h-3 w-24 animate-pulse rounded bg-zinc-200" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Page Component
+// Component
 // ---------------------------------------------------------------------------
 
 export default function MyGroupsPage() {
@@ -114,25 +72,20 @@ export default function MyGroupsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // -------------------------------------------------------------------------
-  // Fetch user's groups via membership=mine
-  // -------------------------------------------------------------------------
-
   const fetchGroups = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       const res = await fetch("/api/groups?membership=mine&limit=100");
       const json = await res.json();
-
       if (!res.ok || !json.success) {
         throw new Error(json.error?.message || "Failed to load groups");
       }
-
       setGroups(json.data.groups);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load groups");
+      setError(
+        err instanceof Error ? err.message : "Failed to load groups"
+      );
     } finally {
       setLoading(false);
     }
@@ -142,248 +95,200 @@ export default function MyGroupsPage() {
     fetchGroups();
   }, [fetchGroups]);
 
-  // -------------------------------------------------------------------------
-  // Split groups into "member of" vs "leading"
-  // -------------------------------------------------------------------------
-
-  const memberGroups = useMemo(
-    () => groups.filter((g) => g.membershipRole === "MEMBER" || g.membershipRole === "CO_LEAD"),
-    [groups]
-  );
-
   const leadingGroups = useMemo(
     () => groups.filter((g) => g.membershipRole === "LEAD"),
     [groups]
   );
 
-  // -------------------------------------------------------------------------
-  // Error state
-  // -------------------------------------------------------------------------
+  const memberGroups = useMemo(
+    () =>
+      groups.filter(
+        (g) =>
+          g.membershipRole === "MEMBER" || g.membershipRole === "CO_LEAD"
+      ),
+    [groups]
+  );
 
-  if (error && !loading) {
+  if (loading) return <GroupsSkeleton />;
+
+  if (error) {
     return (
-      <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-50">My Groups</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Manage your group memberships and syndicates
+      <div className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
+        <div className="flex flex-col items-center justify-center py-24">
+          <p className="font-serif text-xl font-normal text-zinc-500">
+            Unable to load your groups
           </p>
+          <p className="mt-2 text-sm font-normal text-zinc-400">{error}</p>
+          <button
+            onClick={fetchGroups}
+            className="mt-4 text-xs font-normal text-zinc-500 transition-colors hover:text-zinc-600"
+          >
+            Retry
+          </button>
         </div>
-        <Alert variant="error">{error}</Alert>
-        <Button variant="secondary" size="sm" onClick={fetchGroups}>
-          <Loader2 className="h-4 w-4" />
-          Retry
-        </Button>
       </div>
     );
   }
 
+  function statusLabel(status: string): string {
+    switch (status) {
+      case "ACTIVE":
+        return "Active";
+      case "PENDING_APPROVAL":
+        return "Pending";
+      case "SUSPENDED":
+        return "Suspended";
+      case "CLOSED":
+        return "Closed";
+      default:
+        return status;
+    }
+  }
+
+  function roleLabel(role: string): string {
+    switch (role) {
+      case "LEAD":
+        return "Lead";
+      case "CO_LEAD":
+        return "Co-Lead";
+      default:
+        return "Member";
+    }
+  }
+
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-50">My Groups</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Manage your group memberships and syndicates
+      <div className="mb-16">
+        <h1 className="font-serif text-3xl font-light text-zinc-900">
+          My Groups
+        </h1>
+        <p className="mt-2 text-sm font-normal text-zinc-500">
+          Manage your group memberships and syndicates.
         </p>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="member">
-        <TabsList>
-          <TabsTrigger value="member">
-            <span className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Member Of
-              {!loading && memberGroups.length > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400">
-                  {memberGroups.length}
-                </span>
-              )}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="leading">
-            <span className="flex items-center gap-2">
-              <Crown className="h-4 w-4" />
-              Leading
-              {!loading && leadingGroups.length > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400">
-                  {leadingGroups.length}
-                </span>
-              )}
-            </span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* =============================================================== */}
-        {/* Member Of Tab                                                   */}
-        {/* =============================================================== */}
-        <TabsContent value="member">
-          {loading ? (
-            <GroupCardSkeleton />
-          ) : memberGroups.length > 0 ? (
-            <div className="space-y-3">
-              {memberGroups.map((group) => {
-                const statusConf = MEMBER_STATUS_CONFIG[group.membershipStatus] || MEMBER_STATUS_CONFIG.APPROVED;
-                const roleConf = ROLE_CONFIG[group.membershipRole] || ROLE_CONFIG.MEMBER;
-                const memberCount = group._count?.members ?? group.memberCount ?? 0;
-                const leadName = group.lead?.displayName || group.lead?.walletAddress || "Unknown";
-
-                return (
-                  <Card key={group.id}>
-                    <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      {/* Left: group info */}
-                      <div className="flex items-center gap-4">
-                        <Avatar
-                          alt={group.name}
-                          src={group.avatarUrl}
-                          size="lg"
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/groups/${group.slug}`}
-                              className="text-base font-semibold text-zinc-50 transition-colors hover:text-violet-400"
-                            >
-                              {group.name}
-                            </Link>
-                            <Badge variant={statusConf.variant} size="sm">
-                              {statusConf.label}
-                            </Badge>
-                            <Badge variant={roleConf.variant} size="sm">
-                              {roleConf.label}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-zinc-500">
-                            Led by {leadName}
-                          </p>
-                          <div className="mt-1 flex items-center gap-4 text-xs text-zinc-500">
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {memberCount} members
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <TrendingUp className="h-3 w-3" />
-                              {group.dealCount} deals
-                            </span>
-                            {group.joinedAt && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Joined {formatRelativeTime(group.joinedAt)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: action */}
-                      <Link href={`/groups/${group.slug}`}>
-                        <Button variant="outline" size="sm">
-                          View Group
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<Users className="h-6 w-6" />}
-              title="No group memberships"
-              description="You haven't joined any investment groups yet. Browse available groups to get started."
-              action={
-                <Link href="/groups">
-                  <Button variant="default" size="sm">
-                    Browse Groups
-                  </Button>
+      {/* Groups I Lead */}
+      {leadingGroups.length > 0 && (
+        <div className="mb-16">
+          <h2 className="mb-6 font-serif text-lg font-normal text-zinc-900">
+            Groups I Lead
+          </h2>
+          <div className="grid grid-cols-1 gap-px border border-zinc-200 lg:grid-cols-2">
+            {leadingGroups.map((group) => {
+              const memberCount =
+                group._count?.members ?? group.memberCount ?? 0;
+              return (
+                <Link
+                  key={group.id}
+                  href={`/groups/${group.slug}`}
+                  className="block p-8 transition-colors hover:bg-zinc-50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-normal text-zinc-800">
+                        {group.name}
+                      </h3>
+                      <p className="mt-2 text-xs font-normal text-zinc-400">
+                        {memberCount}/{group.maxMembers} members &middot;{" "}
+                        {group.dealCount} deals &middot; $
+                        {formatLargeNumber(group.totalRaised)} raised
+                      </p>
+                    </div>
+                    <span className="border border-zinc-200 px-2 py-0.5 text-xs font-normal text-zinc-500">
+                      {statusLabel(group.status)}
+                    </span>
+                  </div>
                 </Link>
-              }
-            />
-          )}
-        </TabsContent>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-        {/* =============================================================== */}
-        {/* Leading Tab                                                     */}
-        {/* =============================================================== */}
-        <TabsContent value="leading">
-          {loading ? (
-            <GroupCardSkeleton />
-          ) : leadingGroups.length > 0 ? (
-            <div className="space-y-3">
-              {leadingGroups.map((group) => {
-                const statusConf = GROUP_STATUS_CONFIG[group.status] || GROUP_STATUS_CONFIG.ACTIVE;
-                const memberCount = group._count?.members ?? group.memberCount ?? 0;
-                const totalRaised = group.totalRaised || "0";
+      {/* Groups I'm In */}
+      <div>
+        <h2 className="mb-6 font-serif text-lg font-normal text-zinc-900">
+          Groups I&apos;m In
+        </h2>
+        {memberGroups.length === 0 && leadingGroups.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <p className="font-serif text-lg font-normal text-zinc-500">
+              No group memberships
+            </p>
+            <p className="mt-2 text-sm font-normal text-zinc-400">
+              Browse available groups to get started.
+            </p>
+            <Link
+              href="/groups"
+              className="mt-4 text-xs font-normal text-zinc-500 transition-colors hover:text-zinc-600"
+            >
+              Browse Groups
+            </Link>
+          </div>
+        ) : memberGroups.length === 0 ? (
+          <p className="py-12 text-center font-serif text-sm font-normal text-zinc-400">
+            You haven&apos;t joined any groups as a member yet.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-px border border-zinc-200 lg:grid-cols-2">
+            {memberGroups.map((group) => {
+              const memberCount =
+                group._count?.members ?? group.memberCount ?? 0;
+              const leadName =
+                group.lead?.displayName ||
+                group.lead?.walletAddress ||
+                "Unknown";
 
-                return (
-                  <Card key={group.id}>
-                    <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      {/* Left: group info */}
-                      <div className="flex items-center gap-4">
-                        <Avatar
-                          alt={group.name}
-                          src={group.avatarUrl}
-                          size="lg"
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/groups/${group.slug}`}
-                              className="text-base font-semibold text-zinc-50 transition-colors hover:text-violet-400"
-                            >
-                              {group.name}
-                            </Link>
-                            <Badge variant={statusConf.variant} size="sm">
-                              {statusConf.label}
-                            </Badge>
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-4 text-xs text-zinc-500">
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {memberCount}/{group.maxMembers} members
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <TrendingUp className="h-3 w-3" />
-                              {group.dealCount} deals
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Shield className="h-3 w-3" />
-                              ${formatLargeNumber(totalRaised)} raised
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: actions */}
-                      <div className="flex items-center gap-2">
-                        <Link href={`/groups/${group.slug}`}>
-                          <Button variant="outline" size="sm">
-                            <Settings className="h-4 w-4" />
-                            Manage
-                          </Button>
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyState
-              icon={<Crown className="h-6 w-6" />}
-              title="Not leading any groups"
-              description="You haven't created an investment group yet. Start a syndicate to lead deal-by-deal investing."
-              action={
-                <Button variant="default" size="sm">
-                  Create Group
-                </Button>
-              }
-            />
-          )}
-        </TabsContent>
-      </Tabs>
+              return (
+                <Link
+                  key={group.id}
+                  href={`/groups/${group.slug}`}
+                  className="block p-8 transition-colors hover:bg-zinc-50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-normal text-zinc-800">
+                        {group.name}
+                      </h3>
+                      <p className="mt-1 text-xs font-normal text-zinc-400">
+                        Led by {leadName}
+                      </p>
+                      <p className="mt-1 text-xs font-normal text-zinc-400">
+                        {memberCount} members &middot; {group.dealCount} deals
+                        {group.joinedAt && (
+                          <>
+                            {" "}
+                            &middot; Joined{" "}
+                            {formatRelativeTime(group.joinedAt)}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="border border-zinc-200 px-2 py-0.5 text-xs font-normal text-zinc-500">
+                        {roleLabel(group.membershipRole)}
+                      </span>
+                      <span
+                        className={cn(
+                          "border px-2 py-0.5 text-xs font-normal",
+                          group.membershipStatus === "APPROVED"
+                            ? "border-zinc-300 text-zinc-500"
+                            : "border-zinc-200 text-zinc-400"
+                        )}
+                      >
+                        {group.membershipStatus === "APPROVED"
+                          ? "Active"
+                          : "Pending"}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

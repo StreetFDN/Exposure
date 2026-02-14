@@ -92,7 +92,7 @@ const Countdown = React.forwardRef<HTMLDivElement, CountdownProps>(
             {segments.map((seg, i) => (
               <React.Fragment key={seg.label}>
                 <div className="flex flex-col items-center">
-                  <span className="font-mono text-2xl font-bold tabular-nums text-zinc-50">
+                  <span className="font-mono text-2xl font-bold tabular-nums text-zinc-900">
                     {seg.value}
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-zinc-500">
@@ -100,7 +100,7 @@ const Countdown = React.forwardRef<HTMLDivElement, CountdownProps>(
                   </span>
                 </div>
                 {i < segments.length - 1 && (
-                  <span className="mb-3 font-mono text-xl text-zinc-600">
+                  <span className="mb-3 font-mono text-xl text-zinc-300">
                     :
                   </span>
                 )}

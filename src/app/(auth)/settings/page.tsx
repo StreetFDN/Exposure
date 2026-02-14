@@ -1,50 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  User,
-  Wallet,
-  Bell,
-  Shield,
-  Camera,
-  Link2,
-  Unlink,
-  Monitor,
-  Smartphone,
-  Download,
-  Trash2,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Loader2,
-  RefreshCw,
-} from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Monitor, Smartphone } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
-import { Select } from "@/components/ui/select";
-import { Alert } from "@/components/ui/alert";
-import { Avatar } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
 import { formatAddress, formatDate } from "@/lib/utils/format";
 
@@ -100,7 +58,6 @@ interface SessionEntry {
   isCurrent: boolean;
 }
 
-// Sessions are still placeholder until a sessions API exists
 const SESSIONS: SessionEntry[] = [
   {
     id: "1",
@@ -122,20 +79,10 @@ const SESSIONS: SessionEntry[] = [
     lastActive: "2026-02-11T18:45:00",
     isCurrent: false,
   },
-  {
-    id: "3",
-    device: "MacBook Pro",
-    deviceIcon: "desktop",
-    browser: "Firefox 122",
-    ip: "172.16.0.***",
-    location: "San Francisco, US",
-    lastActive: "2026-02-09T14:20:00",
-    isCurrent: false,
-  },
 ];
 
 // ---------------------------------------------------------------------------
-// Chain display helpers
+// Config
 // ---------------------------------------------------------------------------
 
 const CHAIN_LABELS: Record<string, string> = {
@@ -144,36 +91,29 @@ const CHAIN_LABELS: Record<string, string> = {
   ARBITRUM: "Arbitrum",
 };
 
-const CHAIN_COLORS: Record<string, string> = {
-  ETHEREUM: "text-sky-400",
-  BASE: "text-blue-400",
-  ARBITRUM: "text-orange-400",
-};
-
-// ---------------------------------------------------------------------------
-// Digest mode options
-// ---------------------------------------------------------------------------
-
 const DIGEST_OPTIONS = [
-  { value: "immediate", label: "Immediate -- send notifications in real time" },
-  { value: "daily", label: "Daily Digest -- one email per day" },
-  { value: "weekly", label: "Weekly Digest -- one email per week" },
+  { value: "immediate", label: "Immediate" },
+  { value: "daily", label: "Daily Digest" },
+  { value: "weekly", label: "Weekly Digest" },
 ];
 
 // ---------------------------------------------------------------------------
-// Loading Skeleton
+// Skeleton
 // ---------------------------------------------------------------------------
 
-function ProfileSkeleton() {
+function SettingsSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Skeleton variant="circle" className="h-16 w-16" />
-        <Skeleton variant="text" className="h-8 w-32" />
+    <div className="mx-auto max-w-4xl px-6 py-12 lg:px-8">
+      <div className="mb-16">
+        <div className="h-8 w-24 animate-pulse rounded bg-zinc-200" />
+        <div className="mt-3 h-4 w-64 animate-pulse rounded bg-zinc-200" />
       </div>
-      <Skeleton variant="rect" className="h-10 w-full" />
-      <Skeleton variant="rect" className="h-10 w-full" />
-      <Skeleton variant="rect" className="h-10 w-full" />
+      <div className="space-y-6">
+        <div className="h-12 w-full animate-pulse rounded bg-zinc-200" />
+        <div className="h-12 w-full animate-pulse rounded bg-zinc-200" />
+        <div className="h-12 w-full animate-pulse rounded bg-zinc-200" />
+        <div className="h-12 w-full animate-pulse rounded bg-zinc-200" />
+      </div>
     </div>
   );
 }
@@ -183,7 +123,6 @@ function ProfileSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
-  // Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -192,14 +131,13 @@ export default function SettingsPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
 
-  // Wallet state
   const [wallets, setWallets] = useState<ApiWallet[]>([]);
   const [walletsLoading, setWalletsLoading] = useState(true);
   const [walletError, setWalletError] = useState<string | null>(null);
-  const [unlinkingWalletId, setUnlinkingWalletId] = useState<string | null>(null);
-  const [linkingWallet, setLinkingWallet] = useState(false);
+  const [unlinkingWalletId, setUnlinkingWalletId] = useState<string | null>(
+    null
+  );
 
-  // Notification preferences state
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     emailNotifications: true,
     pushNotifications: true,
@@ -216,70 +154,42 @@ export default function SettingsPage() {
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [prefsMessage, setPrefsMessage] = useState<string | null>(null);
 
-  // Export state
   const [exporting, setExporting] = useState(false);
-
-  // Security state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const [activeSection, setActiveSection] = useState<
+    "profile" | "wallets" | "notifications" | "security"
+  >("profile");
+
   // -------------------------------------------------------------------------
-  // Fetch user profile from GET /api/users/me
+  // Fetch profile
   // -------------------------------------------------------------------------
 
   const fetchProfile = useCallback(async () => {
     try {
       setProfileLoading(true);
       setProfileError(null);
-
       const res = await fetch("/api/users/me");
       const json = await res.json();
-
       if (!res.ok || !json.success) {
         throw new Error(json.error?.message || "Failed to load profile");
       }
-
       const user = json.data.user;
       setProfile(user);
       setDisplayName(user.displayName || "");
       setEmail(user.email || "");
-
-      // Also populate wallets from the user profile response
       if (user.wallets) {
         setWallets(user.wallets);
         setWalletsLoading(false);
       }
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Failed to load profile");
+      setProfileError(
+        err instanceof Error ? err.message : "Failed to load profile"
+      );
     } finally {
       setProfileLoading(false);
     }
   }, []);
-
-  // -------------------------------------------------------------------------
-  // Fetch linked wallets (standalone refresh)
-  // -------------------------------------------------------------------------
-
-  const fetchWallets = useCallback(async () => {
-    try {
-      setWalletsLoading(true);
-      setWalletError(null);
-      const res = await fetch("/api/users/me/wallets");
-      const json = await res.json();
-      if (json.success) {
-        setWallets(json.data.wallets);
-      } else {
-        setWalletError(json.error?.message || "Failed to load wallets");
-      }
-    } catch {
-      setWalletError("Failed to load wallets");
-    } finally {
-      setWalletsLoading(false);
-    }
-  }, []);
-
-  // -------------------------------------------------------------------------
-  // Fetch notification preferences
-  // -------------------------------------------------------------------------
 
   const fetchPreferences = useCallback(async () => {
     try {
@@ -290,7 +200,7 @@ export default function SettingsPage() {
         setPreferences(json.data.preferences);
       }
     } catch {
-      // Keep defaults on error
+      // Keep defaults
     } finally {
       setPrefsLoading(false);
     }
@@ -302,14 +212,13 @@ export default function SettingsPage() {
   }, [fetchProfile, fetchPreferences]);
 
   // -------------------------------------------------------------------------
-  // Save profile handler — PATCH /api/users/me
+  // Save profile
   // -------------------------------------------------------------------------
 
   async function handleSaveProfile() {
     try {
       setProfileSaving(true);
       setProfileMessage(null);
-
       const body: Record<string, string | null> = {};
       if (displayName !== (profile?.displayName || "")) {
         body.displayName = displayName;
@@ -317,41 +226,37 @@ export default function SettingsPage() {
       if (email !== (profile?.email || "")) {
         body.email = email || null;
       }
-
-      // Only call API if there are changes
       if (Object.keys(body).length === 0) {
         setProfileMessage("No changes to save");
         setTimeout(() => setProfileMessage(null), 3000);
         return;
       }
-
       const res = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const json = await res.json();
-
       if (!res.ok || !json.success) {
         throw new Error(json.error?.message || "Failed to save profile");
       }
-
-      // Update local profile state
       const updated = json.data.user;
       setProfile(updated);
       setDisplayName(updated.displayName || "");
       setEmail(updated.email || "");
-      setProfileMessage("Profile saved successfully");
+      setProfileMessage("Profile saved");
       setTimeout(() => setProfileMessage(null), 3000);
     } catch (err) {
-      setProfileMessage(err instanceof Error ? err.message : "Failed to save profile");
+      setProfileMessage(
+        err instanceof Error ? err.message : "Failed to save profile"
+      );
     } finally {
       setProfileSaving(false);
     }
   }
 
   // -------------------------------------------------------------------------
-  // Unlink wallet handler
+  // Unlink wallet
   // -------------------------------------------------------------------------
 
   async function handleUnlinkWallet(walletId: string) {
@@ -377,25 +282,7 @@ export default function SettingsPage() {
   }
 
   // -------------------------------------------------------------------------
-  // Link wallet handler (triggers wallet signature flow)
-  // -------------------------------------------------------------------------
-
-  async function handleLinkWallet() {
-    // In a real implementation this would open a wallet connect modal,
-    // request a signature, then POST to /api/users/me/wallets.
-    // For now, we set a flag to indicate the flow is active.
-    setLinkingWallet(true);
-    setWalletError(null);
-
-    // Placeholder: show a message that the wallet connection modal should appear
-    setTimeout(() => {
-      setLinkingWallet(false);
-      setWalletError("Wallet connection UI not yet integrated. Use a web3 provider to sign and link.");
-    }, 1500);
-  }
-
-  // -------------------------------------------------------------------------
-  // Save notification preferences
+  // Save preferences
   // -------------------------------------------------------------------------
 
   async function handleSavePreferences() {
@@ -409,7 +296,7 @@ export default function SettingsPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setPrefsMessage("Preferences saved successfully");
+        setPrefsMessage("Preferences saved");
         setTimeout(() => setPrefsMessage(null), 3000);
       } else {
         setPrefsMessage(json.error?.message || "Failed to save preferences");
@@ -422,36 +309,36 @@ export default function SettingsPage() {
   }
 
   // -------------------------------------------------------------------------
-  // Export portfolio as CSV
+  // Export
   // -------------------------------------------------------------------------
 
   async function handleExportPortfolio() {
     try {
       setExporting(true);
       const res = await fetch("/api/users/me/portfolio/export?format=csv");
-      if (!res.ok) {
-        throw new Error("Export failed");
-      }
+      if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       const disposition = res.headers.get("Content-Disposition");
       const filenameMatch = disposition?.match(/filename="(.+)"/);
-      link.download = filenameMatch?.[1] || `portfolio-export-${new Date().toISOString().split("T")[0]}.csv`;
+      link.download =
+        filenameMatch?.[1] ||
+        `portfolio-export-${new Date().toISOString().split("T")[0]}.csv`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch {
-      // Could show an error toast here
+      // silently handle
     } finally {
       setExporting(false);
     }
   }
 
   // -------------------------------------------------------------------------
-  // Notification preference helpers
+  // Preference helpers
   // -------------------------------------------------------------------------
 
   function updatePreference<K extends keyof NotificationPreferences>(
@@ -482,728 +369,480 @@ export default function SettingsPage() {
     }
   }
 
-  function kycBadgeVariant(status: string): "default" | "success" | "warning" | "error" | "info" | "outline" {
-    switch (status) {
-      case "APPROVED":
-        return "success";
-      case "PENDING":
-        return "warning";
-      case "REJECTED":
-      case "EXPIRED":
-        return "error";
-      default:
-        return "outline";
-    }
-  }
-
-  function kycIcon(status: string) {
-    switch (status) {
-      case "APPROVED":
-        return <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
-      case "PENDING":
-        return <Clock className="h-5 w-5 text-amber-400" />;
-      case "REJECTED":
-      case "EXPIRED":
-        return <XCircle className="h-5 w-5 text-rose-400" />;
-      default:
-        return <Shield className="h-5 w-5 text-zinc-400" />;
-    }
-  }
-
   // -------------------------------------------------------------------------
-  // Derived values
+  // Loading state
   // -------------------------------------------------------------------------
 
-  const primaryWallet = profile?.walletAddress || wallets.find((w) => w.isPrimary)?.address || "";
-  const kycDisplayLabel = kycDisplayStatus(kycStatus);
+  if (profileLoading) return <SettingsSkeleton />;
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
+  const primaryWallet =
+    profile?.walletAddress ||
+    wallets.find((w) => w.isPrimary)?.address ||
+    "";
+
+  const sections: {
+    key: "profile" | "wallets" | "notifications" | "security";
+    label: string;
+  }[] = [
+    { key: "profile", label: "Profile" },
+    { key: "wallets", label: "Wallets" },
+    { key: "notifications", label: "Notifications" },
+    { key: "security", label: "Security" },
+  ];
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-4xl px-6 py-12 lg:px-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-50">Settings</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+      <div className="mb-16">
+        <h1 className="font-serif text-3xl font-light text-zinc-900">
+          Settings
+        </h1>
+        <p className="mt-2 text-sm font-normal text-zinc-500">
           Manage your account, wallets, notifications, and security.
         </p>
       </div>
 
-      <Tabs defaultValue="profile">
-        <TabsList>
-          <TabsTrigger value="profile">
-            <span className="flex items-center gap-1.5">
-              <User className="h-4 w-4" /> Profile
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="wallets">
-            <span className="flex items-center gap-1.5">
-              <Wallet className="h-4 w-4" /> Wallets
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications">
-            <span className="flex items-center gap-1.5">
-              <Bell className="h-4 w-4" /> Notifications
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="security">
-            <span className="flex items-center gap-1.5">
-              <Shield className="h-4 w-4" /> Security
-            </span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Section Tabs */}
+      <div className="mb-12 flex items-center gap-6 border-b border-zinc-200">
+        {sections.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setActiveSection(s.key)}
+            className={cn(
+              "pb-3 text-sm font-normal transition-colors",
+              activeSection === s.key
+                ? "border-b border-zinc-900 text-zinc-900"
+                : "text-zinc-500 hover:text-zinc-600"
+            )}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
 
-        {/* ================================================================ */}
-        {/* PROFILE TAB                                                       */}
-        {/* ================================================================ */}
-        <TabsContent value="profile">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>
-                Update your display name and contact preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {profileLoading ? (
-                <ProfileSkeleton />
-              ) : profileError ? (
-                <Alert variant="error">{profileError}</Alert>
-              ) : (
-                <>
-                  {/* Avatar */}
-                  <div className="flex items-center gap-4">
-                    <Avatar
-                      src={profile?.avatarUrl ?? null}
-                      alt={displayName}
-                      size="xl"
-                    />
-                    <div className="space-y-1">
-                      <Button variant="secondary" size="sm">
-                        <Camera className="h-4 w-4" />
-                        Upload Avatar
-                      </Button>
-                      <p className="text-xs text-zinc-500">
-                        JPG, PNG, or GIF. Max 2MB.
+      {/* ================================================================== */}
+      {/* PROFILE                                                            */}
+      {/* ================================================================== */}
+      {activeSection === "profile" && (
+        <div className="space-y-8">
+          {profileError && (
+            <p className="text-sm font-normal text-zinc-500">{profileError}</p>
+          )}
+
+          {/* Display Name */}
+          <div>
+            <label className="mb-2 block text-xs font-normal uppercase tracking-widest text-zinc-500">
+              Display Name
+            </label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Enter display name"
+              className="w-full border border-zinc-200 bg-transparent px-4 py-3 text-sm font-normal text-zinc-700 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400"
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="mb-2 block text-xs font-normal uppercase tracking-widest text-zinc-500">
+              Email (optional)
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full border border-zinc-200 bg-transparent px-4 py-3 text-sm font-normal text-zinc-700 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400"
+            />
+            <p className="mt-1 text-xs font-normal text-zinc-400">
+              Used for email notifications only. Never shared.
+            </p>
+          </div>
+
+          {/* Primary Wallet (read-only) */}
+          <div>
+            <label className="mb-2 block text-xs font-normal uppercase tracking-widest text-zinc-500">
+              Primary Wallet
+            </label>
+            <div className="border border-zinc-200 px-4 py-3">
+              <code className="font-mono text-sm font-normal text-zinc-500">
+                {primaryWallet}
+              </code>
+            </div>
+          </div>
+
+          {/* Save */}
+          {profileMessage && (
+            <p
+              className={cn(
+                "text-sm font-normal",
+                profileMessage.includes("saved") ||
+                  profileMessage.includes("No changes")
+                  ? "text-zinc-500"
+                  : "text-zinc-500"
+              )}
+            >
+              {profileMessage}
+            </p>
+          )}
+          <button
+            onClick={handleSaveProfile}
+            disabled={profileSaving}
+            className="border border-violet-500 bg-violet-500 px-6 py-2.5 text-sm font-normal text-white transition-colors hover:bg-violet-600 disabled:opacity-40"
+          >
+            {profileSaving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* WALLETS                                                            */}
+      {/* ================================================================== */}
+      {activeSection === "wallets" && (
+        <div className="space-y-6">
+          {walletError && (
+            <p className="text-sm font-normal text-zinc-500">{walletError}</p>
+          )}
+
+          {walletsLoading && wallets.length === 0 ? (
+            <p className="py-12 text-center text-sm font-normal text-zinc-400">
+              Loading wallets...
+            </p>
+          ) : wallets.length === 0 ? (
+            <p className="py-12 text-center font-serif text-sm font-normal text-zinc-400">
+              No wallets linked yet.
+            </p>
+          ) : (
+            <div>
+              {wallets.map((wallet) => (
+                <div
+                  key={wallet.id}
+                  className="flex items-center justify-between border-b border-zinc-200 py-6"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="border border-zinc-200 px-2 py-0.5 text-xs font-normal text-zinc-500">
+                        {CHAIN_LABELS[wallet.chain] || wallet.chain}
+                      </span>
+                      {wallet.isPrimary && (
+                        <span className="border border-zinc-300 px-2 py-0.5 text-xs font-normal text-zinc-500">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 font-mono text-sm font-normal text-zinc-600">
+                      {formatAddress(wallet.address, 8)}
+                    </p>
+                    <p className="mt-1 text-xs font-normal text-zinc-400">
+                      Linked {formatDate(wallet.linkedAt)}
+                    </p>
+                  </div>
+                  {!wallet.isPrimary && (
+                    <button
+                      onClick={() => handleUnlinkWallet(wallet.id)}
+                      disabled={unlinkingWalletId === wallet.id}
+                      className="text-xs font-normal text-zinc-400 transition-colors hover:text-zinc-600"
+                    >
+                      {unlinkingWalletId === wallet.id
+                        ? "Unlinking..."
+                        : "Unlink"}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* NOTIFICATIONS                                                      */}
+      {/* ================================================================== */}
+      {activeSection === "notifications" && (
+        <div className="space-y-8">
+          {prefsLoading ? (
+            <p className="py-12 text-center text-sm font-normal text-zinc-400">
+              Loading preferences...
+            </p>
+          ) : (
+            <>
+              {/* Channel Toggles */}
+              <div>
+                <p className="mb-4 text-xs font-normal uppercase tracking-widest text-zinc-500">
+                  Channels
+                </p>
+                <div className="space-y-0">
+                  <div className="flex items-center justify-between border-b border-zinc-200 py-5">
+                    <div>
+                      <p className="text-sm font-normal text-zinc-700">
+                        Email Notifications
+                      </p>
+                      <p className="mt-0.5 text-xs font-normal text-zinc-400">
+                        Receive notifications via email
                       </p>
                     </div>
-                  </div>
-
-                  {/* Display Name */}
-                  <Input
-                    label="Display Name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Enter display name"
-                  />
-
-                  {/* Email */}
-                  <Input
-                    label="Email (optional)"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    helperText="Used for email notifications only. Never shared."
-                  />
-
-                  {/* Wallet Address (read-only) */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-zinc-300">
-                      Primary Wallet
-                    </label>
-                    <div className="flex h-10 items-center rounded-lg border border-zinc-800 bg-zinc-950 px-3">
-                      <code className="text-sm text-zinc-400">
-                        {primaryWallet}
-                      </code>
-                    </div>
-                  </div>
-
-                  {/* Save status message */}
-                  {profileMessage && (
-                    <Alert
-                      variant={
-                        profileMessage.includes("success") || profileMessage.includes("No changes")
-                          ? "success"
-                          : "error"
+                    <Toggle
+                      checked={preferences.emailNotifications}
+                      onCheckedChange={(v) =>
+                        updatePreference("emailNotifications", v)
                       }
-                    >
-                      {profileMessage}
-                    </Alert>
-                  )}
-                </>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button
-                onClick={handleSaveProfile}
-                disabled={profileSaving || profileLoading}
-              >
-                {profileSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
+                      size="sm"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border-b border-zinc-200 py-5">
+                    <div>
+                      <p className="text-sm font-normal text-zinc-700">
+                        Push Notifications
+                      </p>
+                      <p className="mt-0.5 text-xs font-normal text-zinc-400">
+                        Receive browser push notifications
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={preferences.pushNotifications}
+                      onCheckedChange={(v) =>
+                        updatePreference("pushNotifications", v)
+                      }
+                      size="sm"
+                    />
+                  </div>
+                </div>
+              </div>
 
-        {/* ================================================================ */}
-        {/* WALLETS TAB                                                       */}
-        {/* ================================================================ */}
-        <TabsContent value="wallets">
-          <Card>
-            <CardHeader className="flex-row items-center justify-between">
+              {/* Categories */}
               <div>
-                <CardTitle>Linked Wallets</CardTitle>
-                <CardDescription>
-                  Manage your connected wallets across chains
-                </CardDescription>
+                <p className="mb-4 text-xs font-normal uppercase tracking-widest text-zinc-500">
+                  Categories
+                </p>
+                <div className="space-y-0">
+                  {[
+                    {
+                      key: "dealAlerts" as const,
+                      title: "Deal Alerts",
+                      desc: "New listings, opening and closing reminders",
+                    },
+                    {
+                      key: "vestingAlerts" as const,
+                      title: "Vesting Alerts",
+                      desc: "Token unlock notifications and claim reminders",
+                    },
+                    {
+                      key: "accountAlerts" as const,
+                      title: "Account Alerts",
+                      desc: "Contributions, stakes, claims, security events",
+                    },
+                    {
+                      key: "marketingEmails" as const,
+                      title: "Marketing Emails",
+                      desc: "Product updates, newsletters, promotional content",
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between border-b border-zinc-200 py-5"
+                    >
+                      <div>
+                        <p className="text-sm font-normal text-zinc-700">
+                          {item.title}
+                        </p>
+                        <p className="mt-0.5 text-xs font-normal text-zinc-400">
+                          {item.desc}
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={preferences[item.key]}
+                        onCheckedChange={(v) =>
+                          updatePreference(item.key, v)
+                        }
+                        size="sm"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchWallets}
-                  disabled={walletsLoading}
-                >
-                  <RefreshCw className={cn("h-4 w-4", walletsLoading && "animate-spin")} />
-                </Button>
-                <Button
-                  size="sm"
-                  leftIcon={<Link2 className="h-4 w-4" />}
-                  onClick={handleLinkWallet}
-                  disabled={linkingWallet}
-                >
-                  {linkingWallet ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    "Link New Wallet"
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {walletError && (
-                <Alert variant="error">
-                  {walletError}
-                </Alert>
-              )}
 
-              {walletsLoading && wallets.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-zinc-500">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Loading wallets...
-                </div>
-              ) : wallets.length === 0 ? (
-                <div className="py-8 text-center text-sm text-zinc-500">
-                  No wallets linked yet. Link a wallet to get started.
-                </div>
-              ) : (
-                wallets.map((wallet) => (
-                  <div
-                    key={wallet.id}
-                    className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/50 p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-                        <Wallet
-                          className={cn(
-                            "h-5 w-5",
-                            CHAIN_COLORS[wallet.chain] || "text-zinc-400"
-                          )}
-                        />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" size="sm">
-                            {CHAIN_LABELS[wallet.chain] || wallet.chain}
-                          </Badge>
-                          {wallet.isPrimary && (
-                            <Badge variant="success" size="sm">
-                              Primary
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="mt-1 font-mono text-sm text-zinc-300">
-                          {formatAddress(wallet.address, 8)}
-                        </p>
-                        <p className="text-xs text-zinc-600">
-                          Linked {formatDate(wallet.linkedAt)}
-                        </p>
-                      </div>
-                    </div>
-                    {!wallet.isPrimary && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-zinc-400 hover:text-rose-400"
-                        onClick={() => handleUnlinkWallet(wallet.id)}
-                        disabled={unlinkingWalletId === wallet.id}
-                      >
-                        {unlinkingWalletId === wallet.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Unlink className="h-4 w-4" />
-                        )}
-                        {unlinkingWalletId === wallet.id ? "Unlinking..." : "Unlink"}
-                      </Button>
-                    )}
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ================================================================ */}
-        {/* NOTIFICATIONS TAB                                                 */}
-        {/* ================================================================ */}
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Choose what you want to be notified about and how
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {prefsLoading ? (
-                <div className="flex items-center justify-center py-8 text-zinc-500">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Loading preferences...
-                </div>
-              ) : (
-                <>
-                  {/* Global Channel Toggles */}
-                  <div className="space-y-4">
-                    <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                      Notification Channels
-                    </p>
-                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">
-                          Email Notifications
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          Receive notifications via email
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={preferences.emailNotifications}
-                        onCheckedChange={(v) =>
-                          updatePreference("emailNotifications", v)
-                        }
-                        size="sm"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">
-                          Push Notifications
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          Receive browser push notifications
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={preferences.pushNotifications}
-                        onCheckedChange={(v) =>
-                          updatePreference("pushNotifications", v)
-                        }
-                        size="sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Category Toggles */}
-                  <div className="space-y-4 border-t border-zinc-800 pt-6">
-                    <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                      Notification Categories
-                    </p>
-
-                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">
-                          Deal Alerts
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          New deal listings, opening announcements, and closing
-                          reminders
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={preferences.dealAlerts}
-                        onCheckedChange={(v) =>
-                          updatePreference("dealAlerts", v)
-                        }
-                        size="sm"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">
-                          Vesting Alerts
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          Token unlock notifications and claim reminders
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={preferences.vestingAlerts}
-                        onCheckedChange={(v) =>
-                          updatePreference("vestingAlerts", v)
-                        }
-                        size="sm"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">
-                          Account Alerts
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          Contributions, stakes, claims, and security events
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={preferences.accountAlerts}
-                        onCheckedChange={(v) =>
-                          updatePreference("accountAlerts", v)
-                        }
-                        size="sm"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">
-                          Marketing Emails
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          Product updates, newsletters, and promotional content
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={preferences.marketingEmails}
-                        onCheckedChange={(v) =>
-                          updatePreference("marketingEmails", v)
-                        }
-                        size="sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Digest Mode Selector */}
-                  <div className="border-t border-zinc-800 pt-6">
-                    <Select
-                      label="Digest Mode"
-                      value={preferences.digestMode}
-                      onChange={(e) =>
+              {/* Digest Mode */}
+              <div>
+                <label className="mb-2 block text-xs font-normal uppercase tracking-widest text-zinc-500">
+                  Digest Mode
+                </label>
+                <div className="flex gap-px border border-zinc-200">
+                  {DIGEST_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() =>
                         updatePreference(
                           "digestMode",
-                          e.target.value as "immediate" | "daily" | "weekly"
+                          opt.value as "immediate" | "daily" | "weekly"
                         )
                       }
-                      options={DIGEST_OPTIONS}
-                      helperText="Control how frequently you receive notification emails"
-                    />
-                  </div>
-
-                  {/* Quiet Hours */}
-                  <div className="border-t border-zinc-800 pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">
-                          Quiet Hours
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          Pause non-critical notifications during specified hours
-                        </p>
-                      </div>
-                      <Toggle
-                        checked={preferences.quietHoursEnabled}
-                        onCheckedChange={(v) =>
-                          updatePreference("quietHoursEnabled", v)
-                        }
-                        size="sm"
-                      />
-                    </div>
-                    {preferences.quietHoursEnabled && (
-                      <div className="mt-4 flex items-center gap-3">
-                        <Input
-                          type="time"
-                          value={preferences.quietHoursStart}
-                          onChange={(e) =>
-                            updatePreference("quietHoursStart", e.target.value)
-                          }
-                          className="w-32"
-                        />
-                        <span className="text-sm text-zinc-500">to</span>
-                        <Input
-                          type="time"
-                          value={preferences.quietHoursEnd}
-                          onChange={(e) =>
-                            updatePreference("quietHoursEnd", e.target.value)
-                          }
-                          className="w-32"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Save status message */}
-                  {prefsMessage && (
-                    <Alert
-                      variant={
-                        prefsMessage.includes("success") ? "success" : "error"
-                      }
+                      className={cn(
+                        "flex-1 py-3 text-sm font-normal transition-colors",
+                        preferences.digestMode === opt.value
+                          ? "bg-zinc-100 text-zinc-800"
+                          : "text-zinc-500 hover:text-zinc-600"
+                      )}
                     >
-                      {prefsMessage}
-                    </Alert>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Save */}
+              {prefsMessage && (
+                <p
+                  className={cn(
+                    "text-sm font-normal",
+                    prefsMessage.includes("saved")
+                      ? "text-zinc-500"
+                      : "text-zinc-500"
                   )}
-                </>
+                >
+                  {prefsMessage}
+                </p>
               )}
-            </CardContent>
-            <CardFooter>
-              <Button
+              <button
                 onClick={handleSavePreferences}
-                disabled={prefsSaving || prefsLoading}
+                disabled={prefsSaving}
+                className="border border-violet-500 bg-violet-500 px-6 py-2.5 text-sm font-normal text-white transition-colors hover:bg-violet-600 disabled:opacity-40"
               >
-                {prefsSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Preferences"
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
+                {prefsSaving ? "Saving..." : "Save Preferences"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
-        {/* ================================================================ */}
-        {/* SECURITY TAB                                                      */}
-        {/* ================================================================ */}
-        <TabsContent value="security">
-          <div className="space-y-6">
-            {/* KYC Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle>KYC Verification</CardTitle>
-                <CardDescription>
-                  Identity verification status for regulated deal access
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
-                  <div className="flex items-center gap-3">
-                    {kycIcon(kycStatus)}
-                    <div>
-                      <p className="text-sm font-medium text-zinc-200">
-                        Verification Status
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {kycStatus === "APPROVED"
-                          ? "Your identity has been verified successfully"
-                          : kycStatus === "PENDING"
-                          ? "Your documents are being reviewed"
-                          : kycStatus === "REJECTED"
-                          ? "Your verification was rejected. Please resubmit."
-                          : kycStatus === "EXPIRED"
-                          ? "Your verification has expired. Please re-verify."
-                          : "Complete KYC to access regulated deals"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant={kycBadgeVariant(kycStatus)}
-                      size="md"
-                    >
-                      {kycDisplayLabel}
-                    </Badge>
-                    {kycStatus !== "APPROVED" && kycStatus !== "PENDING" && (
-                      <Button size="sm">
-                        {kycStatus === "REJECTED" || kycStatus === "EXPIRED"
-                          ? "Resubmit"
-                          : "Complete KYC"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Sessions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Sessions</CardTitle>
-                <CardDescription>
-                  Devices currently logged into your account
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {SESSIONS.map((session) => (
-                  <div
-                    key={session.id}
-                    className={cn(
-                      "flex items-center justify-between rounded-lg border p-4",
-                      session.isCurrent
-                        ? "border-violet-500/30 bg-violet-500/5"
-                        : "border-zinc-800 bg-zinc-950/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-                        {session.deviceIcon === "desktop" ? (
-                          <Monitor className="h-5 w-5 text-zinc-400" />
-                        ) : (
-                          <Smartphone className="h-5 w-5 text-zinc-400" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-zinc-200">
-                            {session.device}
-                          </p>
-                          {session.isCurrent && (
-                            <Badge variant="success" size="sm">
-                              Current
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-zinc-500">
-                          {session.browser} -- {session.ip} --{" "}
-                          {session.location}
-                        </p>
-                        <p className="text-xs text-zinc-600">
-                          Last active:{" "}
-                          {formatDate(session.lastActive, { includeTime: true })}
-                        </p>
-                      </div>
-                    </div>
-                    {!session.isCurrent && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-zinc-400 hover:text-rose-400"
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Data & Account Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Data & Account</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Export Portfolio CSV */}
-                <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">
-                      Export Portfolio
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      Download your portfolio as a CSV file with all
-                      contributions, allocations, and PnL data
-                    </p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    leftIcon={
-                      exporting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )
-                    }
-                    onClick={handleExportPortfolio}
-                    disabled={exporting}
-                  >
-                    {exporting ? "Exporting..." : "Export CSV"}
-                  </Button>
-                </div>
-
-                {/* Export All Data */}
-                <div className="flex items-center justify-between rounded-lg border border-zinc-800 p-4">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">
-                      Export My Data
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      Download a copy of all your account data, contributions,
-                      and activity
-                    </p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    leftIcon={<Download className="h-4 w-4" />}
-                  >
-                    Export
-                  </Button>
-                </div>
-
-                {/* Delete Account */}
-                <div className="flex items-center justify-between rounded-lg border border-rose-500/20 bg-rose-500/5 p-4">
-                  <div>
-                    <p className="text-sm font-medium text-rose-300">
-                      Delete Account
-                    </p>
-                    <p className="text-xs text-rose-400/60">
-                      Permanently delete your account and all associated data.
-                      This action cannot be undone.
-                    </p>
-                  </div>
-                  {!showDeleteConfirm ? (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      leftIcon={<Trash2 className="h-4 w-4" />}
-                      onClick={() => setShowDeleteConfirm(true)}
-                    >
-                      Delete Account
-                    </Button>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowDeleteConfirm(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button variant="destructive" size="sm">
-                        <AlertTriangle className="h-4 w-4" />
-                        Confirm Delete
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+      {/* ================================================================== */}
+      {/* SECURITY                                                           */}
+      {/* ================================================================== */}
+      {activeSection === "security" && (
+        <div className="space-y-12">
+          {/* KYC */}
+          <div>
+            <h2 className="mb-6 font-serif text-lg font-normal text-zinc-900">
+              KYC Verification
+            </h2>
+            <div className="flex items-center justify-between border border-zinc-200 p-6">
+              <div>
+                <p className="text-sm font-normal text-zinc-700">
+                  Verification Status
+                </p>
+                <p className="mt-1 text-xs font-normal text-zinc-400">
+                  {kycStatus === "APPROVED"
+                    ? "Your identity has been verified"
+                    : kycStatus === "PENDING"
+                    ? "Documents under review"
+                    : "Complete KYC to access regulated deals"}
+                </p>
+              </div>
+              <span className="border border-zinc-200 px-2 py-0.5 text-xs font-normal text-zinc-500">
+                {kycDisplayStatus(kycStatus)}
+              </span>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+
+          {/* Sessions */}
+          <div>
+            <h2 className="mb-6 font-serif text-lg font-normal text-zinc-900">
+              Active Sessions
+            </h2>
+            {SESSIONS.map((session) => (
+              <div
+                key={session.id}
+                className="flex items-center justify-between border-b border-zinc-200 py-5"
+              >
+                <div className="flex items-center gap-4">
+                  {session.deviceIcon === "desktop" ? (
+                    <Monitor className="h-4 w-4 text-zinc-400" />
+                  ) : (
+                    <Smartphone className="h-4 w-4 text-zinc-400" />
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-normal text-zinc-700">
+                        {session.device}
+                      </p>
+                      {session.isCurrent && (
+                        <span className="border border-zinc-300 px-1.5 py-px text-[10px] font-normal text-zinc-500">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs font-normal text-zinc-400">
+                      {session.browser} &middot; {session.ip} &middot;{" "}
+                      {session.location}
+                    </p>
+                  </div>
+                </div>
+                {!session.isCurrent && (
+                  <button className="text-xs font-normal text-zinc-400 transition-colors hover:text-zinc-600">
+                    Revoke
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Data & Account */}
+          <div>
+            <h2 className="mb-6 font-serif text-lg font-normal text-zinc-900">
+              Data & Account
+            </h2>
+            <div className="space-y-0">
+              <div className="flex items-center justify-between border-b border-zinc-200 py-5">
+                <div>
+                  <p className="text-sm font-normal text-zinc-700">
+                    Export Portfolio
+                  </p>
+                  <p className="mt-0.5 text-xs font-normal text-zinc-400">
+                    Download your portfolio as CSV
+                  </p>
+                </div>
+                <button
+                  onClick={handleExportPortfolio}
+                  disabled={exporting}
+                  className="text-xs font-normal text-zinc-500 transition-colors hover:text-zinc-600 disabled:opacity-50"
+                >
+                  {exporting ? "Exporting..." : "Export CSV"}
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-5">
+                <div>
+                  <p className="text-sm font-normal text-zinc-700">
+                    Delete Account
+                  </p>
+                  <p className="mt-0.5 text-xs font-normal text-zinc-400">
+                    Permanently delete your account and all data
+                  </p>
+                </div>
+                {!showDeleteConfirm ? (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-xs font-normal text-zinc-500 transition-colors hover:text-zinc-600"
+                  >
+                    Delete Account
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-xs font-normal text-zinc-400 transition-colors hover:text-zinc-600"
+                    >
+                      Cancel
+                    </button>
+                    <button className="text-xs font-normal text-zinc-500 transition-colors hover:text-zinc-700">
+                      Confirm Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

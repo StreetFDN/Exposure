@@ -16,9 +16,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Nav config
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Nav config                                                                 */
+/* -------------------------------------------------------------------------- */
 
 const SIDEBAR_NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -30,14 +30,12 @@ const SIDEBAR_NAV = [
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ] as const;
 
-// ---------------------------------------------------------------------------
-// Sidebar
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Sidebar                                                                    */
+/* -------------------------------------------------------------------------- */
 
 interface SidebarProps {
-  /** Controlled open state for mobile drawer */
   mobileOpen?: boolean;
-  /** Callback to close mobile drawer */
   onMobileClose?: () => void;
 }
 
@@ -54,75 +52,87 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const truncateAddress = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-  // ---- Sidebar content (shared between desktop and mobile) ----
   const sidebarContent = (
     <div className="flex h-full flex-col">
-      {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-zinc-800/60 px-4">
-        <Link href="/admin" className="flex items-center gap-2">
-          {!collapsed && (
-            <span className="text-lg font-bold tracking-tight text-zinc-50">
-              EXPOSURE
+      {/* Brand */}
+      <div className="flex h-16 items-center justify-between border-b border-zinc-200 px-5">
+        <Link href="/admin" className="flex items-center">
+          {!collapsed ? (
+            <span className="font-serif text-lg font-light tracking-wide text-zinc-900">
+              Exposure
+            </span>
+          ) : (
+            <span className="font-serif text-lg font-light text-zinc-900">
+              E
             </span>
           )}
-          {collapsed && (
-            <span className="text-lg font-bold text-violet-400">E</span>
-          )}
         </Link>
-
-        {/* Collapse toggle (desktop only) */}
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden rounded-md p-1 text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-50 lg:block"
+          className="hidden rounded p-1 text-zinc-400 transition-colors hover:text-zinc-700 lg:block"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3.5 w-3.5" />
           )}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {SIDEBAR_NAV.map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onMobileClose}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-violet-500/10 text-violet-400"
-                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-50"
-              }`}
-              title={collapsed ? item.label : undefined}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="flex flex-col gap-0.5">
+          {SIDEBAR_NAV.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onMobileClose}
+                className={`group relative flex items-center gap-3 rounded-none px-3 py-2 text-sm transition-colors ${
+                  active
+                    ? "text-zinc-900"
+                    : "text-zinc-500 hover:text-zinc-700"
+                }`}
+                title={collapsed ? item.label : undefined}
+              >
+                {/* Active indicator -- left border */}
+                {active && (
+                  <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 bg-violet-500" />
+                )}
+                <item.icon
+                  className={`h-4 w-4 shrink-0 ${
+                    active
+                      ? "text-zinc-900"
+                      : "text-zinc-400 group-hover:text-zinc-600"
+                  }`}
+                />
+                {!collapsed && (
+                  <span className="font-normal">{item.label}</span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
-      {/* User info at bottom */}
+      {/* User info */}
       {address && (
-        <div className="border-t border-zinc-800/60 p-4">
+        <div className="border-t border-zinc-200 px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-400">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-[10px] font-normal text-zinc-500">
               {address.slice(2, 4).toUpperCase()}
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-zinc-200">
+                <p className="truncate font-mono text-xs font-normal text-zinc-500">
                   {truncateAddress(address)}
                 </p>
-                <span className="inline-block rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-400">
-                  Admin
-                </span>
+                <p className="text-[10px] uppercase tracking-widest text-zinc-400">
+                  Administrator
+                </p>
               </div>
             )}
           </div>
@@ -133,23 +143,23 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   return (
     <>
-      {/* ---- Desktop sidebar ---- */}
+      {/* Desktop sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden border-r border-zinc-800/60 bg-zinc-950 transition-[width] lg:block ${
-          collapsed ? "w-[68px]" : "w-64"
+        className={`fixed inset-y-0 left-0 z-30 hidden border-r border-zinc-200 bg-white transition-[width] duration-200 lg:block ${
+          collapsed ? "w-[60px]" : "w-60"
         }`}
       >
         {sidebarContent}
       </aside>
 
-      {/* ---- Mobile drawer ---- */}
+      {/* Mobile drawer */}
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
             onClick={onMobileClose}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-64 border-r border-zinc-800/60 bg-zinc-950 lg:hidden">
+          <aside className="fixed inset-y-0 left-0 z-50 w-60 border-r border-zinc-200 bg-white lg:hidden">
             {sidebarContent}
           </aside>
         </>

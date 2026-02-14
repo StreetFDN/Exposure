@@ -72,7 +72,7 @@ const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
       ref={ref}
       role="tablist"
       className={cn(
-        "flex items-center gap-0 border-b border-zinc-800",
+        "flex items-center gap-0 border-b border-zinc-200",
         className
       )}
       {...props}
@@ -109,8 +109,8 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
           "relative px-4 py-2.5 text-sm font-medium transition-colors duration-150",
           "outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-inset rounded-t-md",
           isActive
-            ? "text-zinc-50"
-            : "text-zinc-500 hover:text-zinc-300",
+            ? "text-zinc-900"
+            : "text-zinc-500 hover:text-zinc-700",
           className
         )}
         {...props}

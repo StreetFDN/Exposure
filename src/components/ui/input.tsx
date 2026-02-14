@@ -38,17 +38,17 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={id}
-            className="text-sm font-medium text-zinc-300"
+            className="text-sm font-medium text-zinc-700"
           >
             {label}
           </label>
         )}
         <div
           className={cn(
-            "flex items-center rounded-lg border bg-zinc-900 transition-colors duration-150",
+            "flex items-center rounded-lg border bg-white transition-colors duration-150",
             error
               ? "border-rose-500 focus-within:ring-2 focus-within:ring-rose-500/30"
-              : "border-zinc-700 focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-500/30",
+              : "border-zinc-300 focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-500/30",
             disabled && "opacity-50 cursor-not-allowed"
           )}
         >
@@ -69,7 +69,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 .join(" ") || undefined
             }
             className={cn(
-              "h-10 w-full bg-transparent px-3 text-sm text-zinc-50 placeholder:text-zinc-500",
+              "h-10 w-full bg-transparent px-3 text-sm text-zinc-900 placeholder:text-zinc-400",
               "outline-none",
               "disabled:cursor-not-allowed",
               leftAddon && "pl-1.5",
@@ -85,7 +85,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p id={errorId} className="text-xs text-rose-400" role="alert">
+          <p id={errorId} className="text-xs text-rose-500" role="alert">
             {error}
           </p>
         )}

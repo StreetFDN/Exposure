@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils/cn";
 
 const buttonVariants = cva(
   [
-    "inline-flex items-center justify-center gap-2 rounded-md font-medium",
-    "transition-colors duration-150 ease-in-out",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
+    "inline-flex items-center justify-center gap-2 font-medium",
+    "transition-all duration-200 ease-in-out",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
     "disabled:pointer-events-none disabled:opacity-50",
     "cursor-pointer",
   ],
@@ -17,21 +17,21 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-violet-600 text-white hover:bg-violet-500 active:bg-violet-700",
+          "bg-zinc-900 text-white rounded hover:bg-zinc-800 active:bg-zinc-700",
         secondary:
-          "bg-zinc-800 text-zinc-50 hover:bg-zinc-700 active:bg-zinc-800 border border-zinc-700",
+          "bg-zinc-100 text-zinc-900 border border-zinc-200 rounded hover:bg-zinc-200 active:bg-zinc-300",
         outline:
-          "border border-zinc-700 bg-transparent text-zinc-50 hover:bg-zinc-800 active:bg-zinc-900",
+          "bg-transparent border border-zinc-300 text-zinc-700 rounded hover:bg-zinc-50 active:bg-zinc-100",
         ghost:
-          "bg-transparent text-zinc-50 hover:bg-zinc-800 active:bg-zinc-900",
+          "bg-transparent text-zinc-500 rounded hover:text-zinc-900 hover:bg-zinc-100 active:bg-zinc-200",
         destructive:
-          "bg-rose-600 text-white hover:bg-rose-500 active:bg-rose-700",
-        link: "bg-transparent text-violet-400 underline-offset-4 hover:underline hover:text-violet-300 p-0 h-auto",
+          "bg-red-50 text-red-600 rounded hover:bg-red-100 active:bg-red-200",
+        link: "bg-transparent text-zinc-500 underline-offset-4 hover:underline hover:text-zinc-900 p-0 h-auto",
       },
       size: {
         sm: "h-8 px-3 text-xs",
-        md: "h-10 px-4 text-sm",
-        lg: "h-12 px-6 text-base",
+        md: "h-10 px-5 text-sm",
+        lg: "h-12 px-8 text-base",
       },
     },
     defaultVariants: {

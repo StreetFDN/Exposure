@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useParams, notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Globe,
@@ -17,15 +17,14 @@ import {
   Linkedin,
   CheckCircle2,
   Clock,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Countdown } from "@/components/ui/countdown";
 import { DealPhaseIndicator } from "@/components/deals/deal-phase-indicator";
 import { ContributionForm } from "@/components/deals/contribution-form";
 import { ParticipationFlow } from "@/components/deals/participation-flow";
-import { DealStats } from "@/components/deals/deal-stats";
 import { TokenomicsChart } from "@/components/charts/tokenomics-chart";
 import { VestingTimeline } from "@/components/charts/vesting-timeline";
 import { ContributionProgress } from "@/components/charts/contribution-progress";
@@ -109,23 +108,20 @@ interface DealPhase {
 }
 
 // ---------------------------------------------------------------------------
-// Status helpers
+// Status / label helpers
 // ---------------------------------------------------------------------------
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; variant: "default" | "success" | "warning" | "info" | "outline" }
-> = {
-  DRAFT: { label: "Draft", variant: "outline" },
-  UNDER_REVIEW: { label: "Under Review", variant: "outline" },
-  APPROVED: { label: "Upcoming", variant: "outline" },
-  REGISTRATION_OPEN: { label: "Registration Open", variant: "outline" },
-  GUARANTEED_ALLOCATION: { label: "Guaranteed", variant: "outline" },
-  FCFS: { label: "FCFS", variant: "outline" },
-  SETTLEMENT: { label: "Settlement", variant: "outline" },
-  DISTRIBUTING: { label: "Distributing", variant: "outline" },
-  COMPLETED: { label: "Completed", variant: "outline" },
-  CANCELLED: { label: "Cancelled", variant: "outline" },
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Draft",
+  UNDER_REVIEW: "Under Review",
+  APPROVED: "Upcoming",
+  REGISTRATION_OPEN: "Registration Open",
+  GUARANTEED_ALLOCATION: "Guaranteed",
+  FCFS: "FCFS",
+  SETTLEMENT: "Settlement",
+  DISTRIBUTING: "Distributing",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -144,8 +140,16 @@ const CHAIN_LABELS: Record<string, string> = {
   ARBITRUM: "Arbitrum",
 };
 
+const ALLOCATION_LABELS: Record<string, string> = {
+  GUARANTEED: "Guaranteed",
+  PRO_RATA: "Pro-Rata",
+  LOTTERY: "Lottery",
+  FCFS: "FCFS",
+  HYBRID: "Hybrid",
+};
+
 // ---------------------------------------------------------------------------
-// Default tokenomics data (used when deal doesn't include it)
+// Default tokenomics
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TOKENOMICS_DATA = [
@@ -162,39 +166,33 @@ const DEFAULT_TOKENOMICS_DATA = [
 
 function DealDetailSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 animate-pulse">
-      <div className="mb-8">
-        <div className="mb-4 h-4 w-20 rounded bg-zinc-800" />
-        <div className="mb-3 flex gap-2">
-          <div className="h-5 w-16 rounded bg-zinc-800" />
-          <div className="h-5 w-12 rounded bg-zinc-800" />
-          <div className="h-5 w-16 rounded bg-zinc-800" />
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-6xl px-6 pt-16 pb-24 animate-pulse">
+        <div className="mb-12 h-4 w-20 bg-zinc-200" />
+        <div className="mb-16">
+          <div className="mb-3 h-3 w-32 bg-zinc-200" />
+          <div className="mb-4 h-10 w-80 bg-zinc-200" />
+          <div className="h-5 w-96 bg-zinc-200" />
         </div>
-        <div className="h-9 w-64 rounded bg-zinc-800" />
-        <div className="mt-2 h-5 w-96 rounded bg-zinc-800" />
-        <div className="mt-4 flex gap-2">
-          <div className="h-8 w-24 rounded bg-zinc-800" />
-          <div className="h-8 w-24 rounded bg-zinc-800" />
-        </div>
-      </div>
-      <div className="flex flex-col gap-8 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-8 lg:max-w-[60%]">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <div className="mb-4 h-6 w-20 rounded bg-zinc-800" />
-            <div className="space-y-2">
-              <div className="h-4 w-full rounded bg-zinc-800" />
-              <div className="h-4 w-5/6 rounded bg-zinc-800" />
-              <div className="h-4 w-4/6 rounded bg-zinc-800" />
-              <div className="h-4 w-full rounded bg-zinc-800" />
-              <div className="h-4 w-3/4 rounded bg-zinc-800" />
+        <div className="flex flex-col gap-16 lg:flex-row">
+          <div className="flex flex-1 flex-col gap-12 lg:max-w-[58%]">
+            <div className="border border-zinc-200 p-8">
+              <div className="mb-6 h-5 w-24 bg-zinc-200" />
+              <div className="space-y-3">
+                <div className="h-4 w-full bg-zinc-200" />
+                <div className="h-4 w-5/6 bg-zinc-200" />
+                <div className="h-4 w-4/6 bg-zinc-200" />
+                <div className="h-4 w-full bg-zinc-200" />
+                <div className="h-4 w-3/4 bg-zinc-200" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-6 lg:w-[40%]">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <div className="mb-4 h-6 w-32 rounded bg-zinc-800" />
-            <div className="h-4 w-full rounded bg-zinc-800" />
-            <div className="mt-4 h-20 w-full rounded bg-zinc-800" />
+          <div className="flex flex-col gap-10 lg:w-[38%]">
+            <div className="border border-zinc-200 p-8">
+              <div className="mb-6 h-5 w-32 bg-zinc-200" />
+              <div className="h-4 w-full bg-zinc-200" />
+              <div className="mt-6 h-24 w-full bg-zinc-200" />
+            </div>
           </div>
         </div>
       </div>
@@ -242,7 +240,6 @@ export default function DealDetailPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [showParticipation, setShowParticipation] = React.useState(false);
 
-  // Fetch deal data
   React.useEffect(() => {
     async function fetchDeal() {
       setIsLoading(true);
@@ -268,7 +265,6 @@ export default function DealDetailPage() {
 
         const d = json.data.deal;
 
-        // Normalize field types from API (Decimals come as strings from Prisma JSON serialization)
         const dealData: DealData = {
           id: d.id,
           slug: d.slug,
@@ -336,38 +332,46 @@ export default function DealDetailPage() {
     if (dealId) fetchDeal();
   }, [dealId]);
 
-  // Loading state
   if (isLoading) {
     return <DealDetailSkeleton />;
   }
 
-  // Not found state
   if (error === "NOT_FOUND") {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center">
-        <h1 className="font-serif text-3xl font-light text-zinc-100">Deal not found</h1>
-        <p className="mt-2 text-zinc-500">The deal you are looking for does not exist or has been removed.</p>
-        <Link href="/deals" className="mt-6 inline-block">
-          <Button variant="outline">Back to Deals</Button>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
+        <Briefcase className="mb-8 h-10 w-10 text-zinc-300" />
+        <h1 className="font-serif text-3xl font-light text-zinc-800">
+          Deal not found
+        </h1>
+        <p className="mt-3 max-w-sm font-sans text-sm font-normal text-zinc-500">
+          The deal you are looking for does not exist or has been removed.
+        </p>
+        <Link href="/deals" className="mt-10 inline-block">
+          <Button variant="outline" size="sm">
+            Back to Deals
+          </Button>
         </Link>
       </div>
     );
   }
 
-  // Error state
   if (error || !deal) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center">
-        <h1 className="font-serif text-3xl font-light text-zinc-100">Something went wrong</h1>
-        <p className="mt-2 text-zinc-500">{error || "Failed to load deal data."}</p>
-        <Link href="/deals" className="mt-6 inline-block">
-          <Button variant="outline">Back to Deals</Button>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
+        <h1 className="font-serif text-3xl font-light text-zinc-800">
+          Something went wrong
+        </h1>
+        <p className="mt-3 max-w-sm font-sans text-sm font-normal text-zinc-500">
+          {error || "Failed to load deal data."}
+        </p>
+        <Link href="/deals" className="mt-10 inline-block">
+          <Button variant="outline" size="sm">
+            Back to Deals
+          </Button>
         </Link>
       </div>
     );
   }
-
-  const statusConfig = STATUS_CONFIG[deal.status] || STATUS_CONFIG.DRAFT;
 
   const isContributionPhase =
     deal.status === "GUARANTEED_ALLOCATION" || deal.status === "FCFS";
@@ -376,7 +380,6 @@ export default function DealDetailPage() {
   const isCompleted =
     deal.status === "COMPLETED" || deal.status === "DISTRIBUTING";
 
-  // Map API phases or build from deal dates
   const phases: Phase[] =
     deal.phases.length > 0
       ? mapApiPhasesToPhases(deal.phases)
@@ -386,102 +389,135 @@ export default function DealDetailPage() {
   const raiseSymbol = deal.raiseTokenSymbol || "USDC";
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      {/* ================================================================= */}
-      {/* Top section                                                       */}
-      {/* ================================================================= */}
-      <div className="mb-8">
-        {/* Back link */}
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-6xl px-6 pt-16 pb-24">
+        {/* ================================================================= */}
+        {/* Back link                                                         */}
+        {/* ================================================================= */}
         <Link
           href="/deals"
-          className="mb-4 inline-flex items-center gap-1 text-sm font-light text-zinc-500 transition-colors hover:text-zinc-300"
+          className="mb-12 inline-flex items-center gap-2 font-sans text-xs font-normal uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-600"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           All Deals
         </Link>
 
-        {/* Badges */}
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
-            {statusConfig.label}
-          </span>
-          <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
-            {CATEGORY_LABELS[deal.category] || deal.category}
-          </span>
-          <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
-            {CHAIN_LABELS[deal.chain] || deal.chain}
-          </span>
-          {deal.requiresKyc && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
-              <Shield className="h-3 w-3" />
-              KYC Required
+        {/* ================================================================= */}
+        {/* Hero section                                                      */}
+        {/* ================================================================= */}
+        <div className="mb-16">
+          {/* Category + chain + status */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <span className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+              {CATEGORY_LABELS[deal.category] || deal.category}
             </span>
-          )}
-          {deal.minTierRequired && (
-            <span className="rounded-md border border-zinc-800 px-2 py-0.5 text-[11px] font-light text-zinc-400">
-              {deal.minTierRequired} Tier
+            <span className="text-zinc-300">/</span>
+            <span className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+              {CHAIN_LABELS[deal.chain] || deal.chain}
             </span>
+            <span className="text-zinc-300">/</span>
+            <span className="border border-zinc-200 px-2.5 py-0.5 text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+              {STATUS_LABELS[deal.status] || deal.status}
+            </span>
+            {deal.requiresKyc && (
+              <>
+                <span className="text-zinc-300">/</span>
+                <span className="flex items-center gap-1 text-xs font-normal text-zinc-500">
+                  <Shield className="h-3 w-3" />
+                  KYC
+                </span>
+              </>
+            )}
+          </div>
+
+          <h1 className="font-serif text-4xl font-light tracking-tight text-zinc-900 sm:text-5xl">
+            {deal.projectName}
+          </h1>
+
+          {deal.shortDescription && (
+            <p className="mt-4 max-w-2xl font-sans text-lg font-normal leading-relaxed text-zinc-500">
+              {deal.shortDescription}
+            </p>
           )}
+
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            {deal.projectWebsite && (
+              <ExternalLinkButton
+                href={deal.projectWebsite}
+                icon={<Globe className="h-3.5 w-3.5" />}
+                label="Website"
+              />
+            )}
+            {deal.projectTwitter && (
+              <ExternalLinkButton
+                href={deal.projectTwitter}
+                icon={<ExternalLink className="h-3.5 w-3.5" />}
+                label="Twitter"
+              />
+            )}
+            {deal.projectDiscord && (
+              <ExternalLinkButton
+                href={deal.projectDiscord}
+                icon={<MessageCircle className="h-3.5 w-3.5" />}
+                label="Discord"
+              />
+            )}
+            {deal.projectTelegram && (
+              <ExternalLinkButton
+                href={deal.projectTelegram}
+                icon={<Send className="h-3.5 w-3.5" />}
+                label="Telegram"
+              />
+            )}
+            {deal.projectGithub && (
+              <ExternalLinkButton
+                href={deal.projectGithub}
+                icon={<Github className="h-3.5 w-3.5" />}
+                label="GitHub"
+              />
+            )}
+          </div>
+
+          <div className="mt-12 h-px w-full bg-zinc-200" />
         </div>
 
-        {/* Title */}
-        <h1 className="font-serif text-3xl font-light text-zinc-100 sm:text-4xl">
-          {deal.projectName}
-        </h1>
-        <p className="mt-2 text-lg font-light text-zinc-500">{deal.shortDescription}</p>
-
-        {/* Project links */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {deal.projectWebsite && (
-            <LinkButton href={deal.projectWebsite} icon={<Globe className="h-4 w-4" />} label="Website" />
-          )}
-          {deal.projectTwitter && (
-            <LinkButton href={deal.projectTwitter} icon={<ExternalLink className="h-4 w-4" />} label="Twitter" />
-          )}
-          {deal.projectDiscord && (
-            <LinkButton href={deal.projectDiscord} icon={<MessageCircle className="h-4 w-4" />} label="Discord" />
-          )}
-          {deal.projectTelegram && (
-            <LinkButton href={deal.projectTelegram} icon={<Send className="h-4 w-4" />} label="Telegram" />
-          )}
-          {deal.projectGithub && (
-            <LinkButton href={deal.projectGithub} icon={<Github className="h-4 w-4" />} label="GitHub" />
-          )}
+        {/* ================================================================= */}
+        {/* Key metrics row                                                   */}
+        {/* ================================================================= */}
+        <div className="mb-16 grid grid-cols-2 gap-px border border-zinc-200 sm:grid-cols-4 lg:grid-cols-8">
+          <MetricCell label="Token Price" value={formatCurrency(deal.tokenPrice)} />
+          <MetricCell label="Total Raise" value={`$${formatLargeNumber(deal.totalRaise)}`} />
+          <MetricCell label="Hard Cap" value={`$${formatLargeNumber(deal.hardCap)}`} />
+          <MetricCell label="FDV" value={deal.fdv ? `$${formatLargeNumber(deal.fdv)}` : "--"} />
+          <MetricCell label="TGE Unlock" value={`${deal.tgeUnlockPercent}%`} />
+          <MetricCell label="Vesting" value={deal.vestingDurationDays > 0 ? `${deal.vestingDurationDays}d` : "None"} />
+          <MetricCell label="Allocation" value={ALLOCATION_LABELS[deal.allocationMethod] ?? deal.allocationMethod} />
+          <MetricCell label="Min Tier" value={deal.minTierRequired ?? "None"} />
         </div>
-      </div>
 
-      {/* ================================================================= */}
-      {/* Two-column layout                                                 */}
-      {/* ================================================================= */}
-      <div className="flex flex-col gap-8 lg:flex-row">
-        {/* =============================================================== */}
-        {/* Left Column (content)                                           */}
-        {/* =============================================================== */}
-        <div className="flex flex-1 flex-col gap-8 lg:max-w-[60%]">
-          {/* Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle>About</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-invert prose-sm max-w-none">
+        {/* ================================================================= */}
+        {/* Two-column layout                                                 */}
+        {/* ================================================================= */}
+        <div className="flex flex-col gap-16 lg:flex-row">
+          {/* Left Column */}
+          <div className="flex flex-1 flex-col gap-16 lg:max-w-[58%]">
+            {/* Description */}
+            <section>
+              <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">
+                About
+              </h2>
+              <div className="max-w-none">
                 {deal.description.split("\n").map((line, i) => {
                   if (line.startsWith("## ")) {
                     return (
-                      <h2
-                        key={i}
-                        className="mb-3 mt-6 font-serif text-xl font-light text-zinc-100"
-                      >
+                      <h2 key={i} className="mb-4 mt-10 font-serif text-xl font-light text-zinc-800">
                         {line.replace("## ", "")}
                       </h2>
                     );
                   }
                   if (line.startsWith("### ")) {
                     return (
-                      <h3
-                        key={i}
-                        className="mb-2 mt-5 text-lg font-medium text-zinc-200"
-                      >
+                      <h3 key={i} className="mb-3 mt-8 font-sans text-base font-medium text-zinc-700">
                         {line.replace("### ", "")}
                       </h3>
                     );
@@ -490,13 +526,10 @@ export default function DealDetailPage() {
                     const match = line.match(/- \*\*(.+?)\*\*: (.+)/);
                     if (match) {
                       return (
-                        <div key={i} className="mb-2 flex gap-2">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" />
-                          <p className="text-sm text-zinc-300">
-                            <strong className="text-zinc-50">
-                              {match[1]}
-                            </strong>
-                            : {match[2]}
+                        <div key={i} className="mb-3 flex gap-3">
+                          <span className="mt-2 h-1 w-1 shrink-0 bg-zinc-400" />
+                          <p className="font-sans text-sm font-normal leading-relaxed text-zinc-500">
+                            <strong className="font-medium text-zinc-700">{match[1]}</strong>: {match[2]}
                           </p>
                         </div>
                       );
@@ -504,294 +537,159 @@ export default function DealDetailPage() {
                   }
                   if (line.startsWith("- ")) {
                     return (
-                      <div key={i} className="mb-2 flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" />
-                        <p className="text-sm text-zinc-300">
+                      <div key={i} className="mb-3 flex gap-3">
+                        <span className="mt-2 h-1 w-1 shrink-0 bg-zinc-400" />
+                        <p className="font-sans text-sm font-normal leading-relaxed text-zinc-500">
                           {line.replace("- ", "")}
                         </p>
                       </div>
                     );
                   }
                   if (line.trim() === "") {
-                    return <div key={i} className="h-2" />;
+                    return <div key={i} className="h-3" />;
                   }
                   return (
-                    <p
-                      key={i}
-                      className="mb-2 text-sm leading-relaxed text-zinc-300"
-                    >
+                    <p key={i} className="mb-3 font-sans text-sm font-normal leading-relaxed text-zinc-500">
                       {line}
                     </p>
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </section>
 
-          {/* Tokenomics */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Tokenomics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-3">
-                  <TokenomicRow
-                    label="Token Name"
-                    value={tokenSymbol}
-                  />
-                  <TokenomicRow
-                    label="Ticker"
-                    value={`$${tokenSymbol}`}
-                  />
-                  <TokenomicRow
-                    label="Token Price"
-                    value={formatCurrency(deal.tokenPrice)}
-                  />
-                  {deal.fdv && (
-                    <TokenomicRow
-                      label="FDV"
-                      value={`$${formatLargeNumber(deal.fdv)}`}
-                    />
-                  )}
+            {/* Tokenomics */}
+            <section>
+              <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">Tokenomics</h2>
+              <div className="grid gap-10 sm:grid-cols-2">
+                <div className="flex flex-col gap-0">
+                  <TokenomicRow label="Token Name" value={tokenSymbol} />
+                  <TokenomicRow label="Ticker" value={`$${tokenSymbol}`} />
+                  <TokenomicRow label="Token Price" value={formatCurrency(deal.tokenPrice)} />
+                  {deal.fdv && <TokenomicRow label="FDV" value={`$${formatLargeNumber(deal.fdv)}`} />}
                 </div>
-
-                {/* Tokenomics donut chart */}
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                <div className="border border-zinc-200 p-6">
                   <TokenomicsChart data={DEFAULT_TOKENOMICS_DATA} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </section>
 
-          {/* Vesting */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Vesting Schedule</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-6">
-                {/* Visual timeline */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
-                  <VestingBlock
-                    label="TGE Unlock"
-                    value={`${deal.tgeUnlockPercent}%`}
-                    sublabel="At token generation event"
-                    active
-                  />
-                  <div className="hidden h-0.5 flex-1 self-center bg-zinc-700 sm:block" />
-                  <VestingBlock
-                    label="Cliff Period"
-                    value={`${deal.vestingCliffDays} days`}
-                    sublabel="No tokens released"
-                  />
-                  <div className="hidden h-0.5 flex-1 self-center bg-zinc-700 sm:block" />
-                  <VestingBlock
-                    label="Vesting Duration"
-                    value={`${deal.vestingDurationDays} days`}
-                    sublabel="Linear daily release"
-                  />
-                </div>
-
-                {/* Progress visual */}
-                <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-                  <div className="mb-2 flex items-center justify-between text-xs text-zinc-400">
-                    <span>TGE ({deal.tgeUnlockPercent}%)</span>
-                    <span>Cliff ({deal.vestingCliffDays}d)</span>
-                    <span>
-                      Full Vest ({deal.vestingDurationDays}d)
-                    </span>
-                  </div>
-                  <div className="flex h-3 overflow-hidden rounded-full bg-zinc-800">
-                    <div
-                      className="bg-zinc-400"
-                      style={{
-                        width: `${parseFloat(deal.tgeUnlockPercent)}%`,
-                      }}
-                    />
-                    <div
-                      className="bg-zinc-700"
-                      style={{
-                        width: `${deal.vestingDurationDays > 0 ? (deal.vestingCliffDays / deal.vestingDurationDays) * (100 - parseFloat(deal.tgeUnlockPercent)) : 0}%`,
-                      }}
-                    />
-                    <div className="flex-1 bg-zinc-500" />
-                  </div>
-                </div>
-
-                {/* Vesting timeline chart */}
-                <VestingTimeline
-                  schedule={{
-                    tgeUnlock: parseFloat(deal.tgeUnlockPercent),
-                    cliffMonths: Math.round(deal.vestingCliffDays / 30),
-                    vestingMonths: Math.round(deal.vestingDurationDays / 30),
-                    totalAmount: parseFloat(deal.totalRaise) * 0.2,
-                    claimed: 0,
-                  }}
-                />
+            {/* Vesting */}
+            <section>
+              <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">Vesting Schedule</h2>
+              <div className="mb-10 grid grid-cols-1 gap-px border border-zinc-200 sm:grid-cols-3">
+                <VestingCell label="TGE Unlock" value={`${deal.tgeUnlockPercent}%`} sublabel="At token generation event" active />
+                <VestingCell label="Cliff Period" value={`${deal.vestingCliffDays} days`} sublabel="No tokens released" />
+                <VestingCell label="Vesting Duration" value={`${deal.vestingDurationDays} days`} sublabel="Linear daily release" />
               </div>
-            </CardContent>
-          </Card>
+              <div className="mb-10 border border-zinc-200 p-8">
+                <div className="mb-3 flex items-center justify-between text-[10px] font-normal uppercase tracking-widest text-zinc-500">
+                  <span>TGE ({deal.tgeUnlockPercent}%)</span>
+                  <span>Cliff ({deal.vestingCliffDays}d)</span>
+                  <span>Full Vest ({deal.vestingDurationDays}d)</span>
+                </div>
+                <div className="flex h-1.5 overflow-hidden bg-zinc-200">
+                  <div className="bg-zinc-600" style={{ width: `${parseFloat(deal.tgeUnlockPercent)}%` }} />
+                  <div className="bg-zinc-300" style={{ width: `${deal.vestingDurationDays > 0 ? (deal.vestingCliffDays / deal.vestingDurationDays) * (100 - parseFloat(deal.tgeUnlockPercent)) : 0}%` }} />
+                  <div className="flex-1 bg-zinc-500" />
+                </div>
+              </div>
+              <VestingTimeline
+                schedule={{
+                  tgeUnlock: parseFloat(deal.tgeUnlockPercent),
+                  cliffMonths: Math.round(deal.vestingCliffDays / 30),
+                  vestingMonths: Math.round(deal.vestingDurationDays / 30),
+                  totalAmount: parseFloat(deal.totalRaise) * 0.2,
+                  claimed: 0,
+                }}
+              />
+            </section>
 
-          {/* Team */}
-          {deal.teamMembers && deal.teamMembers.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Team</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2">
+            {/* Team */}
+            {deal.teamMembers && deal.teamMembers.length > 0 && (
+              <section>
+                <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">Team</h2>
+                <div className="grid gap-px border border-zinc-200 sm:grid-cols-2">
                   {deal.teamMembers.map((member) => (
-                    <div
-                      key={member.name}
-                      className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3"
-                    >
-                      {/* Avatar placeholder */}
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-medium text-zinc-300">
-                        {member.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
+                    <div key={member.name} className="flex items-center gap-4 border border-zinc-200 p-6">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-zinc-200 font-sans text-xs font-normal text-zinc-500">
+                        {member.name.split(" ").map((n) => n[0]).join("")}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-zinc-50">
-                          {member.name}
-                        </p>
-                        <p className="text-xs text-zinc-400">{member.role}</p>
+                        <p className="font-sans text-sm font-medium text-zinc-800">{member.name}</p>
+                        <p className="text-xs font-normal text-zinc-500">{member.role}</p>
                       </div>
                       {member.linkedin && (
-                        <a
-                          href={member.linkedin}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-                        >
+                        <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="text-zinc-400 transition-colors hover:text-zinc-600">
                           <Linkedin className="h-4 w-4" />
                         </a>
                       )}
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </section>
+            )}
 
-          {/* Documents */}
-          {(deal.pitchDeckUrl || deal.whitepaperUrl || deal.auditReportUrl) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Documents</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {deal.pitchDeckUrl && (
-                    <DocumentCard
-                      title="Pitch Deck"
-                      description="Project overview and business plan"
-                      href={deal.pitchDeckUrl}
-                      icon={<FileText className="h-5 w-5" />}
-                    />
-                  )}
-                  {deal.whitepaperUrl && (
-                    <DocumentCard
-                      title="Whitepaper"
-                      description="Technical documentation"
-                      href={deal.whitepaperUrl}
-                      icon={<FileText className="h-5 w-5" />}
-                    />
-                  )}
-                  {deal.auditReportUrl && (
-                    <DocumentCard
-                      title="Audit Report"
-                      description="Smart contract security audit"
-                      href={deal.auditReportUrl}
-                      icon={<Shield className="h-5 w-5" />}
-                    />
-                  )}
+            {/* Documents */}
+            {(deal.pitchDeckUrl || deal.whitepaperUrl || deal.auditReportUrl) && (
+              <section>
+                <h2 className="mb-8 font-serif text-2xl font-light text-zinc-800">Documents</h2>
+                <div className="grid gap-px border border-zinc-200 sm:grid-cols-3">
+                  {deal.pitchDeckUrl && <DocumentCard title="Pitch Deck" description="Project overview" href={deal.pitchDeckUrl} icon={<FileText className="h-4 w-4" />} />}
+                  {deal.whitepaperUrl && <DocumentCard title="Whitepaper" description="Technical docs" href={deal.whitepaperUrl} icon={<FileText className="h-4 w-4" />} />}
+                  {deal.auditReportUrl && <DocumentCard title="Audit Report" description="Security audit" href={deal.auditReportUrl} icon={<Shield className="h-4 w-4" />} />}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              </section>
+            )}
+          </div>
 
-        {/* =============================================================== */}
-        {/* Right Column (sidebar)                                          */}
-        {/* =============================================================== */}
-        <div className="flex flex-col gap-6 lg:w-[40%]">
-          <div className="lg:sticky lg:top-8 flex flex-col gap-6">
-            {/* Raise Progress Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Raise Progress</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                {/* Contribution progress bar */}
-                <ContributionProgress
-                  raised={parseFloat(deal.totalRaised)}
-                  softCap={deal.softCap ? parseFloat(deal.softCap) : 0}
-                  hardCap={parseFloat(deal.hardCap)}
-                />
-
-                {/* Contributors */}
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
-                  <Users className="h-4 w-4" />
-                  <span>
-                    {deal.contributorCount.toLocaleString()} contributors
-                  </span>
+          {/* Right Column (sidebar) */}
+          <div className="flex flex-col gap-10 lg:w-[38%]">
+            <div className="flex flex-col gap-10 lg:sticky lg:top-8">
+              {/* Raise Progress */}
+              <div className="border border-zinc-200 p-8">
+                <h3 className="mb-6 text-xs font-normal uppercase tracking-widest text-zinc-500">Raise Progress</h3>
+                <ContributionProgress raised={parseFloat(deal.totalRaised)} softCap={deal.softCap ? parseFloat(deal.softCap) : 0} hardCap={parseFloat(deal.hardCap)} />
+                <div className="mt-6 flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5 text-zinc-400" />
+                  <span className="font-sans text-xs font-normal text-zinc-500">{deal.contributorCount.toLocaleString()} contributors</span>
                 </div>
-
-                {/* Countdown */}
                 {deal.contributionCloseAt && (
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-                    <Countdown
-                      targetDate={deal.contributionCloseAt}
-                      label="Ends in"
-                    />
+                  <div className="mt-6 border-t border-zinc-200 pt-6">
+                    <Countdown targetDate={deal.contributionCloseAt} label="Ends in" />
                   </div>
                 )}
-
-                {/* Phase indicator */}
                 {phases.length > 0 && (
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+                  <div className="mt-6 border-t border-zinc-200 pt-6">
                     <DealPhaseIndicator phases={phases} />
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Contribution / CTA Card */}
-            {showParticipation ? (
-              <ParticipationFlow
-                dealName={deal.projectName}
-                roundType="Public Round"
-                allocationMethod={deal.allocationMethod.replace("_", " ")}
-                tokenSymbol={tokenSymbol}
-                raiseTokenSymbol={raiseSymbol}
-                tokenPrice={parseFloat(deal.tokenPrice)}
-                minContribution={parseFloat(deal.minContribution)}
-                maxContribution={parseFloat(deal.maxContribution)}
-                walletBalance={0}
-                guaranteedAllocation={0}
-                userTier="None"
-                tierMultiplier="1x"
-                onClose={() => setShowParticipation(false)}
-              />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {isContributionPhase
-                      ? "Contribute"
-                      : isRegistrationPhase
-                        ? "Register"
-                        : isUpcoming
-                          ? "Coming Soon"
-                          : "Deal Status"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+              {/* CTA / Contribution Card */}
+              {showParticipation ? (
+                <ParticipationFlow
+                  dealName={deal.projectName}
+                  roundType="Public Round"
+                  allocationMethod={deal.allocationMethod.replace("_", " ")}
+                  tokenSymbol={tokenSymbol}
+                  raiseTokenSymbol={raiseSymbol}
+                  tokenPrice={parseFloat(deal.tokenPrice)}
+                  minContribution={parseFloat(deal.minContribution)}
+                  maxContribution={parseFloat(deal.maxContribution)}
+                  walletBalance={0}
+                  guaranteedAllocation={0}
+                  userTier="None"
+                  tierMultiplier="1x"
+                  onClose={() => setShowParticipation(false)}
+                />
+              ) : (
+                <div className="border border-zinc-200 p-8">
+                  <h3 className="mb-6 text-xs font-normal uppercase tracking-widest text-zinc-500">
+                    {isContributionPhase ? "Contribute" : isRegistrationPhase ? "Register" : isUpcoming ? "Coming Soon" : "Deal Status"}
+                  </h3>
+
                   {isContributionPhase && (
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-6">
                       <ContributionForm
                         minContribution={parseFloat(deal.minContribution)}
                         maxContribution={parseFloat(deal.maxContribution)}
@@ -800,36 +698,23 @@ export default function DealDetailPage() {
                         tokenSymbol={tokenSymbol}
                         raiseTokenSymbol={raiseSymbol}
                       />
-                      <div className="border-t border-zinc-800 pt-4">
-                        <Button
-                          variant="secondary"
-                          size="lg"
-                          className="w-full"
-                          onClick={() => setShowParticipation(true)}
-                        >
+                      <div className="border-t border-zinc-200 pt-6">
+                        <button onClick={() => setShowParticipation(true)} className="w-full border border-zinc-200 py-3 font-sans text-xs font-normal text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-700">
                           Full Participation Flow
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
 
                   {isRegistrationPhase && (
-                    <div className="flex flex-col items-center gap-4 py-4 text-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800">
-                        <Clock className="h-7 w-7 text-zinc-400" />
-                      </div>
-                      <p className="text-sm text-zinc-400">
-                        Register your interest to receive a guaranteed allocation
-                        when contributions open.
-                      </p>
-                      <Button
-                        className="w-full"
-                        size="lg"
+                    <div className="flex flex-col items-center gap-6 py-4 text-center">
+                      <Clock className="h-8 w-8 text-zinc-400" />
+                      <p className="font-sans text-sm font-normal text-zinc-500">Register your interest to receive a guaranteed allocation when contributions open.</p>
+                      <button
+                        className="w-full bg-violet-500 py-3 font-sans text-sm font-normal text-white transition-colors hover:bg-violet-400"
                         onClick={async () => {
                           try {
-                            const res = await fetch(`/api/deals/${deal.id}/register`, {
-                              method: "POST",
-                            });
+                            const res = await fetch(`/api/deals/${deal.id}/register`, { method: "POST" });
                             const json = await res.json();
                             if (json.success) {
                               setShowParticipation(true);
@@ -842,105 +727,50 @@ export default function DealDetailPage() {
                         }}
                       >
                         Register Interest
-                      </Button>
+                      </button>
                     </div>
                   )}
 
                   {isUpcoming && (
-                    <div className="flex flex-col items-center gap-4 py-4 text-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800">
-                        <Clock className="h-7 w-7 text-zinc-400" />
-                      </div>
-                      <p className="text-sm text-zinc-400">
-                        This deal has not opened yet. Registration starts soon.
-                      </p>
-                      {deal.registrationOpenAt && (
-                        <Countdown
-                          targetDate={deal.registrationOpenAt}
-                          label="Opens in"
-                        />
-                      )}
+                    <div className="flex flex-col items-center gap-6 py-4 text-center">
+                      <Clock className="h-8 w-8 text-zinc-400" />
+                      <p className="font-sans text-sm font-normal text-zinc-500">This deal has not opened yet. Registration starts soon.</p>
+                      {deal.registrationOpenAt && <Countdown targetDate={deal.registrationOpenAt} label="Opens in" />}
                     </div>
                   )}
 
                   {isCompleted && (
-                    <div className="flex flex-col items-center gap-4 py-4 text-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800">
-                        <CheckCircle2 className="h-7 w-7 text-zinc-400" />
-                      </div>
-                      <p className="text-sm font-medium text-zinc-300">
-                        This deal has ended
-                      </p>
-                      <div className="grid w-full grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-                        <div className="flex flex-col items-center">
-                          <span className="text-xs text-zinc-500">Raised</span>
-                          <span className="text-sm font-semibold text-zinc-50">
-                            {formatCurrency(deal.totalRaised)}
-                          </span>
+                    <div className="flex flex-col items-center gap-6 py-4 text-center">
+                      <CheckCircle2 className="h-8 w-8 text-zinc-400" />
+                      <p className="font-sans text-sm font-medium text-zinc-600">This deal has ended</p>
+                      <div className="grid w-full grid-cols-2 gap-px border border-zinc-200">
+                        <div className="flex flex-col items-center p-4">
+                          <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Raised</span>
+                          <span className="mt-1 font-serif text-lg font-light text-zinc-800">{formatCurrency(deal.totalRaised)}</span>
                         </div>
-                        <div className="flex flex-col items-center">
-                          <span className="text-xs text-zinc-500">
-                            Contributors
-                          </span>
-                          <span className="text-sm font-semibold text-zinc-50">
-                            {deal.contributorCount.toLocaleString()}
-                          </span>
+                        <div className="flex flex-col items-center border-l border-zinc-200 p-4">
+                          <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Contributors</span>
+                          <span className="mt-1 font-serif text-lg font-light text-zinc-800">{deal.contributorCount.toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Deal Stats */}
-            <DealStats
-              stats={{
-                tokenPrice: deal.tokenPrice,
-                totalRaise: deal.totalRaise,
-                hardCap: deal.hardCap,
-                fdv: deal.fdv ?? undefined,
-                tgeUnlockPercent: deal.tgeUnlockPercent,
-                vestingDurationDays: deal.vestingDurationDays,
-                allocationMethod: deal.allocationMethod,
-                minTierRequired: deal.minTierRequired ?? undefined,
-              }}
-            />
-
-            {/* Deal Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Deal Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-3">
-                  <DetailRow
-                    label="Min Contribution"
-                    value={formatCurrency(deal.minContribution)}
-                  />
-                  <DetailRow
-                    label="Max Contribution"
-                    value={formatCurrency(deal.maxContribution)}
-                  />
-                  <DetailRow
-                    label="Allocation Method"
-                    value={deal.allocationMethod.replace("_", " ")}
-                  />
-                  <DetailRow
-                    label="KYC Required"
-                    value={deal.requiresKyc ? "Yes" : "No"}
-                  />
-                  <DetailRow
-                    label="Min Tier"
-                    value={deal.minTierRequired ?? "None"}
-                  />
-                  <DetailRow
-                    label="Accreditation"
-                    value={deal.requiresAccreditation ? "Required" : "Not Required"}
-                  />
                 </div>
-              </CardContent>
-            </Card>
+              )}
+
+              {/* Deal Details */}
+              <div className="border border-zinc-200 p-8">
+                <h3 className="mb-6 text-xs font-normal uppercase tracking-widest text-zinc-500">Deal Details</h3>
+                <div className="flex flex-col gap-0">
+                  <DetailRow label="Min Contribution" value={formatCurrency(deal.minContribution)} />
+                  <DetailRow label="Max Contribution" value={formatCurrency(deal.maxContribution)} />
+                  <DetailRow label="Allocation Method" value={deal.allocationMethod.replace("_", " ")} />
+                  <DetailRow label="KYC Required" value={deal.requiresKyc ? "Yes" : "No"} />
+                  <DetailRow label="Min Tier" value={deal.minTierRequired ?? "None"} />
+                  <DetailRow label="Accreditation" value={deal.requiresAccreditation ? "Required" : "Not Required"} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -949,7 +779,7 @@ export default function DealDetailPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: build phases from deal dates when API phases are empty
+// Helper: build phases from deal dates
 // ---------------------------------------------------------------------------
 
 function buildPhasesFromDeal(deal: DealData): Phase[] {
@@ -999,21 +829,13 @@ function buildPhasesFromDeal(deal: DealData): Phase[] {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function LinkButton({
-  href,
-  icon,
-  label,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-}) {
+function ExternalLinkButton({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50"
+      className="inline-flex items-center gap-2 border border-zinc-200 px-4 py-2 font-sans text-xs font-normal text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-600"
     >
       {icon}
       {label}
@@ -1021,81 +843,44 @@ function LinkButton({
   );
 }
 
-function TokenomicRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function MetricCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-zinc-800 pb-2 last:border-0">
-      <span className="text-sm text-zinc-400">{label}</span>
-      <span className="text-sm font-medium text-zinc-50">{value}</span>
+    <div className="flex flex-col gap-1.5 border border-zinc-200 p-5">
+      <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">{label}</span>
+      <span className="font-serif text-lg font-light text-zinc-800">{value}</span>
     </div>
   );
 }
 
-function VestingBlock({
-  label,
-  value,
-  sublabel,
-  active,
-}: {
-  label: string;
-  value: string;
-  sublabel: string;
-  active?: boolean;
-}) {
+function TokenomicRow({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-1 rounded-lg border p-4 text-center",
-        active
-          ? "border-zinc-600 bg-zinc-900/50"
-          : "border-zinc-800 bg-zinc-950"
-      )}
-    >
-      <span className="text-xs text-zinc-500">{label}</span>
-      <span
-        className={cn(
-          "font-serif text-xl font-light",
-          active ? "text-zinc-100" : "text-zinc-200"
-        )}
-      >
-        {value}
-      </span>
-      <span className="text-[11px] text-zinc-600">{sublabel}</span>
+    <div className="flex items-center justify-between border-b border-zinc-200 py-4 last:border-0">
+      <span className="font-sans text-sm font-normal text-zinc-500">{label}</span>
+      <span className="font-sans text-sm font-medium text-zinc-800">{value}</span>
     </div>
   );
 }
 
-function DocumentCard({
-  title,
-  description,
-  href,
-  icon,
-}: {
-  title: string;
-  description: string;
-  href: string | null;
-  icon: React.ReactNode;
-}) {
+function VestingCell({ label, value, sublabel, active }: { label: string; value: string; sublabel: string; active?: boolean }) {
+  return (
+    <div className={cn("flex flex-col items-center gap-2 border border-zinc-200 p-8 text-center", active && "bg-zinc-50")}>
+      <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">{label}</span>
+      <span className={cn("font-serif text-2xl font-light", active ? "text-zinc-900" : "text-zinc-700")}>{value}</span>
+      <span className="text-[10px] font-normal text-zinc-400">{sublabel}</span>
+    </div>
+  );
+}
+
+function DocumentCard({ title, description, href, icon }: { title: string; description: string; href: string | null; icon: React.ReactNode }) {
   if (!href) return null;
-
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900"
-    >
-      <div className="flex items-center gap-2 text-zinc-400">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-3 border border-zinc-200 p-6 transition-colors hover:border-zinc-300">
+      <div className="flex items-center gap-2 text-zinc-500">
         {icon}
-        <span className="text-sm font-medium">{title}</span>
+        <span className="font-sans text-sm font-medium text-zinc-600">{title}</span>
       </div>
-      <p className="text-xs text-zinc-500">{description}</p>
-      <div className="flex items-center gap-1 text-xs text-zinc-400">
+      <p className="text-xs font-normal text-zinc-400">{description}</p>
+      <div className="flex items-center gap-1.5 text-xs font-normal text-zinc-500">
         <Download className="h-3 w-3" />
         Download
       </div>
@@ -1103,18 +888,12 @@ function DocumentCard({
   );
 }
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-zinc-400">{label}</span>
+    <div className="flex items-center justify-between border-b border-zinc-200 py-4 last:border-0">
+      <span className="font-sans text-sm font-normal text-zinc-500">{label}</span>
       {typeof value === "string" ? (
-        <span className="text-sm font-medium text-zinc-50">{value}</span>
+        <span className="font-sans text-sm font-medium text-zinc-800">{value}</span>
       ) : (
         value
       )}

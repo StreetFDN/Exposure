@@ -19,16 +19,16 @@ interface TokenomicsChartProps {
 }
 
 // ---------------------------------------------------------------------------
-// Default zinc palette
+// Default zinc palette (light theme)
 // ---------------------------------------------------------------------------
 
 const ZINC_PALETTE = [
-  "#d4d4d8", // zinc-300
-  "#a1a1aa", // zinc-400
-  "#71717a", // zinc-500
-  "#52525b", // zinc-600
+  "#18181b", // zinc-900
   "#3f3f46", // zinc-700
-  "#27272a", // zinc-800
+  "#52525b", // zinc-600
+  "#71717a", // zinc-500
+  "#a1a1aa", // zinc-400
+  "#d4d4d8", // zinc-300
 ];
 
 // ---------------------------------------------------------------------------
@@ -55,7 +55,7 @@ function renderActiveShape(props: Record<string, any>) {
         x={cx}
         y={cy - 8}
         textAnchor="middle"
-        fill="#fafafa"
+        fill="#18181b"
         fontSize={13}
         fontWeight={500}
       >
@@ -65,7 +65,7 @@ function renderActiveShape(props: Record<string, any>) {
         x={cx}
         y={cy + 12}
         textAnchor="middle"
-        fill="#a1a1aa"
+        fill="#71717a"
         fontSize={12}
       >
         {`${(percent * 100).toFixed(1)}%`}
@@ -110,7 +110,7 @@ export function TokenomicsChart({ data, className }: TokenomicsChartProps) {
               outerRadius="80%"
               dataKey="value"
               strokeWidth={1}
-              stroke="#18181b"
+              stroke="#e4e4e7"
               activeShape={renderActiveShape}
               onMouseEnter={(_, index) => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(undefined)}
@@ -138,7 +138,7 @@ export function TokenomicsChart({ data, className }: TokenomicsChartProps) {
                 className="h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-xs text-zinc-400">
+              <span className="text-xs text-zinc-500">
                 {entry.name} ({pct}%)
               </span>
             </div>

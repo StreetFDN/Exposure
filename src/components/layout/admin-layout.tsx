@@ -7,9 +7,9 @@ import { Menu } from "lucide-react";
 import { Sidebar } from "./sidebar";
 import { ToastContainer } from "@/components/ui/toast";
 
-// ---------------------------------------------------------------------------
-// Breadcrumb helpers
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Breadcrumb helpers                                                         */
+/* -------------------------------------------------------------------------- */
 
 function buildBreadcrumbs(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
@@ -19,14 +19,19 @@ function buildBreadcrumbs(pathname: string) {
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Admin layout
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Admin layout                                                               */
+/* -------------------------------------------------------------------------- */
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const pathname = usePathname();
   const { address } = useAccount();
+
+  // Login page gets no sidebar -- render children directly
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
 
   const breadcrumbs = buildBreadcrumbs(pathname);
 
@@ -34,41 +39,41 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-white">
       {/* Sidebar */}
       <Sidebar
         mobileOpen={mobileSidebarOpen}
         onMobileClose={() => setMobileSidebarOpen(false)}
       />
 
-      {/* Main area — offset by sidebar width on desktop */}
-      <div className="lg:pl-64">
+      {/* Main area */}
+      <div className="lg:pl-60">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/80 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/90 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
           {/* Left: hamburger + breadcrumbs */}
           <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(true)}
-              className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-50 lg:hidden"
+              className="rounded p-1.5 text-zinc-400 transition-colors hover:text-zinc-700 lg:hidden"
               aria-label="Open sidebar"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4" />
             </button>
 
             <nav aria-label="Breadcrumb" className="hidden sm:block">
-              <ol className="flex items-center gap-1.5 text-sm">
+              <ol className="flex items-center gap-1.5 text-sm font-normal">
                 {breadcrumbs.map((crumb, idx) => (
                   <li key={crumb.href} className="flex items-center gap-1.5">
                     {idx > 0 && (
-                      <span className="text-zinc-600">/</span>
+                      <span className="text-zinc-300">/</span>
                     )}
                     {idx === breadcrumbs.length - 1 ? (
-                      <span className="font-medium text-zinc-50">
+                      <span className="text-zinc-700">
                         {crumb.label}
                       </span>
                     ) : (
-                      <span className="text-zinc-400">{crumb.label}</span>
+                      <span className="text-zinc-500">{crumb.label}</span>
                     )}
                   </li>
                 ))}
@@ -79,10 +84,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           {/* Right: admin user info */}
           {address && (
             <div className="flex items-center gap-3">
-              <span className="hidden text-sm text-zinc-400 sm:block">
+              <span className="hidden font-mono text-xs font-normal text-zinc-500 sm:block">
                 {truncateAddress(address)}
               </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-400">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-300 text-[10px] text-zinc-500">
                 {address.slice(2, 4).toUpperCase()}
               </div>
             </div>

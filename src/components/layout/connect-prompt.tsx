@@ -11,15 +11,15 @@ export function ConnectPrompt() {
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center px-4">
       {/* Logo */}
-      <span className="mb-8 text-3xl font-bold tracking-tight text-zinc-50">
+      <span className="mb-8 text-3xl font-bold tracking-tight text-zinc-900">
         EXPOSURE
       </span>
 
       {/* Message */}
-      <h1 className="mb-2 text-xl font-semibold text-zinc-50">
+      <h1 className="mb-2 text-xl font-semibold text-zinc-900">
         Connect your wallet to continue
       </h1>
-      <p className="mb-8 max-w-sm text-center text-sm text-zinc-400">
+      <p className="mb-8 max-w-sm text-center text-sm text-zinc-500">
         You need to connect a wallet to access this page. Your wallet is used
         for authentication and to interact with on-chain features.
       </p>

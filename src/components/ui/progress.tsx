@@ -50,9 +50,9 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       <div ref={ref} className={cn("flex flex-col gap-1.5", className)} {...props}>
         {(label || showPercentage) && (
           <div className="flex items-center justify-between text-sm">
-            {label && <span className="font-medium text-zinc-300">{label}</span>}
+            {label && <span className="font-medium text-zinc-700">{label}</span>}
             {showPercentage && (
-              <span className="tabular-nums text-zinc-400">
+              <span className="tabular-nums text-zinc-500">
                 {Math.round(clamped)}%
               </span>
             )}
@@ -64,7 +64,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label={label ?? "Progress"}
-          className="h-2 w-full overflow-hidden rounded-full bg-zinc-800"
+          className="h-1 w-full overflow-hidden rounded-full bg-zinc-200"
         >
           <div
             className={progressFillVariants({ colorVariant })}

@@ -26,7 +26,6 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { SiweMessage } from "siwe";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
@@ -219,15 +218,6 @@ const CHAIN_ENUM_MAP: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function generateAttestationHash(): string {
-  const hex = "0123456789abcdef";
-  let hash = "0x";
-  for (let i = 0; i < 40; i++) {
-    hash += hex[Math.floor(Math.random() * 16)];
-  }
-  return hash;
-}
-
 function computeInvestorClassification(
   q: QuestionnaireData
 ): InvestorClassification {
@@ -236,7 +226,6 @@ function computeInvestorClassification(
   const tokenSales = q.tokenSaleExperience;
   const riskAbility = q.riskAssessmentAbility;
 
-  // Sophisticated: 5+ years, very familiar, 10+ deals, can assess independently
   if (
     years === "5+" &&
     familiarity === "very_familiar" &&
@@ -246,7 +235,6 @@ function computeInvestorClassification(
     return "sophisticated";
   }
 
-  // Experienced: 3+ years, familiar+ with digital assets, has done token sales
   const hasThreePlusYears = years === "3-5" || years === "5+";
   const isFamiliar =
     familiarity === "familiar" || familiarity === "very_familiar";
@@ -257,7 +245,6 @@ function computeInvestorClassification(
     return "experienced";
   }
 
-  // Retail: less experience
   return "retail";
 }
 
@@ -285,7 +272,7 @@ function CustomCheckbox({
     <label
       className={cn("flex cursor-pointer items-start gap-3", className)}
     >
-      <div className="relative mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
+      <div className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
         <input
           type="checkbox"
           checked={checked}
@@ -294,16 +281,16 @@ function CustomCheckbox({
         />
         <div
           className={cn(
-            "flex h-5 w-5 items-center justify-center rounded border transition-all duration-150",
+            "flex h-4 w-4 items-center justify-center border transition-all duration-150",
             checked
               ? "border-violet-500 bg-violet-500"
-              : "border-zinc-600 bg-zinc-900"
+              : "border-zinc-400 bg-transparent"
           )}
         >
-          {checked && <Check className="h-3 w-3 text-white" />}
+          {checked && <Check className="h-2.5 w-2.5 text-white" />}
         </div>
       </div>
-      <span className="text-sm text-zinc-300">{children}</span>
+      <span className="text-sm font-normal text-zinc-500">{children}</span>
     </label>
   );
 }
@@ -327,7 +314,7 @@ function RadioOption({
 }) {
   return (
     <label className="flex cursor-pointer items-center gap-3">
-      <div className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+      <div className="relative flex h-4 w-4 shrink-0 items-center justify-center">
         <input
           type="radio"
           name={name}
@@ -338,18 +325,16 @@ function RadioOption({
         />
         <div
           className={cn(
-            "flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all duration-150",
-            checked
-              ? "border-violet-500"
-              : "border-zinc-600"
+            "flex h-4 w-4 items-center justify-center rounded-full border transition-all duration-150",
+            checked ? "border-violet-500" : "border-zinc-400"
           )}
         >
           {checked && (
-            <div className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+            <div className="h-2 w-2 rounded-full bg-violet-500" />
           )}
         </div>
       </div>
-      <span className="text-sm text-zinc-300">{children}</span>
+      <span className="text-sm font-normal text-zinc-500">{children}</span>
     </label>
   );
 }
@@ -361,15 +346,15 @@ function RadioOption({
 function InlineError({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/5 px-4 py-3">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-      <p className="text-sm text-rose-400">{message}</p>
+    <div className="mt-4 flex items-start gap-2.5 border border-rose-500/20 bg-rose-500/[0.03] px-4 py-3">
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400" />
+      <p className="text-sm font-normal text-rose-400">{message}</p>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Stepper Component
+// Stepper Component -- Minimal horizontal with numbers
 // ---------------------------------------------------------------------------
 
 function Stepper({
@@ -380,41 +365,33 @@ function Stepper({
   completedSteps: Set<number>;
 }) {
   return (
-    <div className="mb-10">
-      <div className="flex items-center justify-between">
+    <div className="mb-12">
+      <div className="flex items-center justify-center gap-0">
         {STEPS.map((step, index) => {
           const isCompleted = completedSteps.has(index);
           const isCurrent = index === currentStep;
-          const isFuture = !isCompleted && !isCurrent;
-          const StepIcon = step.icon;
+          const stepNum = String(index + 1).padStart(2, "0");
 
           return (
             <React.Fragment key={step.label}>
-              {/* Step node */}
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
-                    isCompleted &&
-                      "border-violet-500 bg-violet-500 text-white",
-                    isCurrent &&
-                      "border-violet-500 bg-violet-500/10 text-violet-400",
-                    isFuture &&
-                      "border-zinc-700 bg-zinc-900 text-zinc-600"
-                  )}
-                >
-                  {isCompleted ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <StepIcon className="h-4 w-4" />
-                  )}
-                </div>
+              {/* Step number */}
+              <div className="flex flex-col items-center gap-1.5">
                 <span
                   className={cn(
-                    "text-xs font-medium transition-colors duration-300",
-                    isCompleted && "text-violet-400",
-                    isCurrent && "text-zinc-50",
-                    isFuture && "text-zinc-600"
+                    "font-mono text-sm font-normal transition-colors duration-300",
+                    isCompleted && "text-violet-500",
+                    isCurrent && "text-zinc-900",
+                    !isCompleted && !isCurrent && "text-zinc-400"
+                  )}
+                >
+                  {stepNum}
+                </span>
+                <span
+                  className={cn(
+                    "hidden text-[10px] font-normal uppercase tracking-widest transition-colors duration-300 sm:block",
+                    isCompleted && "text-violet-500/70",
+                    isCurrent && "text-zinc-500",
+                    !isCompleted && !isCurrent && "text-zinc-300"
                   )}
                 >
                   {step.label}
@@ -423,13 +400,13 @@ function Stepper({
 
               {/* Connector line */}
               {index < STEPS.length - 1 && (
-                <div className="mb-6 flex-1 px-2">
+                <div className="mx-3 mb-4 flex-1 sm:mx-5 sm:mb-0">
                   <div
                     className={cn(
                       "h-px w-full transition-colors duration-500",
                       completedSteps.has(index)
-                        ? "bg-violet-500"
-                        : "bg-zinc-800"
+                        ? "bg-violet-500/50"
+                        : "bg-zinc-200"
                     )}
                   />
                 </div>
@@ -443,7 +420,7 @@ function Stepper({
 }
 
 // ---------------------------------------------------------------------------
-// Step 1: Sign In — Wallet Connection via SIWE
+// Step 1: Sign In -- Wallet Connection via SIWE
 // ---------------------------------------------------------------------------
 
 function StepAuth({
@@ -463,12 +440,10 @@ function StepAuth({
   const [isAuthenticating, setIsAuthenticating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Track whether we have already kicked off auto-SIWE for this wallet connection
   const siweAttemptedRef = React.useRef<string | null>(null);
 
   const isSignedIn = data.authMethod === "wallet";
 
-  // Once the wallet connects, automatically start SIWE flow
   React.useEffect(() => {
     if (
       isConnected &&
@@ -491,12 +466,10 @@ function StepAuth({
     setError(null);
 
     try {
-      // 1. Get nonce
       const nonceRes = await api.get<{ nonce: string }>("/auth/nonce");
       const nonce = nonceRes.data?.nonce;
       if (!nonce) throw new Error("Failed to fetch nonce from server");
 
-      // 2. Construct SIWE message
       const message = new SiweMessage({
         domain: window.location.host,
         address,
@@ -508,10 +481,8 @@ function StepAuth({
       });
       const messageString = message.prepareMessage();
 
-      // 3. Sign
       const signature = await signMessageAsync({ message: messageString });
 
-      // 4. Verify on server (sets exposure_session cookie)
       const verifyRes = await api.post<{
         user: {
           id: string;
@@ -527,19 +498,16 @@ function StepAuth({
 
       const verifiedUser = verifyRes.data?.user;
 
-      // Update auth context
       if (verifiedUser) {
         setSession(verifiedUser as any);
       }
 
-      // Update onboarding data
       onUpdate({
         authMethod: "wallet",
         walletAddress: address,
         displayName: shortenAddress(address),
       });
 
-      // Auto advance to next step after short delay
       setTimeout(() => {
         onAutoAdvance();
       }, 600);
@@ -551,7 +519,6 @@ function StepAuth({
             ? err.message
             : "Sign-in failed. Please try again.";
       setError(msg);
-      // Allow re-try
       siweAttemptedRef.current = null;
     } finally {
       setIsAuthenticating(false);
@@ -560,27 +527,26 @@ function StepAuth({
 
   return (
     <div className="flex flex-col items-center text-center">
-      {/* Branding */}
-      <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900">
-        <Shield className="h-8 w-8 text-violet-400" />
-      </div>
-      <h2 className="mt-4 text-2xl font-bold text-zinc-50">
-        Welcome to Exposure
+      <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+        Step 01
+      </p>
+      <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
+        Connect Your Wallet
       </h2>
-      <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">
-        Connect your wallet and sign a message to authenticate. Your session
-        is secured via Sign-In with Ethereum (SIWE).
+      <p className="mt-2 max-w-md text-sm font-normal leading-relaxed text-zinc-500">
+        Sign in with your wallet via Sign-In with Ethereum (SIWE).
+        Your session is cryptographically secured.
       </p>
 
       {/* Connected + authenticated state */}
       {isSignedIn && (
-        <div className="mt-6 flex w-full max-w-sm items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
+        <div className="mt-8 flex w-full max-w-sm items-center gap-3 border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
           <div className="text-left">
-            <p className="text-sm font-medium text-emerald-400">
+            <p className="text-sm font-normal text-emerald-400">
               Signed in as {data.displayName}
             </p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs font-normal text-zinc-500">
               via Wallet (SIWE)
             </p>
           </div>
@@ -591,11 +557,11 @@ function StepAuth({
         <>
           {/* Authenticating state */}
           {isAuthenticating && (
-            <div className="mt-8 flex w-full max-w-sm flex-col items-center gap-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-violet-400" />
-              <p className="text-sm text-zinc-400">
+            <div className="mt-10 flex w-full max-w-sm flex-col items-center gap-4">
+              <div className="h-6 w-6 animate-spin rounded-full border border-zinc-300 border-t-violet-400" />
+              <p className="text-sm font-normal text-zinc-500">
                 {isConnected
-                  ? "Signing message... Please check your wallet."
+                  ? "Signing message... check your wallet."
                   : "Connecting wallet..."}
               </p>
             </div>
@@ -603,31 +569,24 @@ function StepAuth({
 
           {/* Primary action: Connect Wallet */}
           {!isAuthenticating && (
-            <div className="mt-8 w-full max-w-sm">
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    if (isConnected && address && chainId) {
-                      // Wallet already connected, just need to sign
-                      siweAttemptedRef.current = null;
-                      handleSiweSignIn();
-                    } else {
-                      openConnectModal?.();
-                    }
-                  }}
-                  className={cn(
-                    "flex h-14 w-full items-center justify-center gap-3 rounded-xl border text-sm font-semibold transition-all duration-200",
-                    "border-violet-500 bg-violet-500 text-white hover:bg-violet-600"
-                  )}
-                >
-                  <Wallet className="h-5 w-5" />
-                  {isConnected ? "Sign In with Wallet" : "Connect Wallet"}
-                </button>
-                <p className="text-xs text-zinc-500">
-                  Supports MetaMask, Rabby, Ledger, WalletConnect, and more
-                  via RainbowKit.
-                </p>
-              </div>
+            <div className="mt-10 w-full max-w-sm">
+              <button
+                onClick={() => {
+                  if (isConnected && address && chainId) {
+                    siweAttemptedRef.current = null;
+                    handleSiweSignIn();
+                  } else {
+                    openConnectModal?.();
+                  }
+                }}
+                className="flex h-12 w-full items-center justify-center gap-3 bg-zinc-900 text-sm font-normal text-white transition-all duration-200 hover:bg-zinc-800"
+              >
+                <Wallet className="h-4 w-4" />
+                {isConnected ? "Sign In with Wallet" : "Connect Wallet"}
+              </button>
+              <p className="mt-3 text-xs font-normal text-zinc-400">
+                MetaMask, Rabby, Ledger, WalletConnect, and more via RainbowKit.
+              </p>
             </div>
           )}
 
@@ -636,12 +595,11 @@ function StepAuth({
       )}
 
       {/* Info note */}
-      <div className="mt-8 flex max-w-sm items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-left">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-        <p className="text-xs leading-relaxed text-zinc-500">
-          Signing in creates a secure session cookie. No private keys are
-          ever transmitted. All data is encrypted and never shared with third
-          parties.
+      <div className="mt-10 flex max-w-sm items-start gap-3 border border-zinc-200 p-4 text-left">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+        <p className="text-xs font-normal leading-relaxed text-zinc-400">
+          No private keys are transmitted. All data is encrypted and never
+          shared with third parties.
         </p>
       </div>
     </div>
@@ -676,7 +634,6 @@ function StepAssessment({
     });
   };
 
-  // Check if the questionnaire section is complete
   const isQuestionnaireComplete =
     q.yearsInvesting !== "" &&
     q.investmentTypes.length > 0 &&
@@ -687,19 +644,16 @@ function StepAssessment({
     q.netWorth !== "" &&
     q.riskAcknowledged;
 
-  // Check if US accreditation section is complete (only required for US persons)
   const isUSAccreditationComplete = isUSPerson
     ? data.usAccreditationBasis !== null && data.usAccreditationCertified
     : true;
 
-  // Overall step completion
   const isAssessmentComplete =
     data.country !== "" &&
     !isBlocked &&
     isQuestionnaireComplete &&
     isUSAccreditationComplete;
 
-  // Sync eligibility status upward
   React.useEffect(() => {
     if (isBlocked) {
       onUpdate({ investorClassification: null });
@@ -709,23 +663,22 @@ function StepAssessment({
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-zinc-50">
-          Investor Assessment
-        </h2>
-        <p className="mt-1 text-sm text-zinc-400">
-          Regulatory requirements vary by jurisdiction. Complete this
-          assessment to determine your investor classification.
-        </p>
-      </div>
+      <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+        Step 02
+      </p>
+      <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
+        Investor Assessment
+      </h2>
+      <p className="mt-2 text-sm font-normal text-zinc-500">
+        Complete this assessment to determine your investor classification
+        based on regulatory requirements.
+      </p>
 
-      <div className="space-y-8">
-        {/* ----------------------------------------------------------------- */}
+      <div className="mt-8 space-y-8">
         {/* Section A: Jurisdiction */}
-        {/* ----------------------------------------------------------------- */}
         <div>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-violet-400">
-            Section A: Jurisdiction
+          <p className="mb-4 text-xs font-normal uppercase tracking-widest text-zinc-500">
+            A. Jurisdiction
           </p>
           <Select
             label="Country / Jurisdiction"
@@ -741,38 +694,33 @@ function StepAssessment({
             }
           />
 
-          {/* Blocked warning */}
           {isBlocked && (
-            <div className="mt-4 flex items-start gap-3 rounded-lg border border-rose-500/30 bg-rose-500/5 p-4">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <div className="mt-4 flex items-start gap-3 border border-rose-500/20 bg-rose-500/[0.03] p-4">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400" />
               <div>
-                <p className="text-sm font-medium text-rose-400">
+                <p className="text-sm font-normal text-rose-400">
                   Restricted Jurisdiction
                 </p>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Unfortunately, participation from your jurisdiction is not
-                  permitted under current regulatory requirements. This
-                  restriction is in place to ensure compliance with applicable
-                  laws.
+                <p className="mt-1 text-xs font-normal text-zinc-500">
+                  Participation from your jurisdiction is not permitted under
+                  current regulatory requirements.
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* ----------------------------------------------------------------- */}
-        {/* Section B: Investment Experience Assessment */}
-        {/* ----------------------------------------------------------------- */}
+        {/* Section B: Investment Experience */}
         {data.country && !isBlocked && (
           <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-violet-400">
-              Section B: Investment Experience Assessment
+            <p className="mb-4 text-xs font-normal uppercase tracking-widest text-zinc-500">
+              B. Investment Experience
             </p>
 
             <div className="space-y-6">
-              {/* Q1: Years investing */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
+              {/* Q1 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
                   1. How many years have you been actively investing?
                 </p>
                 <div className="space-y-2 pl-1">
@@ -797,12 +745,12 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Q2: Investment types (multi-select) */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
+              {/* Q2 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
                   2. Which types of investments have you made?
                 </p>
-                <p className="text-xs text-zinc-500">Select all that apply.</p>
+                <p className="text-xs font-normal text-zinc-400">Select all that apply.</p>
                 <div className="space-y-2 pl-1">
                   {[
                     "Public equities/stocks",
@@ -818,7 +766,6 @@ function StepAssessment({
                       checked={q.investmentTypes.includes(type)}
                       onChange={() => {
                         if (type === "None of the above") {
-                          // If selecting "None", clear others
                           if (q.investmentTypes.includes(type)) {
                             updateQuestionnaire({ investmentTypes: [] });
                           } else {
@@ -827,7 +774,6 @@ function StepAssessment({
                             });
                           }
                         } else {
-                          // If selecting a real type, remove "None of the above"
                           const filtered = q.investmentTypes.filter(
                             (t) => t !== "None of the above"
                           );
@@ -844,24 +790,17 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Q3: Digital asset familiarity */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
-                  3. How familiar are you with early-stage digital asset
-                  investments?
+              {/* Q3 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
+                  3. How familiar are you with early-stage digital asset investments?
                 </p>
                 <div className="space-y-2 pl-1">
                   {[
                     { value: "not_familiar", label: "Not familiar" },
-                    {
-                      value: "somewhat_familiar",
-                      label: "Somewhat familiar",
-                    },
+                    { value: "somewhat_familiar", label: "Somewhat familiar" },
                     { value: "familiar", label: "Familiar" },
-                    {
-                      value: "very_familiar",
-                      label: "Very familiar / professional experience",
-                    },
+                    { value: "very_familiar", label: "Very familiar / professional experience" },
                   ].map((opt) => (
                     <RadioOption
                       key={opt.value}
@@ -869,9 +808,7 @@ function StepAssessment({
                       value={opt.value}
                       checked={q.digitalAssetFamiliarity === opt.value}
                       onChange={(v) =>
-                        updateQuestionnaire({
-                          digitalAssetFamiliarity: v,
-                        })
+                        updateQuestionnaire({ digitalAssetFamiliarity: v })
                       }
                     >
                       {opt.label}
@@ -880,11 +817,10 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Q4: Token sale experience */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
-                  4. Have you previously invested in token sales, IDOs, or
-                  private crypto rounds?
+              {/* Q4 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
+                  4. Have you previously invested in token sales, IDOs, or private crypto rounds?
                 </p>
                 <div className="space-y-2 pl-1">
                   {[
@@ -908,24 +844,17 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Q5: Risk assessment ability */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
-                  5. Can you assess business prospects and risks of early-stage
-                  projects?
+              {/* Q5 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
+                  5. Can you assess business prospects and risks of early-stage projects?
                 </p>
                 <div className="space-y-2 pl-1">
                   {[
                     { value: "no", label: "No" },
                     { value: "somewhat", label: "Somewhat" },
-                    {
-                      value: "with_support",
-                      label: "Yes, with support",
-                    },
-                    {
-                      value: "independently",
-                      label: "Yes, independently",
-                    },
+                    { value: "with_support", label: "Yes, with support" },
+                    { value: "independently", label: "Yes, independently" },
                   ].map((opt) => (
                     <RadioOption
                       key={opt.value}
@@ -933,9 +862,7 @@ function StepAssessment({
                       value={opt.value}
                       checked={q.riskAssessmentAbility === opt.value}
                       onChange={(v) =>
-                        updateQuestionnaire({
-                          riskAssessmentAbility: v,
-                        })
+                        updateQuestionnaire({ riskAssessmentAbility: v })
                       }
                     >
                       {opt.label}
@@ -944,10 +871,10 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Q6: Annual income */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
-                  6. What is your approximate annual income?
+              {/* Q6 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
+                  6. Approximate annual income?
                 </p>
                 <div className="space-y-2 pl-1">
                   {[
@@ -972,11 +899,10 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Q7: Net worth */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
-                  7. What is your approximate net worth (excluding primary
-                  residence)?
+              {/* Q7 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
+                  7. Approximate net worth (excluding primary residence)?
                 </p>
                 <div className="space-y-2 pl-1">
                   {[
@@ -1000,9 +926,9 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Q8: Risk acknowledgment */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
+              {/* Q8 */}
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
                   8. Risk acknowledgment
                 </p>
                 <div className="pl-1">
@@ -1018,12 +944,12 @@ function StepAssessment({
                 </div>
               </div>
 
-              {/* Investor classification result */}
+              {/* Classification result */}
               {isQuestionnaireComplete && data.investorClassification && (
-                <div className="flex items-center gap-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-4">
-                  <Shield className="h-5 w-5 shrink-0 text-violet-400" />
+                <div className="flex items-center gap-3 border border-violet-500/20 bg-violet-500/[0.03] p-4">
+                  <Shield className="h-4 w-4 shrink-0 text-violet-400" />
                   <div>
-                    <p className="text-sm font-medium text-violet-400">
+                    <p className="text-sm font-normal text-violet-400">
                       Classification:{" "}
                       {data.investorClassification === "sophisticated"
                         ? "Sophisticated Investor"
@@ -1031,48 +957,44 @@ function StepAssessment({
                           ? "Experienced Investor"
                           : "Retail Investor"}
                     </p>
-                    <p className="mt-0.5 text-xs text-zinc-400">
+                    <p className="mt-0.5 text-xs font-normal text-zinc-500">
                       {data.investorClassification === "sophisticated"
-                        ? "Full access to all offerings on Exposure."
+                        ? "Full access to all offerings."
                         : data.investorClassification === "experienced"
                           ? "Access to most offerings. Some deals may have additional requirements."
-                          : "Access may be restricted on certain deals. Additional experience may be required for some offerings."}
+                          : "Access may be restricted. Additional experience may be required for some offerings."}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Self-certification notice */}
-              <div className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-                <p className="text-xs leading-relaxed text-zinc-500">
+              <div className="flex items-start gap-3 border border-zinc-200 p-4">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                <p className="text-xs font-normal leading-relaxed text-zinc-400">
                   This is a self-certification assessment. Exposure reserves the
-                  right to request supporting documentation to verify any claims
-                  made above. Providing false information may result in account
-                  termination.
+                  right to request supporting documentation.
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* ----------------------------------------------------------------- */}
-        {/* Section C: US Accredited Investor Qualification (Reg D 506(c)) */}
-        {/* ----------------------------------------------------------------- */}
+        {/* Section C: US Accredited Investor */}
         {data.country && !isBlocked && isUSPerson && isQuestionnaireComplete && (
           <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-violet-400">
-              US Accredited Investor Qualification (Reg D 506(c))
+            <p className="mb-4 text-xs font-normal uppercase tracking-widest text-zinc-500">
+              C. US Accredited Investor (Reg D 506(c))
             </p>
 
             <div className="space-y-4">
-              <p className="text-sm text-zinc-300">
+              <p className="text-sm font-normal text-zinc-500">
                 To participate in private offerings as a US person, you must
                 qualify as an Accredited Investor under SEC Regulation D.
               </p>
 
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
+              <div className="space-y-2.5">
+                <p className="text-sm font-normal text-zinc-600">
                   I qualify because:
                 </p>
                 <div className="space-y-3 pl-1">
@@ -1084,8 +1006,8 @@ function StepAssessment({
                       onUpdate({ usAccreditationBasis: "income" })
                     }
                   >
-                    My individual annual income exceeded $200,000 in each of the
-                    two most recent years (or $300,000 jointly with spouse)
+                    Individual annual income exceeded $200,000 in each of the
+                    two most recent years (or $300,000 jointly)
                   </RadioOption>
                   <RadioOption
                     name="usAccreditation"
@@ -1095,8 +1017,7 @@ function StepAssessment({
                       onUpdate({ usAccreditationBasis: "net_worth" })
                     }
                   >
-                    My net worth exceeds $1,000,000 (individually or jointly,
-                    excluding primary residence)
+                    Net worth exceeds $1,000,000 (excluding primary residence)
                   </RadioOption>
                   <RadioOption
                     name="usAccreditation"
@@ -1110,8 +1031,7 @@ function StepAssessment({
                       })
                     }
                   >
-                    I am a licensed securities professional (Series 7, 65, or
-                    82)
+                    Licensed securities professional (Series 7, 65, or 82)
                   </RadioOption>
                   <RadioOption
                     name="usAccreditation"
@@ -1125,8 +1045,7 @@ function StepAssessment({
                       })
                     }
                   >
-                    I am a Qualified Purchaser (individual with $5M+ in
-                    investments)
+                    Qualified Purchaser ($5M+ in investments)
                   </RadioOption>
                   <RadioOption
                     name="usAccreditation"
@@ -1136,29 +1055,26 @@ function StepAssessment({
                       onUpdate({ usAccreditationBasis: "none" })
                     }
                   >
-                    None of the above -- I do not qualify
+                    None of the above
                   </RadioOption>
                 </div>
               </div>
 
-              {/* Warning for non-accredited US persons */}
               {data.usAccreditationBasis === "none" && (
-                <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <div className="flex items-start gap-3 border border-amber-500/20 bg-amber-500/[0.03] p-4">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
                   <div>
-                    <p className="text-sm font-medium text-amber-400">
+                    <p className="text-sm font-normal text-amber-400">
                       Limited Access
                     </p>
-                    <p className="mt-1 text-xs text-zinc-400">
-                      US persons who do not qualify as Accredited Investors are
-                      unable to participate in most offerings on Exposure. Some
-                      deals with Reg CF exemptions may be available.
+                    <p className="mt-1 text-xs font-normal text-zinc-500">
+                      Non-accredited US persons are unable to participate in most
+                      offerings. Some Reg CF deals may be available.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Certification checkbox */}
               {data.usAccreditationBasis !== null && (
                 <CustomCheckbox
                   checked={data.usAccreditationCertified}
@@ -1174,15 +1090,13 @@ function StepAssessment({
           </div>
         )}
 
-        {/* Overall completion indicator */}
+        {/* Completion indicator */}
         {isAssessmentComplete && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-            <p className="text-sm font-medium text-emerald-400">
+          <div className="flex items-center gap-2 border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <p className="text-sm font-normal text-emerald-400">
               Assessment complete.
-              {isSubmitting
-                ? " Saving..."
-                : " Continue to identity verification."}
+              {isSubmitting ? " Saving..." : " Continue to identity verification."}
             </p>
           </div>
         )}
@@ -1252,7 +1166,6 @@ function StepKYC({
     setError(null);
     try {
       await api.patch("/users/me", { kycStatus: "APPROVED" });
-      // Set KYC cookie so middleware allows through
       document.cookie =
         "exposure_kyc_status=approved; path=/; max-age=" +
         7 * 24 * 60 * 60;
@@ -1276,38 +1189,35 @@ function StepKYC({
   if (data.kycStatus === "submitted") {
     return (
       <div className="flex flex-col items-center py-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-amber-500/30 bg-amber-500/10">
-          <Clock className="h-7 w-7 text-amber-400" />
+        <div className="flex h-12 w-12 items-center justify-center border border-amber-500/20 bg-amber-500/[0.03]">
+          <Clock className="h-5 w-5 text-amber-400" />
         </div>
-        <h2 className="mt-6 text-2xl font-bold text-zinc-50">
+        <p className="mt-1 text-xs font-normal uppercase tracking-widest text-zinc-500">
+          Step 03
+        </p>
+        <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
           Verification Pending
         </h2>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">
-          Your documents have been submitted for review. Verification is
-          conducted manually by our compliance team and typically takes
+        <p className="mt-2 max-w-md text-sm font-normal leading-relaxed text-zinc-500">
+          Your documents have been submitted. Verification typically takes
           24-48 hours.
         </p>
-        <div className="mt-6 flex items-center gap-2">
+        <div className="mt-6">
           <Badge variant="warning" size="md">
             Under Review
           </Badge>
         </div>
-        <p className="mt-6 text-xs text-zinc-500">
-          You will receive a notification once your verification is
-          complete. You may continue the onboarding process in the meantime.
-        </p>
 
-        {/* Demo: Skip / Approve button */}
-        <div className="mt-6">
+        <div className="mt-8">
           <button
             onClick={handleSkipForDemo}
             disabled={isSkipping}
-            className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-zinc-700"
+            className="flex items-center gap-2 border border-zinc-300 px-4 py-2 text-sm font-normal text-zinc-600 transition-colors hover:bg-zinc-50"
           >
             {isSkipping ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="h-3.5 w-3.5" />
             )}
             {isSkipping ? "Approving..." : "Skip for Demo (auto-approve)"}
           </button>
@@ -1319,16 +1229,19 @@ function StepKYC({
   if (data.kycStatus === "verified") {
     return (
       <div className="flex flex-col items-center py-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-500/30 bg-emerald-500/10">
-          <CheckCircle2 className="h-7 w-7 text-emerald-400" />
+        <div className="flex h-12 w-12 items-center justify-center border border-emerald-500/20 bg-emerald-500/[0.03]">
+          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
         </div>
-        <h2 className="mt-6 text-2xl font-bold text-zinc-50">
+        <p className="mt-1 text-xs font-normal uppercase tracking-widest text-zinc-500">
+          Step 03
+        </p>
+        <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
           Identity Verified
         </h2>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">
+        <p className="mt-2 max-w-md text-sm font-normal leading-relaxed text-zinc-500">
           Your identity has been verified. You can proceed to the next step.
         </p>
-        <div className="mt-6 flex items-center gap-2">
+        <div className="mt-6">
           <Badge variant="success" size="md">
             Approved
           </Badge>
@@ -1339,30 +1252,31 @@ function StepKYC({
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-zinc-50">
-          Identity Verification
-        </h2>
-        <p className="mt-1 text-sm text-zinc-400">
-          Upload your documents for KYC review. All files are encrypted and
-          stored securely.
-        </p>
-      </div>
+      <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+        Step 03
+      </p>
+      <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
+        Identity Verification
+      </h2>
+      <p className="mt-2 text-sm font-normal text-zinc-500">
+        Upload your documents for KYC review. All files are encrypted and
+        stored securely.
+      </p>
 
-      <div className="space-y-6">
-        {/* Identity Document -- PASSPORT ONLY */}
+      <div className="mt-8 space-y-6">
+        {/* Identity Document */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label className="mb-2 block text-sm font-normal text-zinc-600">
             Identity Document
           </label>
-          <p className="mb-3 text-xs text-zinc-500">
+          <p className="mb-3 text-xs font-normal text-zinc-400">
             Valid passport only. Must be current and not expired.
           </p>
-          <div className="mb-3 flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-            <p className="text-xs text-amber-400">
-              Government-issued national ID cards and driver&apos;s licenses are
-              NOT accepted. Passport is the only accepted identity document.
+          <div className="mb-3 flex items-start gap-2.5 border border-amber-500/15 bg-amber-500/[0.02] p-3">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+            <p className="text-xs font-normal text-amber-400/80">
+              National ID cards and driver&apos;s licenses are NOT accepted.
+              Passport only.
             </p>
           </div>
           <input
@@ -1375,36 +1289,32 @@ function StepKYC({
           <button
             onClick={() => identityInputRef.current?.click()}
             className={cn(
-              "flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-200",
+              "flex w-full flex-col items-center justify-center gap-3 border border-dashed p-8 transition-all duration-200",
               data.identityDocumentName
-                ? "border-violet-500/40 bg-violet-500/5"
-                : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 hover:bg-zinc-800"
+                ? "border-violet-500/30 bg-violet-500/[0.02]"
+                : "border-zinc-300 hover:border-zinc-400"
             )}
           >
             {data.identityDocumentName ? (
               <>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                  <CheckCircle2 className="h-5 w-5 text-violet-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-zinc-50">
+                <CheckCircle2 className="h-5 w-5 text-violet-400" />
+                <div className="text-center">
+                  <p className="text-sm font-normal text-zinc-700">
                     {data.identityDocumentName}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
+                  <p className="mt-0.5 text-xs font-normal text-zinc-400">
                     Click to replace
                   </p>
                 </div>
               </>
             ) : (
               <>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-                  <Upload className="h-5 w-5 text-zinc-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-zinc-300">
-                    Click to upload or drag and drop
+                <Upload className="h-5 w-5 text-zinc-500" />
+                <div className="text-center">
+                  <p className="text-sm font-normal text-zinc-500">
+                    Click to upload
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
+                  <p className="mt-0.5 text-xs font-normal text-zinc-400">
                     PDF, JPG, or PNG up to 10MB
                   </p>
                 </div>
@@ -1415,12 +1325,11 @@ function StepKYC({
 
         {/* Proof of Address */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label className="mb-2 block text-sm font-normal text-zinc-600">
             Proof of Address
           </label>
-          <p className="mb-3 text-xs text-zinc-500">
-            Document must be dated within the last 3 months and clearly show
-            your name and residential address.
+          <p className="mb-3 text-xs font-normal text-zinc-400">
+            Dated within the last 3 months showing your name and residential address.
           </p>
           <input
             ref={addressInputRef}
@@ -1432,36 +1341,32 @@ function StepKYC({
           <button
             onClick={() => addressInputRef.current?.click()}
             className={cn(
-              "flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-200",
+              "flex w-full flex-col items-center justify-center gap-3 border border-dashed p-8 transition-all duration-200",
               data.proofOfAddressName
-                ? "border-violet-500/40 bg-violet-500/5"
-                : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 hover:bg-zinc-800"
+                ? "border-violet-500/30 bg-violet-500/[0.02]"
+                : "border-zinc-300 hover:border-zinc-400"
             )}
           >
             {data.proofOfAddressName ? (
               <>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                  <CheckCircle2 className="h-5 w-5 text-violet-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-zinc-50">
+                <CheckCircle2 className="h-5 w-5 text-violet-400" />
+                <div className="text-center">
+                  <p className="text-sm font-normal text-zinc-700">
                     {data.proofOfAddressName}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
+                  <p className="mt-0.5 text-xs font-normal text-zinc-400">
                     Click to replace
                   </p>
                 </div>
               </>
             ) : (
               <>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-                  <Upload className="h-5 w-5 text-zinc-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-zinc-300">
-                    Click to upload or drag and drop
+                <Upload className="h-5 w-5 text-zinc-500" />
+                <div className="text-center">
+                  <p className="text-sm font-normal text-zinc-500">
+                    Click to upload
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
+                  <p className="mt-0.5 text-xs font-normal text-zinc-400">
                     PDF, JPG, or PNG up to 10MB
                   </p>
                 </div>
@@ -1469,7 +1374,6 @@ function StepKYC({
             )}
           </button>
 
-          {/* Document date input */}
           <div className="mt-4">
             <Input
               type="date"
@@ -1478,134 +1382,106 @@ function StepKYC({
               onChange={(e) =>
                 onUpdate({ proofOfAddressDate: e.target.value })
               }
-              helperText="Document must be dated within the last 3 months."
+              helperText="Must be within the last 3 months."
             />
           </div>
         </div>
 
         {/* Accepted / Rejected docs */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
-              Accepted Documents
+          <div className="border border-zinc-200 p-4">
+            <p className="mb-2 text-xs font-normal uppercase tracking-widest text-emerald-500/70">
+              Accepted
             </p>
-            <ul className="space-y-1.5 text-xs text-zinc-400">
+            <ul className="space-y-1.5 text-xs font-normal text-zinc-500">
               <li className="flex items-center gap-2">
-                <Check className="h-3 w-3 text-emerald-400" />
-                Utility bills (electricity, water, gas)
+                <Check className="h-3 w-3 text-emerald-500/70" />
+                Utility bills
               </li>
               <li className="flex items-center gap-2">
-                <Check className="h-3 w-3 text-emerald-400" />
-                Bank statements (traditional banks only)
+                <Check className="h-3 w-3 text-emerald-500/70" />
+                Bank statements (traditional banks)
               </li>
               <li className="flex items-center gap-2">
-                <Check className="h-3 w-3 text-emerald-400" />
+                <Check className="h-3 w-3 text-emerald-500/70" />
                 Government residential certificates
               </li>
               <li className="flex items-center gap-2">
-                <Check className="h-3 w-3 text-emerald-400" />
+                <Check className="h-3 w-3 text-emerald-500/70" />
                 Tax notices
               </li>
             </ul>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-rose-400">
+          <div className="border border-zinc-200 p-4">
+            <p className="mb-2 text-xs font-normal uppercase tracking-widest text-rose-500/70">
               Not Accepted
             </p>
-            <ul className="space-y-1.5 text-xs text-zinc-400">
+            <ul className="space-y-1.5 text-xs font-normal text-zinc-500">
               <li className="flex items-center gap-2">
-                <X className="h-3 w-3 text-rose-400" />
-                Neobank statements (Revolut, Wise, N26, etc.)
+                <X className="h-3 w-3 text-rose-500/70" />
+                Neobank statements (Revolut, Wise, etc.)
               </li>
               <li className="flex items-center gap-2">
-                <X className="h-3 w-3 text-rose-400" />
+                <X className="h-3 w-3 text-rose-500/70" />
                 Screenshots or digital photos
               </li>
               <li className="flex items-center gap-2">
-                <X className="h-3 w-3 text-rose-400" />
+                <X className="h-3 w-3 text-rose-500/70" />
                 Mobile phone bills
               </li>
               <li className="flex items-center gap-2">
-                <X className="h-3 w-3 text-rose-400" />
-                Medical or insurance bills
-              </li>
-              <li className="flex items-center gap-2">
-                <X className="h-3 w-3 text-rose-400" />
+                <X className="h-3 w-3 text-rose-500/70" />
                 Documents older than 3 months
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Re-verification notice */}
-        <div className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-          <div>
-            <p className="text-xs font-medium text-zinc-300">
-              Re-verification
-            </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
-              Your verification expires after 12 months. You will be notified
-              when re-verification is required.
+        {/* Info notes */}
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 border border-zinc-200 p-4">
+            <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+            <p className="text-xs font-normal leading-relaxed text-zinc-400">
+              Verification expires after 12 months. Re-verification will be
+              required. Review typically takes 24-48 hours.
             </p>
           </div>
-        </div>
-
-        {/* EDD notice */}
-        <div className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-          <div>
-            <p className="text-xs font-medium text-amber-400">
-              Enhanced Due Diligence (EDD)
-            </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">
-              In some cases, Enhanced Due Diligence (EDD) may be required. This
-              includes additional documentation such as source of funds or
-              wealth declarations.
+          <div className="flex items-start gap-3 border border-amber-500/15 bg-amber-500/[0.02] p-4">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/80" />
+            <p className="text-xs font-normal leading-relaxed text-amber-400/70">
+              Enhanced Due Diligence (EDD) may be required in some cases,
+              including source of funds declarations.
             </p>
           </div>
-        </div>
-
-        {/* Timing note */}
-        <div className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-          <p className="text-xs leading-relaxed text-zinc-500">
-            Verification is reviewed manually by our compliance team,
-            typically within 24-48 hours. You will be notified once the
-            review is complete.
-          </p>
         </div>
 
         <InlineError message={error} />
 
-        {/* Submit button */}
+        {/* Actions */}
         <div className="flex items-center gap-3">
           {canSubmit && (
-            <Button
-              className="flex-1"
-              size="lg"
+            <button
               onClick={handleSubmitKYC}
               disabled={isSubmitting}
-              leftIcon={
-                isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Shield className="h-4 w-4" />
-                )
-              }
+              className="flex flex-1 items-center justify-center gap-2 bg-zinc-900 px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
             >
+              {isSubmitting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Shield className="h-3.5 w-3.5" />
+              )}
               {isSubmitting ? "Submitting..." : "Submit for Verification"}
-            </Button>
+            </button>
           )}
           <button
             onClick={handleSkipForDemo}
             disabled={isSkipping}
-            className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-zinc-700"
+            className="flex items-center gap-2 border border-zinc-300 px-4 py-3 text-sm font-normal text-zinc-500 transition-colors hover:bg-zinc-50"
           >
             {isSkipping ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="h-3.5 w-3.5" />
             )}
             {isSkipping ? "Approving..." : "Skip for Demo"}
           </button>
@@ -1637,7 +1513,6 @@ function StepWallet({
   const [error, setError] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
 
-  // Fetch existing linked wallets on mount
   React.useEffect(() => {
     fetchLinkedWallets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1655,7 +1530,7 @@ function StepWallet({
         onUpdate({ linkedWallets: res.data.wallets });
       }
     } catch {
-      // Silent fail - user may not have linked wallets yet
+      // Silent fail
     } finally {
       setIsLoadingWallets(false);
     }
@@ -1671,18 +1546,15 @@ function StepWallet({
     setError(null);
 
     try {
-      // Switch to the selected chain if needed
       const targetChainId = CHAIN_ID_MAP[selectedLinkChain];
       if (targetChainId && chainId !== targetChainId) {
         await switchChainAsync({ chainId: targetChainId });
       }
 
-      // Create a signature message linking the wallet to the account
       const linkMessage = `Link wallet ${address} to my Exposure account.\n\nChain: ${selectedLinkChain.toUpperCase()}\nTimestamp: ${new Date().toISOString()}`;
 
       const signature = await signMessageAsync({ message: linkMessage });
 
-      // Post to API
       const chainEnum = CHAIN_ENUM_MAP[selectedLinkChain] || "ETHEREUM";
       await api.post("/users/me/wallets", {
         address,
@@ -1691,7 +1563,6 @@ function StepWallet({
         message: linkMessage,
       });
 
-      // Refresh wallet list
       await fetchLinkedWallets();
     } catch (err) {
       const msg =
@@ -1716,44 +1587,44 @@ function StepWallet({
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-zinc-50">
-          Connect Additional Wallets
-        </h2>
-        <p className="mt-1 text-sm text-zinc-400">
-          Link additional wallets on different chains to receive allocations.
-          Your primary wallet (used for sign-in) is already linked. This step
-          is optional.
-        </p>
-      </div>
+      <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+        Step 04
+      </p>
+      <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
+        Connect Wallets
+      </h2>
+      <p className="mt-2 text-sm font-normal text-zinc-500">
+        Link additional wallets on different chains. Your primary wallet is
+        already linked. This step is optional.
+      </p>
 
-      <div className="space-y-6">
-        {/* Already linked wallets */}
+      <div className="mt-8 space-y-6">
+        {/* Linked wallets */}
         {isLoadingWallets ? (
-          <div className="flex items-center justify-center gap-3 py-4">
-            <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
-            <span className="text-sm text-zinc-400">Loading wallets...</span>
+          <div className="flex items-center justify-center gap-3 py-6">
+            <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+            <span className="text-sm font-normal text-zinc-500">Loading wallets...</span>
           </div>
         ) : hasLinkedWallets ? (
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <p className="mb-3 text-xs font-normal uppercase tracking-widest text-zinc-400">
               Linked Wallets
             </p>
             <div className="space-y-2">
               {data.linkedWallets.map((w) => (
                 <div
                   key={w.id}
-                  className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-3"
+                  className="flex items-center gap-3 border border-zinc-200 p-3"
                 >
-                  <Wallet className="h-4 w-4 shrink-0 text-violet-400" />
+                  <Wallet className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <code className="text-xs text-zinc-300">
+                      <code className="font-mono text-xs font-normal text-zinc-600">
                         {shortenAddress(w.address)}
                       </code>
                       <button
                         onClick={() => handleCopy(w.address)}
-                        className="text-zinc-500 transition-colors hover:text-zinc-300"
+                        className="text-zinc-400 transition-colors hover:text-zinc-500"
                       >
                         {copied ? (
                           <Check className="h-3 w-3 text-emerald-400" />
@@ -1763,42 +1634,39 @@ function StepWallet({
                       </button>
                     </div>
                   </div>
-                  <Badge
-                    variant={w.isPrimary ? "default" : "outline"}
-                    size="sm"
-                  >
+                  <span className="text-xs font-normal text-zinc-400">
                     {w.isPrimary ? "Primary" : w.chain}
-                  </Badge>
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-            <p className="text-xs leading-relaxed text-zinc-500">
-              Your primary wallet is linked automatically via sign-in. Use
-              the form below to link additional wallets on different chains.
+          <div className="flex items-start gap-3 border border-zinc-200 p-4">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+            <p className="text-xs font-normal leading-relaxed text-zinc-400">
+              Your primary wallet is linked automatically. Use the form below
+              to link additional wallets on different chains.
             </p>
           </div>
         )}
 
-        {/* Link new wallet section */}
+        {/* Link new wallet */}
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          <p className="mb-3 text-xs font-normal uppercase tracking-widest text-zinc-400">
             Link Additional Wallet
           </p>
 
           {isConnected && address ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-lg border border-violet-500/20 bg-violet-500/5 p-4">
-                <Wallet className="h-5 w-5 shrink-0 text-violet-400" />
+              <div className="flex items-center gap-3 border border-violet-500/15 bg-violet-500/[0.02] p-4">
+                <Wallet className="h-4 w-4 shrink-0 text-violet-400/70" />
                 <div>
-                  <p className="text-sm font-medium text-zinc-50">
+                  <p className="text-sm font-normal text-zinc-700">
                     Connected: {shortenAddress(address)}
                   </p>
-                  <p className="text-xs text-zinc-400">
-                    Select a chain and sign to link this wallet.
+                  <p className="text-xs font-normal text-zinc-500">
+                    Select a chain and sign to link.
                   </p>
                 </div>
               </div>
@@ -1811,30 +1679,25 @@ function StepWallet({
                 helperText="Select the network for this wallet."
               />
 
-              <Button
-                className="w-full"
-                size="lg"
+              <button
                 onClick={handleLinkWallet}
                 disabled={isLinking}
-                leftIcon={
-                  isLinking ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wallet className="h-4 w-4" />
-                  )
-                }
+                className="flex w-full items-center justify-center gap-2 border border-zinc-300 px-6 py-3 text-sm font-normal text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50"
               >
-                {isLinking
-                  ? "Linking... Check your wallet"
-                  : "Link This Wallet"}
-              </Button>
+                {isLinking ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wallet className="h-3.5 w-3.5" />
+                )}
+                {isLinking ? "Linking... Check your wallet" : "Link This Wallet"}
+              </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-              <p className="text-xs text-amber-400">
-                Your wallet is not connected. Use RainbowKit to connect a
-                different wallet if you want to link additional addresses.
+            <div className="flex items-center gap-3 border border-amber-500/15 bg-amber-500/[0.02] p-4">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/80" />
+              <p className="text-xs font-normal text-amber-400/70">
+                Wallet not connected. Use RainbowKit to connect a different
+                wallet for linking.
               </p>
             </div>
           )}
@@ -1842,17 +1705,16 @@ function StepWallet({
 
         <InlineError message={error} />
 
-        {/* USDC instruction */}
-        <div className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+        {/* USDC note */}
+        <div className="flex items-start gap-3 border border-zinc-200 p-4">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
           <div>
-            <p className="text-xs font-medium text-zinc-300">
+            <p className="text-xs font-normal text-zinc-500">
               Funding Requirement
             </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
-              Ensure you have USDC available on your selected network
-              before participating in deals. Contributions are accepted
-              in USDC only.
+            <p className="mt-0.5 text-xs font-normal leading-relaxed text-zinc-400">
+              Ensure USDC is available on your selected network before
+              participating in deals.
             </p>
           </div>
         </div>
@@ -1900,35 +1762,34 @@ function StepAttestation({
           ? "Experienced Investor"
           : "Verified Investor");
 
-  // If attestation is already finalized, show it
+  // Attestation finalized
   if (data.attestationHash) {
     return (
       <div>
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-500/30 bg-emerald-500/10">
-            <ShieldCheck className="h-8 w-8 text-emerald-400" />
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-emerald-500/20 bg-emerald-500/[0.03]">
+            <ShieldCheck className="h-5 w-5 text-emerald-400" />
           </div>
-          <h2 className="text-2xl font-bold text-zinc-50">
+          <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+            Step 05
+          </p>
+          <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
             Sonar eID Attestation
           </h2>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-2 text-sm font-normal text-zinc-500">
             Your verified identity has been cryptographically attested on-chain.
           </p>
         </div>
 
         {/* Attestation card */}
-        <div className="overflow-hidden rounded-xl border border-violet-500/30 bg-gradient-to-b from-violet-500/5 to-zinc-900">
+        <div className="mt-8 border border-zinc-200">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-violet-500/20 px-6 py-4">
+          <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10">
-                <ShieldCheck className="h-5 w-5 text-violet-400" />
-              </div>
+              <ShieldCheck className="h-4 w-4 text-violet-400" />
               <div>
-                <p className="text-sm font-bold text-zinc-50">
-                  Sonar eID
-                </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-sm font-normal text-zinc-900">Sonar eID</p>
+                <p className="text-[10px] font-normal text-zinc-400">
                   On-Chain Identity Attestation
                 </p>
               </div>
@@ -1938,103 +1799,104 @@ function StepAttestation({
             </Badge>
           </div>
 
-          {/* Attestation details */}
+          {/* Details */}
           <div className="space-y-4 p-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs text-zinc-500">Attestation Hash</p>
-                <code className="mt-1 block text-sm font-medium text-zinc-50 break-all">
+                <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                  Hash
+                </p>
+                <code className="mt-1 block break-all font-mono text-xs font-normal text-zinc-600">
                   {data.attestationHash}
                 </code>
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Wallet Bound To</p>
-                <code className="mt-1 block text-sm font-medium text-zinc-50">
+                <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                  Wallet
+                </p>
+                <code className="mt-1 block font-mono text-xs font-normal text-zinc-600">
                   {shortenAddress(data.walletAddress)}
                 </code>
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Issued</p>
-                <p className="mt-1 text-sm font-medium text-zinc-50">
+                <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                  Issued
+                </p>
+                <p className="mt-1 text-xs font-normal text-zinc-600">
                   {data.attestationIssuedDate}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-zinc-500">Expires</p>
-                <p className="mt-1 text-sm font-medium text-zinc-50">
+                <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                  Expires
+                </p>
+                <p className="mt-1 text-xs font-normal text-zinc-600">
                   {data.attestationExpiryDate}
                 </p>
               </div>
             </div>
 
-            {/* Attestation type badge */}
-            <div className="flex items-center justify-between rounded-lg border border-violet-500/20 bg-violet-500/5 p-4">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-violet-400" />
-                <p className="text-sm font-medium text-violet-400">
-                  Attestation Type
+            {/* Type */}
+            <div className="flex items-center justify-between border border-violet-500/15 bg-violet-500/[0.02] p-4">
+              <span className="text-xs font-normal text-zinc-500">
+                Attestation Type
+              </span>
+              <span className="text-xs font-normal text-violet-400">
+                {attestationType}
+              </span>
+            </div>
+
+            {/* Jurisdiction / KYC */}
+            <div className="grid gap-4 border border-zinc-200 p-4 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                  Jurisdiction
+                </p>
+                <p className="mt-1 text-xs font-normal text-zinc-600">
+                  {countryLabel}
                 </p>
               </div>
-              <Badge variant="default" size="md">
-                {attestationType}
-              </Badge>
-            </div>
-
-            {/* Jurisdiction */}
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs text-zinc-500">Jurisdiction</p>
-                  <p className="mt-1 text-sm font-medium text-zinc-50">
-                    {countryLabel}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500">KYC Status</p>
-                  <div className="mt-1">
-                    <Badge
-                      variant={
-                        data.kycStatus === "verified"
-                          ? "success"
-                          : data.kycStatus === "submitted"
-                            ? "warning"
-                            : "outline"
-                      }
-                      size="sm"
-                    >
-                      {data.kycStatus === "verified"
-                        ? "Verified"
+              <div>
+                <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                  KYC Status
+                </p>
+                <div className="mt-1">
+                  <Badge
+                    variant={
+                      data.kycStatus === "verified"
+                        ? "success"
                         : data.kycStatus === "submitted"
-                          ? "Pending Review"
-                          : "Not Submitted"}
-                    </Badge>
-                  </div>
+                          ? "warning"
+                          : "outline"
+                    }
+                    size="sm"
+                  >
+                    {data.kycStatus === "verified"
+                      ? "Verified"
+                      : data.kycStatus === "submitted"
+                        ? "Pending"
+                        : "Not Submitted"}
+                  </Badge>
                 </div>
               </div>
             </div>
 
-            {/* View on Explorer link */}
-            <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-300">
-              <ExternalLink className="h-4 w-4" />
+            {/* Explorer link */}
+            <button className="flex w-full items-center justify-center gap-2 border border-zinc-200 p-3 text-xs font-normal text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-600">
+              <ExternalLink className="h-3 w-3" />
               View on Explorer
             </button>
           </div>
         </div>
 
-        {/* Info notes */}
+        {/* Notes */}
         <div className="mt-6 space-y-3">
-          <div className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-            <p className="text-xs leading-relaxed text-zinc-500">
+          <div className="flex items-start gap-3 border border-zinc-200 p-4">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+            <p className="text-xs font-normal leading-relaxed text-zinc-400">
               This attestation allows projects to verify your eligibility
-              without accessing your personal information.
-            </p>
-          </div>
-          <div className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-            <p className="text-xs leading-relaxed text-zinc-500">
-              Your attestation is portable -- it works across all deals on
-              Exposure.
+              without accessing personal information. It is portable across
+              all deals on Exposure.
             </p>
           </div>
         </div>
@@ -2044,29 +1906,24 @@ function StepAttestation({
         {/* CTA */}
         <div className="mt-8 flex flex-col items-center gap-3">
           {redirectTarget ? (
-            <Link href={redirectTarget} className="w-full sm:w-auto">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto"
-                rightIcon={<ArrowRight className="h-4 w-4" />}
-              >
-                Continue to {redirectTarget.replace(/^\//, "").split("/")[0] || "Dashboard"}
-              </Button>
+            <Link href={redirectTarget} className="w-full">
+              <button className="flex w-full items-center justify-center gap-2 bg-zinc-900 px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-zinc-800">
+                Continue to{" "}
+                {redirectTarget.replace(/^\//, "").split("/")[0] || "Dashboard"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
             </Link>
           ) : (
-            <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto"
-                rightIcon={<ArrowRight className="h-4 w-4" />}
-              >
+            <Link href="/dashboard" className="w-full">
+              <button className="flex w-full items-center justify-center gap-2 bg-zinc-900 px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-zinc-800">
                 Go to Dashboard
-              </Button>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
             </Link>
           )}
           <Link
             href="/deals"
-            className="text-xs text-zinc-500 transition-colors hover:text-zinc-400"
+            className="text-xs font-normal text-zinc-400 transition-colors hover:text-zinc-500"
           >
             Start Exploring Deals
           </Link>
@@ -2078,47 +1935,55 @@ function StepAttestation({
   // Pre-attestation: acceptance form
   return (
     <div>
-      <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-violet-500/30 bg-violet-500/10">
-          <ShieldCheck className="h-8 w-8 text-violet-400" />
-        </div>
-        <h2 className="text-2xl font-bold text-zinc-50">
+      <div className="text-center">
+        <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+          Step 05
+        </p>
+        <h2 className="mt-3 font-serif text-2xl font-light text-zinc-900">
           Attestation & Terms
         </h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <p className="mt-2 text-sm font-normal text-zinc-500">
           Review and accept the terms to generate your on-chain identity
           attestation.
         </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Summary of what will be attested */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">
-            Attestation Summary
+      <div className="mt-8 space-y-6">
+        {/* Summary */}
+        <div className="border border-zinc-200 p-6 space-y-4">
+          <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
+            Summary
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div className="grid gap-4 sm:grid-cols-2 text-sm">
             <div>
-              <p className="text-xs text-zinc-500">Investor Classification</p>
-              <p className="mt-0.5 font-medium text-zinc-50">
+              <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                Classification
+              </p>
+              <p className="mt-1 text-xs font-normal text-zinc-700">
                 {attestationType}
               </p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">Jurisdiction</p>
-              <p className="mt-0.5 font-medium text-zinc-50">
+              <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                Jurisdiction
+              </p>
+              <p className="mt-1 text-xs font-normal text-zinc-700">
                 {countryLabel || "Not set"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">Wallet</p>
-              <code className="mt-0.5 block font-medium text-zinc-50">
+              <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                Wallet
+              </p>
+              <code className="mt-1 block font-mono text-xs font-normal text-zinc-700">
                 {shortenAddress(data.walletAddress)}
               </code>
             </div>
             <div>
-              <p className="text-xs text-zinc-500">KYC Status</p>
-              <p className="mt-0.5 font-medium text-zinc-50">
+              <p className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">
+                KYC
+              </p>
+              <p className="mt-1 text-xs font-normal text-zinc-700">
                 {data.kycStatus === "verified"
                   ? "Verified"
                   : data.kycStatus === "submitted"
@@ -2130,11 +1995,11 @@ function StepAttestation({
         </div>
 
         {/* Terms */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">
+        <div className="border border-zinc-200 p-6 space-y-4">
+          <p className="text-xs font-normal uppercase tracking-widest text-zinc-500">
             Terms & Conditions
           </p>
-          <div className="max-h-48 overflow-y-auto text-xs leading-relaxed text-zinc-400 space-y-2">
+          <div className="max-h-48 overflow-y-auto text-xs font-normal leading-relaxed text-zinc-500 space-y-2">
             <p>
               By accepting, you acknowledge that: (1) All information provided
               during onboarding is true and accurate to the best of your
@@ -2152,34 +2017,25 @@ function StepAttestation({
           </div>
         </div>
 
-        <CustomCheckbox
-          checked={accepted}
-          onChange={setAccepted}
-        >
+        <CustomCheckbox checked={accepted} onChange={setAccepted}>
           I have read, understood, and accept the attestation terms and
-          conditions above. I confirm that all information provided is true
-          and accurate.
+          conditions. I confirm all information is true and accurate.
         </CustomCheckbox>
 
         <InlineError message={apiErr} />
 
-        <Button
-          className="w-full"
-          size="lg"
+        <button
           onClick={onAccept}
           disabled={!accepted || isSubmitting}
-          leftIcon={
-            isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ShieldCheck className="h-4 w-4" />
-            )
-          }
+          className="flex w-full items-center justify-center gap-2 bg-zinc-900 px-6 py-3 text-sm font-normal text-white transition-colors hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isSubmitting
-            ? "Creating Attestation..."
-            : "Accept & Create Attestation"}
-        </Button>
+          {isSubmitting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <ShieldCheck className="h-3.5 w-3.5" />
+          )}
+          {isSubmitting ? "Creating Attestation..." : "Accept & Create Attestation"}
+        </button>
       </div>
     </div>
   );
@@ -2190,10 +2046,9 @@ function StepAttestation({
 // ---------------------------------------------------------------------------
 
 export default function OnboardingPage() {
-  // ---------------------------------------------------------------------------
-  // Read query params: ?step=N&redirect=/path
-  // ---------------------------------------------------------------------------
-  const [redirectTarget, setRedirectTarget] = React.useState<string | null>(null);
+  const [redirectTarget, setRedirectTarget] = React.useState<string | null>(
+    null
+  );
 
   const [currentStep, setCurrentStep] = React.useState(0);
   const [completedSteps, setCompletedSteps] = React.useState<Set<number>>(
@@ -2201,20 +2056,24 @@ export default function OnboardingPage() {
   );
   const [data, setData] = React.useState<OnboardingData>(INITIAL_DATA);
 
-  // API operation state
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [stepError, setStepError] = React.useState<string | null>(null);
 
-  // Loading state for checking existing profile
   const [isCheckingProfile, setIsCheckingProfile] = React.useState(true);
+
+  // Transition state
+  const [direction, setDirection] = React.useState<"forward" | "back">(
+    "forward"
+  );
+  const [isTransitioning, setIsTransitioning] = React.useState(false);
 
   const { isLoading: authLoading } = useAuthContext();
 
   // -------------------------------------------------------------------------
-  // On mount: check for existing session and pre-populate from user profile
+  // On mount: check for existing session and pre-populate
   // -------------------------------------------------------------------------
   React.useEffect(() => {
-    if (authLoading) return; // wait for auth context to load
+    if (authLoading) return;
 
     async function checkExistingProfile() {
       setIsCheckingProfile(true);
@@ -2241,7 +2100,6 @@ export default function OnboardingPage() {
           return;
         }
 
-        // Pre-populate data from existing profile
         const updates: Partial<OnboardingData> = {
           authMethod: "wallet",
           walletAddress: profile.walletAddress,
@@ -2249,15 +2107,12 @@ export default function OnboardingPage() {
             profile.displayName || shortenAddress(profile.walletAddress),
         };
 
-        // Determine which step to start on based on profile completeness
         let startStep = 0;
         const completed = new Set<number>();
 
-        // Step 1 is done (user is authenticated)
         completed.add(0);
         startStep = 1;
 
-        // Check step 2 (assessment)
         if (profile.country && profile.investorClassification) {
           updates.country = profile.country;
           updates.investorClassification =
@@ -2269,7 +2124,6 @@ export default function OnboardingPage() {
           startStep = 2;
         }
 
-        // Check step 3 (KYC)
         if (profile.kycStatus === "APPROVED") {
           updates.kycStatus = "verified";
           completed.add(2);
@@ -2280,14 +2134,12 @@ export default function OnboardingPage() {
           startStep = 3;
         }
 
-        // Check step 4 (wallets) - always mark as completable
         if (profile.wallets && profile.wallets.length > 0) {
           updates.linkedWallets = profile.wallets;
           completed.add(3);
           startStep = 4;
         }
 
-        // Check step 5 (attestation)
         if (profile.attestationHash) {
           updates.attestationHash = profile.attestationHash;
           const now = new Date();
@@ -2306,13 +2158,12 @@ export default function OnboardingPage() {
             });
           }
           completed.add(4);
-          startStep = 4; // Show the attestation
+          startStep = 4;
         }
 
         setData((prev) => ({ ...prev, ...updates }));
         setCompletedSteps(completed);
 
-        // Read URL params to allow overriding the start step
         const params = new URLSearchParams(window.location.search);
         const stepParam = params.get("step");
         if (stepParam) {
@@ -2326,8 +2177,6 @@ export default function OnboardingPage() {
           setCurrentStep(startStep);
         }
       } catch {
-        // Not authenticated or API error - start from step 0
-        // Read URL params
         const params = new URLSearchParams(window.location.search);
         const stepParam = params.get("step");
         if (stepParam) {
@@ -2348,7 +2197,6 @@ export default function OnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading]);
 
-  // Read redirect param on mount
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -2362,7 +2210,7 @@ export default function OnboardingPage() {
     setData((prev) => ({ ...prev, ...updates }));
   };
 
-  // Derived state for assessment completion
+  // Derived state
   const isUSPerson = ACCREDITATION_REQUIRED_COUNTRIES.includes(data.country);
   const isBlocked = BLOCKED_COUNTRIES.includes(data.country);
 
@@ -2386,7 +2234,6 @@ export default function OnboardingPage() {
     isQuestionnaireComplete &&
     isUSAccreditationComplete;
 
-  // Validation per step
   const canProceed = React.useMemo(() => {
     switch (currentStep) {
       case 0:
@@ -2398,30 +2245,21 @@ export default function OnboardingPage() {
           data.kycStatus === "submitted" || data.kycStatus === "verified"
         );
       case 3:
-        return true; // wallet linking is optional
+        return true;
       case 4:
         return true;
       default:
         return false;
     }
-  }, [
-    currentStep,
-    data.authMethod,
-    data.kycStatus,
-    isAssessmentComplete,
-  ]);
+  }, [currentStep, data.authMethod, data.kycStatus, isAssessmentComplete]);
 
-  // -------------------------------------------------------------------------
-  // Step-specific API handlers called on "Continue"
-  // -------------------------------------------------------------------------
-
+  // Step-specific API handlers
   const handleStepSubmit = async (): Promise<boolean> => {
     setStepError(null);
 
     try {
       switch (currentStep) {
         case 1: {
-          // Step 2: Assessment -- PATCH /api/users/me
           setIsSubmitting(true);
           const isAccredited =
             isUSPerson &&
@@ -2437,15 +2275,11 @@ export default function OnboardingPage() {
           return true;
         }
 
-        case 2: {
-          // Step 3: KYC -- already handled in-component
+        case 2:
           return true;
-        }
 
-        case 3: {
-          // Step 4: Wallet linking -- optional, already handled in-component
+        case 3:
           return true;
-        }
 
         default:
           return true;
@@ -2462,10 +2296,7 @@ export default function OnboardingPage() {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Attestation acceptance handler
-  // -------------------------------------------------------------------------
-
+  // Attestation handler
   const handleAttestationAccept = async () => {
     setIsSubmitting(true);
     setStepError(null);
@@ -2477,10 +2308,7 @@ export default function OnboardingPage() {
         attestationHash: attestHash,
       });
 
-      // Set KYC cookie if not already set
-      if (
-        !document.cookie.includes("exposure_kyc_status=approved")
-      ) {
+      if (!document.cookie.includes("exposure_kyc_status=approved")) {
         document.cookie =
           "exposure_kyc_status=approved; path=/; max-age=" +
           7 * 24 * 60 * 60;
@@ -2518,7 +2346,6 @@ export default function OnboardingPage() {
         }),
       });
 
-      // Mark step as completed
       setCompletedSteps((prev) => {
         const next = new Set(prev);
         next.add(4);
@@ -2535,180 +2362,170 @@ export default function OnboardingPage() {
     }
   };
 
+  const navigateToStep = (targetStep: number) => {
+    setDirection(targetStep > currentStep ? "forward" : "back");
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentStep(targetStep);
+      setIsTransitioning(false);
+    }, 150);
+  };
+
   const handleNext = async () => {
     if (!canProceed) return;
 
-    // Run step-specific API call
     const success = await handleStepSubmit();
     if (!success) return;
 
-    // Mark current step as completed
     setCompletedSteps((prev) => {
       const next = new Set(prev);
       next.add(currentStep);
       return next;
     });
 
-    // Generate attestation data when entering final step
-    if (currentStep === 3) {
-      // Entering step 5 (attestation) -- no pre-generation needed
-      // The attestation is created on acceptance
-    }
-
-    setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+    navigateToStep(Math.min(currentStep + 1, STEPS.length - 1));
   };
 
   const handleBack = () => {
     setStepError(null);
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
+    navigateToStep(Math.max(currentStep - 1, 0));
   };
 
-  // Auto-advance callback for step 1
   const handleAuthAutoAdvance = React.useCallback(() => {
     setCompletedSteps((prev) => {
       const next = new Set(prev);
       next.add(0);
       return next;
     });
-    setCurrentStep(1);
+    setDirection("forward");
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentStep(1);
+      setIsTransitioning(false);
+    }, 150);
   }, []);
 
-  // Show loading while checking profile
+  // Loading state
   if (isCheckingProfile || authLoading) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-12">
-        <div className="flex flex-col items-center justify-center gap-4 py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
-          <p className="text-sm text-zinc-400">Loading your profile...</p>
-        </div>
+      <div className="flex min-h-[80vh] flex-col items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+        <p className="mt-4 text-sm font-normal text-zinc-500">
+          Loading your profile...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12">
-      {/* Already verified link for returning users */}
-      <div className="mb-6 flex justify-end">
+    <div className="mx-auto max-w-lg px-6 py-16">
+      {/* Top bar */}
+      <div className="mb-6 flex items-center justify-between">
+        <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-400">
+          Investor Onboarding
+        </p>
         <Link
           href="/dashboard"
-          className="flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-violet-400"
+          className="flex items-center gap-1.5 text-xs font-normal text-zinc-500 transition-colors hover:text-zinc-600"
         >
-          <User className="h-4 w-4" />
-          Already verified? Sign in
-          <ArrowRight className="h-3.5 w-3.5" />
+          Already verified?
+          <ArrowRight className="h-3 w-3" />
         </Link>
-      </div>
-
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <Badge variant="default" size="sm">
-          Investor Onboarding
-        </Badge>
-        <h1 className="mt-3 text-3xl font-bold text-zinc-50">
-          Get Started with Exposure
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Complete the following steps to set up your investor profile.
-        </p>
       </div>
 
       {/* Stepper */}
       <Stepper currentStep={currentStep} completedSteps={completedSteps} />
 
-      {/* Step content card */}
-      <Card>
-        <CardContent className="pt-6">
-          {currentStep === 0 && (
-            <StepAuth
-              data={data}
-              onUpdate={updateData}
-              onAutoAdvance={handleAuthAutoAdvance}
-            />
-          )}
-          {currentStep === 1 && (
-            <StepAssessment
-              data={data}
-              onUpdate={updateData}
-              isSubmitting={isSubmitting}
-              apiError={stepError}
-            />
-          )}
-          {currentStep === 2 && (
-            <StepKYC data={data} onUpdate={updateData} />
-          )}
-          {currentStep === 3 && (
-            <StepWallet data={data} onUpdate={updateData} />
-          )}
-          {currentStep === 4 && (
-            <StepAttestation
-              data={data}
-              redirectTarget={redirectTarget}
-              isSubmitting={isSubmitting}
-              apiError={stepError}
-              onAccept={handleAttestationAccept}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {/* Step content with transitions */}
+      <div
+        className={cn(
+          "transition-all duration-150 ease-in-out",
+          isTransitioning
+            ? "translate-x-2 opacity-0"
+            : "translate-x-0 opacity-100",
+          isTransitioning && direction === "back" && "-translate-x-2"
+        )}
+      >
+        {currentStep === 0 && (
+          <StepAuth
+            data={data}
+            onUpdate={updateData}
+            onAutoAdvance={handleAuthAutoAdvance}
+          />
+        )}
+        {currentStep === 1 && (
+          <StepAssessment
+            data={data}
+            onUpdate={updateData}
+            isSubmitting={isSubmitting}
+            apiError={stepError}
+          />
+        )}
+        {currentStep === 2 && (
+          <StepKYC data={data} onUpdate={updateData} />
+        )}
+        {currentStep === 3 && (
+          <StepWallet data={data} onUpdate={updateData} />
+        )}
+        {currentStep === 4 && (
+          <StepAttestation
+            data={data}
+            redirectTarget={redirectTarget}
+            isSubmitting={isSubmitting}
+            apiError={stepError}
+            onAccept={handleAttestationAccept}
+          />
+        )}
+      </div>
 
       {/* Navigation */}
       {currentStep < 4 && (
-        <div className="mt-6 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="md"
+        <div className="mt-10 flex items-center justify-between border-t border-zinc-200 pt-6">
+          <button
             onClick={handleBack}
             disabled={currentStep === 0 || isSubmitting}
-            leftIcon={<ArrowLeft className="h-4 w-4" />}
+            className="flex items-center gap-2 text-sm font-normal text-zinc-500 transition-colors hover:text-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
           >
+            <ArrowLeft className="h-3.5 w-3.5" />
             Back
-          </Button>
+          </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">
-              Step {currentStep + 1} of {STEPS.length}
-            </span>
-          </div>
+          <span className="font-mono text-xs font-normal text-zinc-300">
+            {String(currentStep + 1).padStart(2, "0")}/{String(STEPS.length).padStart(2, "0")}
+          </span>
 
-          <Button
-            size="md"
+          <button
             onClick={handleNext}
             disabled={!canProceed || isSubmitting}
-            rightIcon={
-              isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowRight className="h-4 w-4" />
-              )
-            }
+            className="flex items-center gap-2 text-sm font-normal text-zinc-600 transition-colors hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            {isSubmitting
-              ? "Saving..."
-              : currentStep === 3
-                ? "Continue"
-                : "Continue"}
-          </Button>
+            {isSubmitting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <>
+                Continue
+                <ArrowRight className="h-3.5 w-3.5" />
+              </>
+            )}
+          </button>
         </div>
       )}
 
-      {/* Navigation for attestation step (only when not yet accepted) */}
+      {/* Navigation for attestation step (before acceptance) */}
       {currentStep === 4 && !data.attestationHash && (
-        <div className="mt-6 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="md"
+        <div className="mt-10 flex items-center justify-between border-t border-zinc-200 pt-6">
+          <button
             onClick={handleBack}
             disabled={isSubmitting}
-            leftIcon={<ArrowLeft className="h-4 w-4" />}
+            className="flex items-center gap-2 text-sm font-normal text-zinc-500 transition-colors hover:text-zinc-600 disabled:opacity-30"
           >
+            <ArrowLeft className="h-3.5 w-3.5" />
             Back
-          </Button>
+          </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">
-              Step {currentStep + 1} of {STEPS.length}
-            </span>
-          </div>
+          <span className="font-mono text-xs font-normal text-zinc-300">
+            {String(currentStep + 1).padStart(2, "0")}/{String(STEPS.length).padStart(2, "0")}
+          </span>
 
           <div />
         </div>
